@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "files": {
+    "src/context/AuthContext.tsx": "ec84e9df747df7137618c6b8c5f8cd15d7859463b6efba206059a8390c4b5cd3",
+    "src/lib/supabase.ts": "84b6e7187085e36c31b474202122299a576f8491738bf4aa2e342ef813a26c19",
+    "src/services/fileService.ts": "98715775957c9fcda21d9c31e31c8a540cfc755ac4e6ecf9d11070ff6783652b",
+    "src/services/mediaAudioPreprocessor.ts": "27636e8fb887b597dd0af448420dcb100953e6d585a78ddc8b83fc540f261fc9",
+    "src/services/projectService.ts": "019a2562887d660bd1541263b9acb3f9671a82c67e2517b4ab11a2287ce6cbda",
+    "src/services/subtitleService.ts": "8d94b940aabdb0b6ad6210e8c27416e490742889bf9fe92d297662878bf4f562",
+    "src/types/database.ts": "68496788b08129f68fb2ea7a7658bd96bea4b08da8d4551bed7a6257579fdebd",
+    "src/types/processing.ts": "9f7d0d432eb084fe7e412403296cdf9dc117314596329ed1ae30518e3e499d43",
+    "src/utils/exporter.ts": "0a152fa45ba6fc03b9caff86150337001f6e2fa04720abeaf4e17e553604a25e",
+    "src/utils/mediaProcessing.ts": "f2729e1920d68e7d4c3fa66e04a16f95a9474661a1c86acddd531c333e48ee80",
+    "src/utils/subtitleEditor.ts": "063c0cc28ae2361b17ad670ade4fea7816fc9f904e5de0aa0fa7107fe6b9a65d",
+    "src/utils/subtitleParsers.ts": "22250eca17503bf336f93b9b89a7b3667ec63ce7e0de50ae90f7482479febe98",
+    "src/utils/time.ts": "f5be92df8d59650ae86e16f5e7370e268358d349caaa049eb6ae70fd30946514",
+    "supabase/functions/process-media/index.ts": "4cb75f3dff2a8fe95beac9e04f9362a0da497b262bf75fdbf5f1c171e53175e3",
+    "supabase/migrations/202608100001_submission_core_cleanup.sql": "15b68c82180be802e1b01df00bbc978f4f6ecb50edcc5e5165f81069dd9bdf17",
+    "supabase/schema.sql": "7d28520fb6c31b035d996ed289621a58ad2dd0c06590e50032356d3224043e14"
+  }
+}

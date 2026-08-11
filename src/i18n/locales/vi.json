@@ -1,0 +1,307 @@
+{
+  "meta": {
+    "title": "LTS.ai - Phụ đề AI"
+  },
+  "common": {
+    "save": "Lưu",
+    "saving": "Đang lưu...",
+    "saved": "Đã lưu",
+    "cancel": "Hủy",
+    "confirm": "Xác nhận",
+    "close": "Đóng",
+    "retry": "Thử lại",
+    "delete": "Xóa",
+    "edit": "Chỉnh sửa",
+    "open": "Mở",
+    "back": "Quay lại",
+    "loading": "Đang tải",
+    "search": "Tìm kiếm",
+    "total": "Tổng cộng",
+    "source": "Nguồn",
+    "target": "Đích",
+    "language": "Ngôn ngữ",
+    "theme": "Giao diện",
+    "account": "Tài khoản",
+    "settings": "Cài đặt",
+    "logout": "Đăng xuất",
+    "create": "Tạo mới",
+    "update": "Cập nhật",
+    "download": "Tải về",
+    "export": "Xuất",
+    "files": "tệp",
+    "projects": "dự án",
+    "or": "hoặc",
+    "unknown": "Không xác định",
+    "more": "Thêm tùy chọn"
+  },
+  "navigation": {
+    "dashboard": "Dự án",
+    "logout": "Đăng xuất",
+    "backHome": "Trang chủ",
+    "backProjects": "Về danh sách dự án",
+    "workspaceNavigation": "Điều hướng không gian làm việc",
+    "newProject": "Dự án mới",
+    "searchProjects": "Tìm dự án",
+    "expandSidebar": "Mở rộng thanh bên",
+    "collapseSidebar": "Thu gọn thanh bên",
+    "openSidebar": "Mở thanh điều hướng"
+  },
+  "auth": {
+    "welcomeBack": "Chào mừng trở lại",
+    "subtitle": "Tạo và dịch phụ đề video bằng AI.",
+    "googleContinue": "Tiếp tục với Google",
+    "redirecting": "Đang chuyển hướng...",
+    "googleDriveExplanation": "Google Drive được sử dụng để đọc video bạn chủ động chọn trong quá trình xử lý và xem trước.",
+    "loginError": "Không thể đăng nhập bằng Google. Vui lòng thử lại.",
+    "googleAccount": "Tài khoản Google",
+    "googleAccountDescription": "LTS.ai sử dụng Google OAuth để đăng nhập và truy cập các video Google Drive bạn chọn. Ứng dụng không có mật khẩu riêng."
+  },
+  "landing": {
+    "eyebrow": "Subtitle AI Workspace",
+    "hero": {
+      "title": "Phụ đề video, đơn giản hơn với AI",
+      "description": "Tạo, dịch và chỉnh sửa phụ đề song ngữ từ video Google Drive trong một không gian làm việc gọn gàng.",
+      "primary": "Bắt đầu với Google",
+      "privacy": "Không cần tải video thủ công lên server"
+    },
+    "mock": {
+      "original": "Original",
+      "targetLanguage": "Tiếng Việt",
+      "originalText": "Hello everyone, welcome back.",
+      "translatedText": "Xin chào mọi người, chào mừng trở lại."
+    },
+    "workflow": {
+      "title": "Ba bước để có phụ đề hoàn chỉnh",
+      "description": "Luồng đơn giản, phù hợp cho việc xử lý và chỉnh sửa video nhanh.",
+      "step1Title": "Chọn video",
+      "step1Text": "Dán liên kết Google Drive của video cần xử lý.",
+      "step2Title": "AI tạo & dịch phụ đề",
+      "step2Text": "Nhận dạng giọng nói và tạo bản dịch theo ngôn ngữ dự án.",
+      "step3Title": "Chỉnh sửa và xuất",
+      "step3Text": "Kiểm tra cue, chỉnh thời gian rồi xuất SRT, VTT hoặc TXT."
+    },
+    "cta": {
+      "title": "Sẵn sàng tạo phụ đề cho video tiếp theo?",
+      "description": "Đăng nhập Google để truy cập video bạn chủ động chọn từ Drive.",
+      "action": "Tiếp tục với Google"
+    },
+    "previewAria": "Xem trước giao diện chỉnh sửa phụ đề",
+    "capabilities": {
+      "driveTitle": "Bắt đầu trực tiếp từ Google Drive",
+      "driveText": "Chọn video bạn đã có trên Drive và đưa vào dự án mà không cần một quy trình tải lên phức tạp.",
+      "aiTitle": "Tạo và dịch phụ đề trong một luồng",
+      "aiText": "LTS.ai chuyển âm thanh thành phụ đề, dịch theo ngôn ngữ dự án và hiển thị tiến trình rõ ràng trong lúc xử lý.",
+      "editorTitle": "Chỉnh sửa trong ngữ cảnh của video",
+      "editorText": "Xem video, đối chiếu bản gốc và bản dịch, chỉnh timing rồi xuất SRT, VTT hoặc TXT."
+    }
+  },
+  "dashboard": {
+    "eyebrow": "Workspace",
+    "title": "Dự án",
+    "description": "Tiếp tục công việc hoặc bắt đầu một dự án phụ đề mới.",
+    "searchPlaceholder": "Tìm kiếm dự án...",
+    "totalProjects": "Tổng dự án: {{count}}",
+    "loadError": "Không thể tải danh sách dự án.",
+    "retryLoad": "Tải lại dự án",
+    "empty": {
+      "title": "Chưa có dự án nào",
+      "description": "Tạo dự án đầu tiên để bắt đầu làm phụ đề.",
+      "action": "Tạo dự án"
+    },
+    "noSearchResults": {
+      "title": "Không tìm thấy dự án phù hợp",
+      "description": "Thử một từ khóa khác."
+    },
+    "createTileTitle": "Tạo dự án mới",
+    "createTileDescription": "Bắt đầu một không gian mới cho video và phụ đề của bạn."
+  },
+  "project": {
+    "create": "Tạo mới",
+    "createTitle": "Tạo dự án mới",
+    "createSubtitle": "Chọn ngôn ngữ phụ đề đích cho dự án",
+    "editTitle": "Chỉnh sửa dự án",
+    "editSubtitle": "Cập nhật tên và mô tả dự án",
+    "name": "Tên dự án",
+    "namePlaceholder": "VD: Tiếng Nhật N5",
+    "description": "Mô tả ngắn",
+    "descriptionPlaceholder": "Ghi chú về nội dung dự án...",
+    "targetLanguage": "Ngôn ngữ đích",
+    "creating": "Đang tạo...",
+    "createAction": "Tạo dự án",
+    "updating": "Đang lưu...",
+    "updateAction": "Lưu thay đổi",
+    "defaultDescription": "Dự án phụ đề video.",
+    "fileCount": "{{count}} tệp",
+    "loadError": "Không thể tải tệp trong dự án.",
+    "retryLoad": "Tải lại tệp",
+    "exportZip": "Xuất ZIP",
+    "deleteProjectTitle": "Xác nhận xóa dự án",
+    "deleteProjectMessage": "Bạn có chắc chắn muốn xóa vĩnh viễn dự án \"{{name}}\" và toàn bộ tệp bên trong?",
+    "deleteProjectAction": "Xóa dự án",
+    "deleteFileTitle": "Xác nhận xóa tệp",
+    "deleteFileMessage": "Bạn có chắc chắn muốn xóa tệp \"{{name}}\" cùng toàn bộ phụ đề?",
+    "deleteFileAction": "Xóa tệp",
+    "createError": "Có lỗi xảy ra khi tạo dự án.",
+    "updateError": "Có lỗi xảy ra khi lưu thay đổi.",
+    "editAria": "Chỉnh sửa dự án",
+    "deleteAria": "Xóa dự án",
+    "openAria": "Mở dự án",
+    "videosTitle": "Media trong dự án",
+    "videosDescription": "Theo dõi quá trình xử lý, mở editor hoặc xuất phụ đề."
+  },
+  "media": {
+    "tabs": {
+      "unfinished": "Chưa hoàn thành",
+      "completed": "Đã hoàn thành"
+    },
+    "addDrive": "Thêm tệp",
+    "startAll": "Xử lý ({{count}})",
+    "retry": "Thử lại",
+    "edit": "Mở editor",
+    "download": "Tải về",
+    "delete": "Xóa tệp",
+    "emptyUnfinished": "Không có tệp đang chờ xử lý. Hãy thêm tệp để bắt đầu.",
+    "emptyCompleted": "Chưa có tệp nào hoàn thành.",
+    "status": {
+      "draft": "Chờ kích hoạt",
+      "processing": "Đang xử lý AI...",
+      "completed": "Đã hoàn thành",
+      "failed": "Thất bại"
+    },
+    "drive": {
+      "title": "Nạp tệp mới",
+      "linkLabel": "Liên kết Google Drive",
+      "publicBadge": "Công khai",
+      "fileIdDetected": "Đã nhận diện File ID: {{id}}",
+      "linkHint": "Đang chờ liên kết dạng drive.google.com/file/d/ID...",
+      "fileName": "Tên tệp",
+      "fileNamePlaceholder": "VD: Bai_hoc_1.mp4",
+      "hasSubtitle": "Có sẵn phụ đề?",
+      "subtitleFile": "Chọn tệp phụ đề (.srt / .vtt)",
+      "sourceLanguage": "Ngôn ngữ gốc",
+      "uploadAction": "Nạp ngay",
+      "invalidLink": "Vui lòng dán liên kết tệp Google Drive hợp lệ!",
+      "subtitleRequired": "Vui lòng chọn file phụ đề (.srt / .vtt) từ máy tính!",
+      "loadFailed": "Không thể nạp tệp. Vui lòng thử lại!"
+    }
+  },
+  "processing": {
+    "preparing": "Chuẩn bị xử lý...",
+    "downloading": "Đang tải video từ Google Drive...",
+    "ffmpeg": "Đang chuẩn hóa audio...",
+    "transcribing": "Đang nhận dạng giọng nói...",
+    "translating": "Đang dịch phụ đề...",
+    "saving": "Đang lưu phụ đề...",
+    "completed": "Hoàn thành",
+    "chunkLabel": "FLAC chunk {{current}}/{{total}}",
+    "processFailed": "Không thể xử lý tệp. Vui lòng thử lại.",
+    "retryFailed": "Không thể thử lại tệp."
+  },
+  "editor": {
+    "source": "Nguồn",
+    "unsaved": "Chưa lưu",
+    "saved": "Đã lưu",
+    "save": "Lưu",
+    "export": "Xuất",
+    "playing": "Đang phát",
+    "subtitleList": "Danh sách phụ đề",
+    "noTargetSubtitle": "Chưa có phụ đề đích.",
+    "createFirstCue": "Tạo cue đầu tiên",
+    "original": "Original",
+    "loadError": "Không thể tải phụ đề.",
+    "retryLoad": "Tải lại phụ đề",
+    "saveError": "Không thể lưu phụ đề. Vui lòng thử lại.",
+    "invalidTiming": "Thời gian cue không hợp lệ. Thời gian kết thúc phải lớn hơn thời gian bắt đầu.",
+    "timing": {
+      "start": "Bắt đầu",
+      "end": "Kết thúc",
+      "edit": "Chỉnh thời gian",
+      "confirm": "Xác nhận thời gian",
+      "cancel": "Hủy chỉnh thời gian"
+    },
+    "cue": {
+      "addAfter": "Thêm cue sau",
+      "delete": "Xóa cue",
+      "editTimingAria": "Chỉnh thời gian cue {{index}}",
+      "addAfterAria": "Thêm cue sau cue {{index}}",
+      "deleteAria": "Xóa cue {{index}}",
+      "editTranslation": "Chỉnh bản dịch",
+      "confirmTranslation": "Xác nhận bản dịch",
+      "cancelTranslation": "Hủy chỉnh bản dịch",
+      "editTranslationAria": "Chỉnh bản dịch cue {{index}}"
+    },
+    "unsavedDialog": {
+      "title": "Có thay đổi chưa lưu",
+      "message": "Bạn có thay đổi phụ đề chưa lưu. Rời editor và bỏ các thay đổi này?",
+      "confirm": "Rời editor"
+    },
+    "deleteCueDialog": {
+      "title": "Xóa dòng phụ đề",
+      "message": "Bạn có chắc chắn muốn xóa cue #{{index}}?",
+      "confirm": "Xóa cue"
+    },
+    "video": {
+      "loading": "Đang tải video từ Google Drive...",
+      "cannotOpen": "Không thể mở video.",
+      "empty": "Chưa có video để phát.",
+      "codecError": "Trình duyệt không thể phát codec của video này. Hãy dùng MP4/WebM có codec được trình duyệt hỗ trợ.",
+      "missingDriveId": "Tệp chưa có Google Drive file ID.",
+      "sessionExpired": "Phiên Google Drive đã hết hạn. Vui lòng đăng nhập lại bằng Google để mở video.",
+      "downloadFailed": "Không thể tải video từ Google Drive. Phiên Google có thể đã hết hạn; vui lòng đăng nhập lại bằng Google.",
+      "emptyFile": "Google Drive trả về tệp video rỗng."
+    },
+    "details": "Hiển thị",
+    "visibility": {
+      "title": "Hiển thị trong cue",
+      "details": "Chi tiết cue",
+      "metadata": "Thông tin cue",
+      "metadataHint": "#, trạng thái và thời gian",
+      "source": "Bản gốc",
+      "sourceHint": "Nội dung phụ đề nguồn",
+      "actions": "Nút thao tác",
+      "actionsHint": "Chỉnh sửa, thêm và xóa cue"
+    }
+  },
+  "export": {
+    "projectTitle": "Xuất toàn bộ phụ đề",
+    "fileTitle": "Xuất phụ đề tệp",
+    "chooseFormat": "Chọn định dạng",
+    "download": "Tải về",
+    "srtDescription": "VLC, CapCut, Premiere Pro, YouTube",
+    "vttDescription": "Web HTML5, Video Player Web",
+    "txtDescription": "Văn bản thuần (UTF-8)"
+  },
+  "settings": {
+    "appearance": {
+      "light": "Sáng",
+      "dark": "Tối",
+      "system": "Theo hệ thống"
+    }
+  },
+  "dialog": {
+    "confirm": "Xác nhận",
+    "cancel": "Hủy",
+    "delete": "Xóa",
+    "close": "Đóng"
+  },
+  "errors": {
+    "generic": "Có lỗi xảy ra. Vui lòng thử lại.",
+    "load": "Không thể tải dữ liệu.",
+    "save": "Không thể lưu thay đổi.",
+    "network": "Lỗi kết nối mạng. Vui lòng kiểm tra đường truyền Internet.",
+    "session": "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại."
+  },
+  "accessibility": {
+    "loadingProjects": "Đang tải dự án",
+    "loadingFiles": "Đang tải tệp",
+    "loadingSubtitles": "Đang tải phụ đề",
+    "languageSelector": "Chọn ngôn ngữ giao diện",
+    "themeSelector": "Chọn giao diện",
+    "editTiming": "Chỉnh thời gian",
+    "addCueAfter": "Thêm cue phía sau",
+    "deleteCue": "Xóa cue",
+    "closeDialog": "Đóng hộp thoại",
+    "loadingApp": "Đang tải LTS.ai",
+    "openUserMenu": "Mở menu tài khoản"
+  }
+}
