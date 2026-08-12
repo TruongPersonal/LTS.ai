@@ -41,10 +41,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (data) {
         setProfile(data);
       } else {
-        setProfile({
+        const name = authUser.user_metadata?.full_name || authUser.user_metadata?.name || authUser.email?.split('@')[0] || 'User';
+        const profilePayload = {
           id: authUser.id,
           email: authUser.email || '',
-          full_name: authUser.user_metadata?.full_name || authUser.email?.split('@')[0] || 'User',
+          full_name: name,
+        };
+        const { data: createdData } = await supabase
+          .from('profiles')
+          .upsert(profilePayload, { onConflict: 'id' })
+          .select('*')
+          .single();
+
+        setProfile(createdData || {
+          ...profilePayload,
           created_at: new Date().toISOString(),
         });
       }

@@ -83,3 +83,22 @@ CREATE POLICY "Users can manage own subtitles" ON lts_ai.subtitles
   ) WITH CHECK (
     EXISTS (SELECT 1 FROM lts_ai.files_media JOIN lts_ai.projects ON projects.id = files_media.project_id WHERE files_media.id = subtitles.file_id AND projects.user_id = auth.uid())
   );
+
+CREATE OR REPLACE FUNCTION lts_ai.handle_new_user()
+RETURNS TRIGGER AS $$
+BEGIN
+    INSERT INTO lts_ai.profiles (id, email, full_name)
+    VALUES (
+        new.id,
+        COALESCE(new.email, ''),
+        COALESCE(new.raw_user_meta_data->>'full_name', new.raw_user_meta_data->>'name', 'User')
+    )
+    ON CONFLICT (id) DO UPDATE SET
+        email = EXCLUDED.email,
+        full_name = EXCLUDED.full_name;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = '';
+
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+CREATE TRIGGER on_auth_user_created AFTER INSERT ON auth.users FOR EACH ROW EXECUTE FUNCTION lts_ai.handle_new_user();
