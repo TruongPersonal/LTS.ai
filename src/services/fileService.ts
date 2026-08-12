@@ -120,7 +120,7 @@ function sanitizeErrorMessage(rawError: unknown): string {
     return i18n.t('processing.processFailed');
   }
   if (rawMessage.includes('non-2xx status code') || rawMessage.includes('FunctionsHttpError')) {
-    return i18n.t('media.systemQuotaExceeded');
+    return 'Máy chủ xử lý gặp sự cố tạm thời (500/502). Vui lòng thử lại sau giây lát.';
   }
   return rawMessage;
 }

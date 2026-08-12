@@ -54,37 +54,6 @@ function normalizeSubmittedSubtitles(value: unknown): SubtitleItem[] {
     .map((item, index) => ({ ...item, id: index + 1 }));
 }
 
-async function fetchGroqWithRetry(url: string, options: RequestInit, maxRetries = 3): Promise<Response> {
-  let lastResponse: Response | null = null;
-  let lastError: Error | null = null;
-
-  for (let attempt = 1; attempt <= maxRetries; attempt++) {
-    try {
-      const response = await fetch(url, options);
-      if (response.ok) return response;
-
-      lastResponse = response;
-      if ([500, 502, 503, 504, 429].includes(response.status) && attempt < maxRetries) {
-        const delayMs = attempt * 2000;
-        console.warn(`[Groq Retry] HTTP ${response.status} on attempt ${attempt}/${maxRetries}. Retrying in ${delayMs}ms...`);
-        await new Promise((resolve) => setTimeout(resolve, delayMs));
-        continue;
-      }
-      return response;
-    } catch (err) {
-      lastError = err instanceof Error ? err : new Error(String(err));
-      if (attempt < maxRetries) {
-        const delayMs = attempt * 2000;
-        console.warn(`[Groq Retry] Fetch error on attempt ${attempt}/${maxRetries}: ${lastError.message}. Retrying in ${delayMs}ms...`);
-        await new Promise((resolve) => setTimeout(resolve, delayMs));
-      }
-    }
-  }
-
-  if (lastResponse) return lastResponse;
-  throw lastError || new Error('Groq API request failed after retries.');
-}
-
 async function transcribeFlac(
   blob: Blob,
   fileName: string,
@@ -96,7 +65,7 @@ async function transcribeFlac(
   formData.append('model', 'whisper-large-v3-turbo');
   formData.append('response_format', 'verbose_json');
 
-  const response = await fetchGroqWithRetry('https://api.groq.com/openai/v1/audio/transcriptions', {
+  const response = await fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
     method: 'POST',
     headers: { Authorization: `Bearer ${groqApiKey}` },
     body: formData,
@@ -126,7 +95,7 @@ async function translateSubtitles(
     return subtitles;
   }
 
-  const response = await fetchGroqWithRetry('https://api.groq.com/openai/v1/chat/completions', {
+  const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${groqApiKey}`,
