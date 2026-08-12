@@ -93,6 +93,15 @@ async function transcribeChunk(
 
 function sanitizeErrorMessage(rawError: unknown): string {
   const rawMessage = rawError instanceof Error ? rawError.message : String(rawError || '');
+  if (rawMessage.includes('GROQ_API_KEY is not configured')) {
+    return 'Chưa cấu hình GROQ_API_KEY trong Supabase Secrets.';
+  }
+  if (rawMessage.includes('429') || rawMessage.toLowerCase().includes('rate limit')) {
+    return 'Hạn ngạch phút (RPM) của Groq đang tạm quá tải. Vui lòng chờ 15-30 giây rồi bấm Xử lý lại.';
+  }
+  if (rawMessage.includes('502') || rawMessage.toLowerCase().includes('bad gateway')) {
+    return 'Máy chủ Groq AI bị nghẽn mạng tạm thời (502). Vui lòng thử lại sau giây lát.';
+  }
   if (rawMessage.includes('non-2xx status code') || rawMessage.includes('FunctionsHttpError')) {
     return i18n.t('media.systemQuotaExceeded');
   }

@@ -263,11 +263,17 @@ serve(async (req) => {
         return jsonResponse({ error: 'Audio chunk must be FLAC.' }, 415);
       }
 
-      const transcription = await transcribeFlac(audio, audio.name, offsetSeconds, groqApiKey);
-      return jsonResponse({
-        source_language: transcription.sourceLanguage,
-        subtitles: transcription.subtitles,
-      });
+      try {
+        const transcription = await transcribeFlac(audio, audio.name, offsetSeconds, groqApiKey);
+        return jsonResponse({
+          source_language: transcription.sourceLanguage,
+          subtitles: transcription.subtitles,
+        });
+      } catch (chunkError) {
+        const chunkMsg = chunkError instanceof Error ? chunkError.message : String(chunkError);
+        console.error(`[transcribe_chunk error]: ${chunkMsg}`);
+        return jsonResponse({ error: chunkMsg }, 500);
+      }
     }
 
     if (action === 'process_existing_subtitle') {
@@ -404,6 +410,7 @@ serve(async (req) => {
     return jsonResponse({ error: 'Unsupported action.' }, 400);
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown server error';
+    console.error(`[process-media error]: ${message}`);
     return jsonResponse({ error: message }, 500);
   }
 });
