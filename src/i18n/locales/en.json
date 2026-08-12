@@ -163,7 +163,7 @@
     },
     "addDrive": "Add file",
     "quotaExceededTooltip": "Daily 60-minute limit reached",
-    "systemQuotaExceeded": "Sorry, the system processing quota has been reached.",
+    "systemQuotaExceeded": "Sorry, the processing server encountered a temporary issue.",
     "startAll": "Process ({{count}})",
     "retry": "Retry",
     "edit": "Edit",

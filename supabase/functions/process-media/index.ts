@@ -247,7 +247,7 @@ serve(async (req) => {
         return jsonResponse({ error: 'This file does not require media transcription.' }, 409);
       }
       if (!['draft', 'failed', 'processing', 'queued'].includes(file.status)) {
-        return jsonResponse({ error: `File status '${file.status}' is not processable.` }, 409);
+        return jsonResponse({ error: 'This file is not processable.' }, 409);
       }
 
       const audio = multipartBody.get('audio');
@@ -263,17 +263,11 @@ serve(async (req) => {
         return jsonResponse({ error: 'Audio chunk must be FLAC.' }, 415);
       }
 
-      try {
-        const transcription = await transcribeFlac(audio, audio.name, offsetSeconds, groqApiKey);
-        return jsonResponse({
-          source_language: transcription.sourceLanguage,
-          subtitles: transcription.subtitles,
-        });
-      } catch (chunkError) {
-        const chunkMsg = chunkError instanceof Error ? chunkError.message : String(chunkError);
-        console.error(`[transcribe_chunk error]: ${chunkMsg}`);
-        return jsonResponse({ error: chunkMsg }, 500);
-      }
+      const transcription = await transcribeFlac(audio, audio.name, offsetSeconds, groqApiKey);
+      return jsonResponse({
+        source_language: transcription.sourceLanguage,
+        subtitles: transcription.subtitles,
+      });
     }
 
     if (action === 'process_existing_subtitle') {
@@ -410,7 +404,6 @@ serve(async (req) => {
     return jsonResponse({ error: 'Unsupported action.' }, 400);
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown server error';
-    console.error(`[process-media error]: ${message}`);
     return jsonResponse({ error: message }, 500);
   }
 });

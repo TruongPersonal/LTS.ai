@@ -163,7 +163,7 @@
     },
     "addDrive": "Thêm tệp",
     "quotaExceededTooltip": "Bạn đã đạt hạn mức 60 phút/ngày",
-    "systemQuotaExceeded": "Xin lỗi, hệ thống đã đạt hạn mức xử lý.",
+    "systemQuotaExceeded": "Xin lỗi, máy chủ xử lý gặp sự cố tạm thời.",
     "startAll": "Xử lý ({{count}})",
     "retry": "Thử lại",
     "edit": "Chỉnh sửa",
