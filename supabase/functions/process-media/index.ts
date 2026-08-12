@@ -128,11 +128,23 @@ async function translateBatch(
   }
 
   const translated = normalizeSegments(parsed.subtitles || []);
-  const translatedById = new Map(translated.map((item) => [item.id, item]));
+  if (translated.length !== subtitles.length) {
+    throw new Error('Groq translation returned an unexpected number of subtitle cues.');
+  }
 
+  const sourceById = new Map(subtitles.map((item) => [item.id, item]));
+  const translatedIds = new Set<number>();
+  for (const item of translated) {
+    if (!sourceById.has(item.id) || translatedIds.has(item.id)) {
+      throw new Error('Groq translation returned invalid or duplicate subtitle IDs.');
+    }
+    translatedIds.add(item.id);
+  }
+
+  const translatedById = new Map(translated.map((item) => [item.id, item]));
   return subtitles.map((source) => {
-    const item = translatedById.get(source.id);
-    return item ? { ...item, start: source.start, end: source.end } : source;
+    const item = translatedById.get(source.id)!;
+    return { ...item, start: source.start, end: source.end };
   });
 }
 
