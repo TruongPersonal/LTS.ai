@@ -85,16 +85,12 @@ async function transcribeFlac(
   };
 }
 
-async function translateSubtitles(
+async function translateBatch(
   subtitles: SubtitleItem[],
   sourceLanguage: string,
   targetLanguage: string,
   groqApiKey: string
 ): Promise<SubtitleItem[]> {
-  if (sourceLanguage.toLowerCase() === targetLanguage.toLowerCase()) {
-    return subtitles;
-  }
-
   const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
     method: 'POST',
     headers: {
@@ -132,24 +128,34 @@ async function translateSubtitles(
   }
 
   const translated = normalizeSegments(parsed.subtitles || []);
-  if (translated.length !== subtitles.length) {
-    throw new Error('Groq translation returned an unexpected number of subtitle cues.');
-  }
-
-  const sourceById = new Map(subtitles.map((item) => [item.id, item]));
-  const translatedIds = new Set<number>();
-  for (const item of translated) {
-    if (!sourceById.has(item.id) || translatedIds.has(item.id)) {
-      throw new Error('Groq translation returned invalid or duplicate subtitle IDs.');
-    }
-    translatedIds.add(item.id);
-  }
-
   const translatedById = new Map(translated.map((item) => [item.id, item]));
+
   return subtitles.map((source) => {
-    const item = translatedById.get(source.id)!;
-    return { ...item, start: source.start, end: source.end };
+    const item = translatedById.get(source.id);
+    return item ? { ...item, start: source.start, end: source.end } : source;
   });
+}
+
+async function translateSubtitles(
+  subtitles: SubtitleItem[],
+  sourceLanguage: string,
+  targetLanguage: string,
+  groqApiKey: string
+): Promise<SubtitleItem[]> {
+  if (sourceLanguage.toLowerCase() === targetLanguage.toLowerCase()) {
+    return subtitles;
+  }
+
+  const BATCH_SIZE = 50;
+  const translatedAll: SubtitleItem[] = [];
+
+  for (let i = 0; i < subtitles.length; i += BATCH_SIZE) {
+    const batch = subtitles.slice(i, i + BATCH_SIZE);
+    const translatedBatch = await translateBatch(batch, sourceLanguage, targetLanguage, groqApiKey);
+    translatedAll.push(...translatedBatch);
+  }
+
+  return translatedAll;
 }
 
 serve(async (req) => {
