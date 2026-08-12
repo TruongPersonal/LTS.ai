@@ -246,8 +246,8 @@ serve(async (req) => {
       if (file.input_source !== 'media') {
         return jsonResponse({ error: 'This file does not require media transcription.' }, 409);
       }
-      if (!['draft', 'failed', 'processing'].includes(file.status)) {
-        return jsonResponse({ error: 'This file is not processable.' }, 409);
+      if (!['draft', 'failed', 'processing', 'queued'].includes(file.status)) {
+        return jsonResponse({ error: `File status '${file.status}' is not processable.` }, 409);
       }
 
       const audio = multipartBody.get('audio');

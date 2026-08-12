@@ -167,6 +167,7 @@ async function processMediaFile(
   onProgress?: ProcessingProgressCallback
 ): Promise<void> {
   try {
+    await supabase.from('files_media').update({ status: 'processing', error_message: null }).eq('id', file.id);
     emitProgress(onProgress, file.id, 'downloading', 10, 'Đang tải...');
     const mediaBlob = await downloadDriveMedia(file, accessToken);
 
