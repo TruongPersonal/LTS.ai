@@ -1,0 +1,331 @@
+{
+  "meta": {
+    "title": "LTS.ai - AI Subtitles"
+  },
+  "common": {
+    "save": "Save",
+    "saving": "Saving...",
+    "saved": "Saved",
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "close": "Close",
+    "retry": "Retry",
+    "delete": "Delete",
+    "edit": "Edit",
+    "open": "Open",
+    "back": "Back",
+    "loading": "Loading",
+    "search": "Search",
+    "total": "Total",
+    "source": "Source",
+    "target": "Target",
+    "language": "Language",
+    "theme": "Theme",
+    "logout": "Log out",
+    "create": "Create",
+    "update": "Update",
+    "download": "Download",
+    "export": "Export",
+    "files": "files",
+    "projects": "projects",
+    "or": "or",
+    "unknown": "Unknown",
+    "more": "More options"
+  },
+  "navigation": {
+    "dashboard": "Projects",
+    "logout": "Log out",
+    "backHome": "Home",
+    "backProjects": "Back to projects",
+    "workspaceNavigation": "Workspace navigation",
+    "newProject": "New project",
+    "searchProjects": "Search projects",
+    "expandSidebar": "Expand sidebar",
+    "collapseSidebar": "Collapse sidebar",
+    "openSidebar": "Open navigation"
+  },
+  "auth": {
+    "welcomeBack": "Welcome back",
+    "subtitle": "Create and translate video subtitles with AI.",
+    "googleContinue": "Continue with Google",
+    "redirecting": "Redirecting...",
+    "googleDriveExplanation": "Google Drive is used only to read videos you choose for processing and preview.",
+    "loginError": "Could not sign in with Google. Please try again.",
+    "googleAccount": "Google account",
+    "googleAccountDescription": "LTS.ai uses Google OAuth to sign in and access the Drive videos you choose. The app does not have a separate password.",
+    "badge": "Join system",
+    "secure": "Convenient",
+    "fastAi": "Secure",
+    "driveSync": "Fast"
+  },
+  "landing": {
+    "eyebrow": "Subtitle AI Workspace",
+    "hero": {
+      "title": "Media files subtitles, made simpler with AI",
+      "description": "Create, translate, and edit bilingual subtitles from Google Drive files in one focused workspace.",
+      "primary": "Get Started Now",
+      "learnMore": "Learn More"
+    },
+    "mock": {
+      "originalLabel": "Original",
+      "targetLabel": "Translation",
+      "originalText": "Hello everyone, welcome back.",
+      "translatedText": "Xin chào mọi người, chào mừng trở lại."
+    },
+    "workflow": {
+      "title": "Three steps to finished subtitles",
+      "description": "Simple workflow, optimized for fast subtitle processing and editing.",
+      "step1Title": "Select file",
+      "step1Text": "Paste the Google Drive link of the target file.",
+      "step2Title": "AI creates & translates",
+      "step2Text": "Transcribe speech and translate it into the project language.",
+      "step3Title": "Edit and export",
+      "step3Text": "Inspect subtitles, adjust timing, then export."
+    },
+    "cta": {
+      "title": "Ready to subtitle your next project?",
+      "description": "Get started now to experience the AI subtitle workspace.",
+      "action": "Experience with Google"
+    },
+    "previewAria": "Subtitle editor product preview",
+    "languagesSection": {
+      "title": "Supports 7 Major Translation Languages",
+      "vi": "Vietnamese",
+      "en": "English",
+      "ja": "Japanese",
+      "ko": "Korean",
+      "zh": "Chinese",
+      "fr": "French",
+      "it": "Italian"
+    },
+    "capabilities": {
+      "driveTitle": "Start directly from Google Drive",
+      "driveText": "Select a file you already have on Drive and bring it into your project.",
+      "aiTitle": "Create and translate subtitles in one flow",
+      "aiText": "LTS.ai turns audio into subtitles, translates to the project language, and shows clear progress while it works.",
+      "editorTitle": "Edit while watching the video",
+      "editorText": "Watch, compare source - translation, edit, then export SRT, VTT, or TXT."
+    }
+  },
+  "dashboard": {
+    "eyebrow": "Workspace",
+    "title": "Projects",
+    "description": "Continue where you left off or start a new subtitle project.",
+    "searchPlaceholder": "Search projects...",
+    "loadError": "Could not load your projects.",
+    "retryLoad": "Reload projects",
+    "empty": {
+      "title": "No projects yet"
+    },
+    "noSearchResults": {
+      "title": "No matching projects",
+      "description": "Try a different search term."
+    }
+  },
+  "project": {
+    "create": "New project",
+    "createTitle": "Create a project",
+    "createSubtitle": "Choose the subtitle target language for this project",
+    "editTitle": "Edit project",
+    "editSubtitle": "Update the project name and description",
+    "name": "Project name",
+    "namePlaceholder": "Example: Japanese N5",
+    "description": "Short description",
+    "descriptionPlaceholder": "Add a note about this project...",
+    "targetLanguage": "Target language",
+    "creating": "Creating...",
+    "createAction": "Create project",
+    "updating": "Saving...",
+    "updateAction": "Save changes",
+    "defaultDescription": "Video subtitle project.",
+    "fileCount": "{{count}} files",
+    "loadError": "Could not load project files.",
+    "retryLoad": "Reload files",
+    "exportZip": "Export",
+    "deleteProjectTitle": "Delete project?",
+    "deleteProjectMessage": "Permanently delete \"{{name}}\" and all files inside it?",
+    "deleteProjectAction": "Delete project",
+    "deleteFileTitle": "Delete file?",
+    "deleteFileMessage": "Delete \"{{name}}\" and all of its subtitles?",
+    "deleteFileAction": "Delete file",
+    "createError": "Could not create the project.",
+    "updateError": "Could not save project changes.",
+    "editAria": "Edit project",
+    "deleteAria": "Delete project",
+    "openAria": "Open project",
+    "videosTitle": "Project videos",
+    "videosDescription": "Track processing, open the editor, or export subtitles."
+  },
+  "media": {
+    "tabs": {
+      "unfinished": "In progress",
+      "completed": "Completed"
+    },
+    "addDrive": "Add file",
+    "quotaExceededTooltip": "Daily 60-minute limit reached",
+    "systemQuotaExceeded": "Sorry, the system processing quota has been reached.",
+    "startAll": "Process ({{count}})",
+    "retry": "Retry",
+    "edit": "Edit",
+    "renameFile": "Edit file",
+    "renameModalTitle": "Edit file",
+    "renameModalSubtitle": "Update media file name.",
+    "saveRename": "Save",
+    "savingRename": "Saving...",
+    "download": "Download",
+    "delete": "Delete file",
+    "emptyUnfinished": "No pending files.",
+    "emptyCompleted": "No completed files yet.",
+    "status": {
+      "draft": "Draft",
+      "queued": "Queued",
+      "processing": "Processing",
+      "completed": "Success",
+      "failed": "Failed"
+    },
+    "drive": {
+      "title": "Add a file",
+      "subtitle": "Select a video/audio file to generate subtitles.",
+      "pickerHeading": "Select Google Drive file",
+      "reselectHeading": "Reselect Google Drive file",
+      "quotaHint": "Quota: Max 500MB/file • Total 60 mins/day.",
+      "exceedsSizeLimit": "File size exceeds the 500MB/file limit.",
+      "dailyDurationExceeded": "Daily 60-minute quota reached. Please try again tomorrow.",
+      "fileType": "Type",
+      "duration": "Duration",
+      "fileName": "File name",
+      "fileNamePlaceholder": "Example: Lesson_1.mp4",
+      "hasSubtitle": "Has existing subtitles?",
+      "subtitleFile": "Select subtitle file (.srt / .vtt)",
+      "sourceLanguage": "Source language",
+      "uploadAction": "Upload now",
+      "uploadingAction": "Importing...",
+      "duplicateFile": "This Google Drive file has already been added to the project.",
+      "invalidLink": "Please select a file from Google Drive!",
+      "subtitleRequired": "Please select a subtitle file (.srt / .vtt) from your computer!",
+      "loadFailed": "Failed to upload file. Please try again!"
+    }
+  },
+  "processing": {
+    "queued": "Waiting in queue...",
+    "preparing": "Preparing...",
+    "downloading": "Downloading file...",
+    "ffmpeg": "Processing audio...",
+    "transcribing": "Generating subtitles...",
+    "translating": "Translating subtitles...",
+    "saving": "Saving data...",
+    "completed": "Success",
+    "chunkLabel": "Part {{current}}/{{total}}",
+    "processFailed": "Could not process files. Please try again.",
+    "retryFailed": "Could not retry the file."
+  },
+  "editor": {
+    "saved": "Saved",
+    "export": "Export",
+    "subtitleList": "Subtitle list",
+    "noTargetSubtitle": "No target subtitles yet.",
+    "createFirstCue": "Create first cue",
+    "loadError": "Could not load subtitles.",
+    "retryLoad": "Reload subtitles",
+    "saveError": "Could not save subtitles. Please try again.",
+    "invalidTiming": "Invalid cue timing. End time must be greater than start time.",
+    "timing": {
+      "start": "Start",
+      "end": "End",
+      "edit": "Edit timing",
+      "confirm": "Apply timing",
+      "cancel": "Cancel timing edit"
+    },
+    "cue": {
+      "addAfter": "Add cue after",
+      "delete": "Delete cue",
+      "editTimingAria": "Edit timing for cue {{index}}",
+      "addAfterAria": "Add a cue after cue {{index}}",
+      "deleteAria": "Delete cue {{index}}",
+      "editTranslation": "Edit translation",
+      "confirmTranslation": "Apply translation",
+      "cancelTranslation": "Cancel translation edit",
+      "editTranslationAria": "Edit translation for cue {{index}}"
+    },
+    "unsavedDialog": {
+      "title": "Unsaved changes",
+      "message": "You have unsaved subtitle changes. Leave the editor and discard them?",
+      "confirm": "Leave editor"
+    },
+    "deleteCueDialog": {
+      "title": "Confirm delete subtitle line",
+      "message": "Are you sure you want to delete subtitle line #{{index}} - {{timing}}?",
+      "confirm": "Delete line"
+    },
+    "video": {
+      "loading": "Loading...",
+      "cannotOpen": "Could not open file.",
+      "empty": "No file to play.",
+      "codecError": "Unsupported file format.",
+      "sessionExpired": "Session expired. Please log in with Google again.",
+      "downloadFailed": "Session expired. Please log in with Google again.",
+      "emptyFile": "The file on Google Drive is empty."
+    },
+    "details": "View",
+    "backToProject": "Back to project",
+    "visibility": {
+      "title": "Display",
+      "details": "Cue details",
+      "metadata": "Info",
+      "metadataHint": "Number, status and timing",
+      "source": "Source text",
+      "sourceHint": "Original subtitle content",
+      "actions": "Buttons",
+      "actionsHint": "Edit, add and delete cues"
+    }
+  },
+  "export": {
+    "projectTitle": "Export all subtitles",
+    "fileTitle": "Export file subtitles",
+    "chooseFormat": "Choose format",
+    "chooseTrack": "Choose mode",
+    "trackTarget": "Translation",
+    "trackTargetDesc": "Translation subtitles",
+    "trackSource": "Original",
+    "trackSourceDesc": "Original subtitles",
+    "trackBilingual": "Bilingual",
+    "trackBilingualDesc": "Translation & original subtitles",
+    "download": "Download",
+    "srtDescription": "VLC, CapCut, Premiere Pro, YouTube",
+    "vttDescription": "HTML5 web video players",
+    "txtDescription": "Plain text (UTF-8)"
+  },
+  "settings": {
+    "appearance": {
+      "light": "Light",
+      "dark": "Dark",
+      "system": "System"
+    }
+  },
+  "dialog": {
+    "confirm": "Confirm",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "close": "Close"
+  },
+  "errors": {
+    "generic": "Something went wrong. Please try again.",
+    "load": "Could not load data.",
+    "save": "Could not save changes.",
+    "network": "Network error. Check your internet connection.",
+    "session": "Your session has expired. Please sign in again."
+  },
+  "accessibility": {
+    "loadingProjects": "Loading projects",
+    "loadingFiles": "Loading files",
+    "loadingSubtitles": "Loading subtitles",
+    "languageSelector": "Choose interface language",
+    "themeSelector": "Choose appearance",
+    "editTiming": "Edit timing",
+    "addCueAfter": "Add cue after",
+    "deleteCue": "Delete cue",
+    "closeDialog": "Close dialog",
+    "loadingApp": "Loading LTS.ai",
+    "openUserMenu": "Open account menu"
+  }
+}

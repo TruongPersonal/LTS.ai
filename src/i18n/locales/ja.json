@@ -1,0 +1,332 @@
+{
+  "meta": {
+    "title": "LTS.ai - AI字幕"
+  },
+  "common": {
+    "save": "保存",
+    "saving": "保存中...",
+    "saved": "保存済み",
+    "cancel": "キャンセル",
+    "confirm": "確認",
+    "close": "閉じる",
+    "retry": "再試行",
+    "delete": "削除",
+    "edit": "編集",
+    "open": "開く",
+    "back": "戻る",
+    "loading": "読み込み中",
+    "search": "検索",
+    "total": "合計",
+    "source": "原文",
+    "target": "翻訳先",
+    "language": "言語",
+    "theme": "表示",
+    "logout": "ログアウト",
+    "create": "新規作成",
+    "update": "更新",
+    "download": "ダウンロード",
+    "export": "書き出し",
+    "files": "ファイル",
+    "projects": "プロジェクト",
+    "or": "または",
+    "unknown": "不明",
+    "more": "その他の操作"
+  },
+  "navigation": {
+    "dashboard": "プロジェクト",
+    "logout": "ログアウト",
+    "backHome": "ホーム",
+    "backProjects": "プロジェクト一覧へ",
+    "workspaceNavigation": "ワークスペースナビゲーション",
+    "newProject": "新しいプロジェクト",
+    "searchProjects": "プロジェクトを検索",
+    "expandSidebar": "サイドバーを広げる",
+    "collapseSidebar": "サイドバーを折りたたむ",
+    "openSidebar": "ナビゲーションを開く"
+  },
+  "auth": {
+    "welcomeBack": "おかえりなさい",
+    "subtitle": "AIで動画字幕を作成・翻訳します。",
+    "googleContinue": "Googleで続行",
+    "redirecting": "移動中...",
+    "googleDriveExplanation": "処理とプレビューには、あなたが選択したGoogle Drive動画のみを使用します。",
+    "loginError": "Googleでログインできませんでした。もう一度お試しください。",
+    "googleAccount": "Googleアカウント",
+    "googleAccountDescription": "LTS.aiはGoogle OAuthでログインし、あなたが選んだDrive動画にアクセスします。専用パスワードはありません。",
+    "badge": "システムに参加",
+    "secure": "便利",
+    "fastAi": "安全",
+    "driveSync": "高速"
+  },
+  "landing": {
+    "eyebrow": "Subtitle AI Workspace",
+    "hero": {
+      "title": "メディアファイルの字幕、AIでよりシンプルに",
+      "description": "Google Driveファイルから双言語字幕の作成・翻訳・編集を1つのすっきりしたワークスペースで行えます。",
+      "primary": "今すぐ開始",
+      "learnMore": "詳細を見る"
+    },
+    "mock": {
+      "originalLabel": "Original",
+      "targetLabel": "Translation",
+      "originalText": "Hello everyone, welcome back.",
+      "translatedText": "Xin chào mọi người, chào mừng trở lại."
+    },
+    "workflow": {
+      "title": "字幕完成まで3ステップ",
+      "description": "シンプルで、字幕の迅速な処理と編集に適したワークフロー。",
+      "step1Title": "ファイルを選択",
+      "step1Text": "処理するファイルのGoogle Driveリンクを貼り付けます。",
+      "step2Title": "AIで字幕生成・翻訳",
+      "step2Text": "音声を文字起こしし、プロジェクトの言語へ翻訳します。",
+      "step3Title": "編集とエクスポート",
+      "step3Text": "字幕を確認し、タイミングを調整してエクスポート。"
+    },
+    "cta": {
+      "title": "次のプロジェクトで字幕を作成する準備はできましたか？",
+      "description": "今すぐ開始してAI字幕ワークスペースを体験しましょう。",
+      "action": "Googleで体験する"
+    },
+    "previewAria": "字幕エディタの製品プレビュー",
+    "languagesSection": {
+      "title": "7つの主要翻訳言語に対応",
+      "vi": "ベトナム語",
+      "en": "英語",
+      "ja": "日本語",
+      "ko": "韓国語",
+      "zh": "中国語",
+      "fr": "フランス語",
+      "it": "イタリア語"
+    },
+    "capabilities": {
+      "driveTitle": "Google Driveからすぐに開始",
+      "driveText": "Driveに保存済みのファイルを選び、プロジェクトへ追加できます。",
+      "aiTitle": "字幕生成と翻訳を一つの流れで",
+      "aiText": "LTS.aiが音声を字幕化し、プロジェクトの言語へ翻訳しながら処理状況を分かりやすく表示します。",
+      "editorTitle": "動画を見ながら編集",
+      "editorText": "再生して原文・翻訳を対比・編集し、SRT・VTT・TXTを書き出せます。"
+    }
+  },
+  "dashboard": {
+    "eyebrow": "Workspace",
+    "title": "プロジェクト",
+    "description": "続きから作業するか、新しい字幕プロジェクトを始めましょう。",
+    "searchPlaceholder": "プロジェクトを検索...",
+    "loadError": "プロジェクトを読み込めませんでした。",
+    "retryLoad": "再読み込み",
+    "empty": {
+      "title": "まだプロジェクトがありません"
+    },
+    "noSearchResults": {
+      "title": "一致するプロジェクトがありません",
+      "description": "別のキーワードをお試しください。"
+    }
+  },
+  "project": {
+    "create": "新規作成",
+    "createTitle": "プロジェクトを作成",
+    "createSubtitle": "字幕の翻訳先言語を選択してください",
+    "editTitle": "プロジェクトを編集",
+    "editSubtitle": "名前と説明を更新します",
+    "name": "プロジェクト名",
+    "namePlaceholder": "例: 日本語N5",
+    "description": "短い説明",
+    "descriptionPlaceholder": "プロジェクトのメモを入力...",
+    "targetLanguage": "翻訳先言語",
+    "creating": "作成中...",
+    "createAction": "作成",
+    "updating": "保存中...",
+    "updateAction": "変更を保存",
+    "defaultDescription": "動画字幕プロジェクト。",
+    "fileCount": "{{count}} ファイル",
+    "loadError": "プロジェクト内のファイルを読み込めませんでした。",
+    "retryLoad": "ファイルを再読み込み",
+    "exportZip": "エクスポート",
+    "deleteProjectTitle": "プロジェクトを削除しますか？",
+    "deleteProjectMessage": "「{{name}}」と中のすべてのファイルを完全に削除しますか？",
+    "deleteProjectAction": "プロジェクトを削除",
+    "deleteFileTitle": "ファイルを削除しますか？",
+    "deleteFileMessage": "「{{name}}」と関連する字幕をすべて削除しますか？",
+    "deleteFileAction": "ファイルを削除",
+    "createError": "プロジェクトを作成できませんでした。",
+    "updateError": "変更を保存できませんでした。",
+    "editAria": "プロジェクトを編集",
+    "deleteAria": "プロジェクトを削除",
+    "openAria": "プロジェクトを開く",
+    "videosTitle": "プロジェクトの動画",
+    "videosDescription": "処理状況を確認し、エディタを開くか字幕を書き出します。"
+  },
+  "media": {
+    "tabs": {
+      "unfinished": "未完了",
+      "completed": "完了"
+    },
+    "addDrive": "ファイル追加",
+    "quotaExceededTooltip": "1日の制限時間（60分）に達しました",
+    "systemQuotaExceeded": "申し訳ありません。システムの処理上限に達しました。",
+    "startAll": "処理 ({{count}})",
+    "retry": "再試行",
+    "edit": "編集",
+    "renameFile": "ファイルを編集",
+    "renameModalTitle": "ファイルを編集",
+    "renameModalSubtitle": "メディアファイル名を更新します。",
+    "saveRename": "保存",
+    "savingRename": "保存中...",
+    "download": "ダウンロード",
+    "delete": "ファイル削除",
+    "emptyUnfinished": "処理待ちのファイルはありません。",
+    "emptyCompleted": "完了したファイルはまだありません。",
+    "status": {
+      "draft": "下書き",
+      "queued": "処理待ち",
+      "processing": "処理中",
+      "completed": "成功",
+      "failed": "失敗"
+    },
+    "drive": {
+      "title": "ファイルを追加",
+      "subtitle": "動画/音声を選択して字幕を生成。",
+      "pickerHeading": "Google Driveファイルを選択",
+      "reselectHeading": "Google Driveファイルを再選択",
+      "quotaHint": "制限: 最大500MB/ファイル • 1日合計60分まで。",
+      "exceedsSizeLimit": "ファイルサイズが制限（500MB/ファイル）を超えています。",
+      "dailyDurationExceeded": "1日の制限（60分）に達しました。明日再度お試しください。",
+      "fileType": "ファイル形式",
+      "duration": "再生時間",
+      "fileName": "ファイル名",
+      "fileNamePlaceholder": "例: lesson_1.mp4",
+      "hasSubtitle": "既存の字幕がありますか？",
+      "subtitleFile": "字幕ファイルを選択 (.srt / .vtt)",
+      "sourceLanguage": "原文の言語",
+      "uploadAction": "追加",
+      "uploadingAction": "取り込み中...",
+      "duplicateFile": "このGoogle Driveファイルは既にプロジェクトに追加されています。",
+      "invalidLink": "Google Driveからファイルを選択してください。",
+      "subtitleRequired": "PCから字幕ファイル (.srt / .vtt) を選択してください。",
+      "loadFailed": "ファイルを追加できませんでした。もう一度お試しください。"
+    }
+  },
+  "processing": {
+    "queued": "処理待ち...",
+    "preparing": "準備中...",
+    "downloading": "ファイルをダウンロード中...",
+    "ffmpeg": "音声処理中...",
+    "transcribing": "字幕を生成中...",
+    "translating": "字幕を翻訳中...",
+    "saving": "データを保存中...",
+    "completed": "成功",
+    "chunkLabel": "パート {{current}}/{{total}}",
+    "processFailed": "ファイルを処理できませんでした。もう一度お試しください。",
+    "retryFailed": "ファイルを再試行できませんでした。"
+  },
+  "editor": {
+    "saved": "保存済み",
+    "export": "書き出し",
+    "subtitleList": "字幕一覧",
+    "noTargetSubtitle": "翻訳字幕がまだありません。",
+    "createFirstCue": "最初のキューを作成",
+    "original": "Original",
+    "loadError": "字幕を読み込めませんでした。",
+    "retryLoad": "字幕を再読み込み",
+    "saveError": "字幕を保存できませんでした。もう一度お試しください。",
+    "invalidTiming": "キューの時間が正しくありません。終了時間は開始時間より後にしてください。",
+    "timing": {
+      "start": "開始",
+      "end": "終了",
+      "edit": "時間を編集",
+      "confirm": "時間を適用",
+      "cancel": "時間編集をキャンセル"
+    },
+    "cue": {
+      "addAfter": "次にキューを追加",
+      "delete": "キューを削除",
+      "editTimingAria": "キュー{{index}}の時間を編集",
+      "addAfterAria": "キュー{{index}}の後に追加",
+      "deleteAria": "キュー{{index}}を削除",
+      "editTranslation": "翻訳を編集",
+      "confirmTranslation": "翻訳を適用",
+      "cancelTranslation": "翻訳編集をキャンセル",
+      "editTranslationAria": "キュー{{index}}の翻訳を編集"
+    },
+    "unsavedDialog": {
+      "title": "未保存の変更があります",
+      "message": "字幕に未保存の変更があります。破棄してエディターを離れますか？",
+      "confirm": "エディターを離れる"
+    },
+    "deleteCueDialog": {
+      "title": "字幕行の削除確認",
+      "message": "字幕行 #{{index}} - {{timing}} を削除してもよろしいですか？",
+      "confirm": "行を削除"
+    },
+    "video": {
+      "loading": "読み込み中...",
+      "cannotOpen": "ファイルを開けません。",
+      "empty": "再生するファイルがありません。",
+      "codecError": "未対応のファイル形式です。",
+      "sessionExpired": "セッションの期限が切れました。Googleで再ログインしてください。",
+      "downloadFailed": "セッションの期限が切れました。Googleで再ログインしてください。",
+      "emptyFile": "Google Driveのファイルが空です。"
+    },
+    "details": "表示",
+    "backToProject": "プロジェクトに戻る",
+    "visibility": {
+      "title": "表示方法",
+      "details": "キュー詳細",
+      "metadata": "情報",
+      "metadataHint": "番号・状態・時間",
+      "source": "原文",
+      "sourceHint": "元の字幕テキスト",
+      "actions": "ボタン",
+      "actionsHint": "編集・追加・削除"
+    }
+  },
+  "export": {
+    "projectTitle": "すべての字幕を書き出し",
+    "fileTitle": "ファイル字幕を書き出し",
+    "chooseFormat": "形式を選択",
+    "chooseTrack": "モードを選択",
+    "trackTarget": "翻訳",
+    "trackTargetDesc": "翻訳字幕",
+    "trackSource": "原文",
+    "trackSourceDesc": "原文字幕",
+    "trackBilingual": "バイリンガル",
+    "trackBilingualDesc": "翻訳＆原文字幕",
+    "download": "ダウンロード",
+    "srtDescription": "VLC、CapCut、Premiere Pro、YouTube",
+    "vttDescription": "HTML5 Web動画プレーヤー",
+    "txtDescription": "プレーンテキスト (UTF-8)"
+  },
+  "settings": {
+    "appearance": {
+      "light": "ライト",
+      "dark": "ダーク",
+      "system": "システム"
+    }
+  },
+  "dialog": {
+    "confirm": "確認",
+    "cancel": "キャンセル",
+    "delete": "削除",
+    "close": "閉じる"
+  },
+  "errors": {
+    "generic": "エラーが発生しました。もう一度お試しください。",
+    "load": "データを読み込めませんでした。",
+    "save": "変更を保存できませんでした。",
+    "network": "ネットワークエラーです。インターネット接続をご確認ください。",
+    "session": "セッションの期限が切れました。再ログインしてください。"
+  },
+  "accessibility": {
+    "loadingProjects": "プロジェクトを読み込み中",
+    "loadingFiles": "ファイルを読み込み中",
+    "loadingSubtitles": "字幕を読み込み中",
+    "languageSelector": "インターフェース言語を選択",
+    "themeSelector": "表示テーマを選択",
+    "editTiming": "時間を編集",
+    "addCueAfter": "次にキューを追加",
+    "deleteCue": "キューを削除",
+    "closeDialog": "ダイアログを閉じる",
+    "loadingApp": "LTS.aiを読み込み中",
+    "openUserMenu": "アカウントメニューを開く"
+  }
+}
