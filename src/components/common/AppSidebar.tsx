@@ -73,9 +73,11 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({ onHome, onCreateProject,
 
   return (
     <>
-      <button type="button" className="sidebar-mobile-trigger ui-icon-button" onClick={() => setMobileOpen(true)} aria-label={t('navigation.openSidebar')} title={t('navigation.openSidebar')}>
-        <Menu className="size-4" />
-      </button>
+      {!mobileOpen && (
+        <button type="button" className="sidebar-mobile-trigger ui-icon-button" onClick={() => setMobileOpen(true)} aria-label={t('navigation.openSidebar')} title={t('navigation.openSidebar')}>
+          <Menu className="size-4" />
+        </button>
+      )}
       {mobileOpen && <button className="sidebar-mobile-backdrop" type="button" aria-label={t('common.close')} onClick={() => setMobileOpen(false)} />}
       {sidebar}
     </>
