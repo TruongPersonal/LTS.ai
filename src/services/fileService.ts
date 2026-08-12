@@ -57,9 +57,23 @@ async function downloadDriveMedia(file: FileMedia, accessToken: string): Promise
   return blob;
 }
 
+async function handleInvokeError(error: any): Promise<never> {
+  if (error && typeof error === 'object' && 'context' in error && error.context) {
+    try {
+      const resJson = await error.context.json();
+      if (resJson?.error) {
+        throw new Error(String(resJson.error));
+      }
+    } catch (e: any) {
+      if (e.message && !e.message.includes('json') && !e.message.includes('non-2xx')) throw e;
+    }
+  }
+  throw error;
+}
+
 async function invokeJson(body: Record<string, unknown>): Promise<EdgeResult> {
   const { data, error } = await supabase.functions.invoke('process-media', { body });
-  if (error) throw error;
+  if (error) await handleInvokeError(error);
   if (data?.error) throw new Error(data.error);
   return data || {};
 }
@@ -79,7 +93,7 @@ async function transcribeChunk(
   const { data, error } = await supabase.functions.invoke('process-media', {
     body: formData,
   });
-  if (error) throw error;
+  if (error) await handleInvokeError(error);
   if (data?.error) throw new Error(data.error);
   if (!data?.source_language || !Array.isArray(data?.subtitles)) {
     throw new Error('Edge Function trả về kết quả transcription không hợp lệ.');
@@ -102,11 +116,11 @@ function sanitizeErrorMessage(rawError: unknown): string {
   if (rawMessage.includes('502') || rawMessage.toLowerCase().includes('bad gateway')) {
     return 'Máy chủ Groq AI bị nghẽn mạng tạm thời (502). Vui lòng thử lại sau giây lát.';
   }
-  if (rawMessage.includes('non-2xx status code') || rawMessage.includes('FunctionsHttpError')) {
-    return i18n.t('media.systemQuotaExceeded');
-  }
   if (!rawMessage || rawMessage.includes('Failed to fetch') || rawMessage.includes('NetworkError')) {
     return i18n.t('processing.processFailed');
+  }
+  if (rawMessage.includes('non-2xx status code') || rawMessage.includes('FunctionsHttpError')) {
+    return i18n.t('media.systemQuotaExceeded');
   }
   return rawMessage;
 }
