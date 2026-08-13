@@ -95,28 +95,54 @@ async function translateBatch(
   targetLanguage: string,
   groqApiKey: string
 ): Promise<SubtitleItem[]> {
-  const response = await fetchProviderWithRetry(
-    'https://api.groq.com/openai/v1/chat/completions',
-    () => ({
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${groqApiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'llama-3.3-70b-versatile',
-        response_format: { type: 'json_object' },
-        temperature: 0.2,
-        messages: [
-          {
-            role: 'system',
-            content: `You are a subtitle translator. Translate subtitle text from ${sourceLanguage} to ${targetLanguage}. Preserve every id, start and end value. Return JSON only in this shape: {"subtitles":[{"id":1,"start":0,"end":1,"text":"..."}]}. Do not add or remove cues.`,
-          },
-          { role: 'user', content: JSON.stringify({ subtitles }) },
-        ],
-      }),
-    })
-  );
+  let response: Response;
+  try {
+    response = await fetchProviderWithRetry(
+      'https://api.groq.com/openai/v1/chat/completions',
+      () => ({
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${groqApiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'llama-3.3-70b-versatile',
+          response_format: { type: 'json_object' },
+          temperature: 0.2,
+          messages: [
+            {
+              role: 'system',
+              content: `You are a subtitle translator. Translate subtitle text from ${sourceLanguage} to ${targetLanguage}. Preserve every id, start and end value. Return JSON only in this shape: {"subtitles":[{"id":1,"start":0,"end":1,"text":"..."}]}. Do not add or remove cues.`,
+            },
+            { role: 'user', content: JSON.stringify({ subtitles }) },
+          ],
+        }),
+      })
+    );
+  } catch {
+    response = await fetchProviderWithRetry(
+      'https://api.groq.com/openai/v1/chat/completions',
+      () => ({
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${groqApiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'llama-3.1-8b-instant',
+          response_format: { type: 'json_object' },
+          temperature: 0.2,
+          messages: [
+            {
+              role: 'system',
+              content: `You are a subtitle translator. Translate subtitle text from ${sourceLanguage} to ${targetLanguage}. Preserve every id, start and end value. Return JSON only in this shape: {"subtitles":[{"id":1,"start":0,"end":1,"text":"..."}]}. Do not add or remove cues.`,
+            },
+            { role: 'user', content: JSON.stringify({ subtitles }) },
+          ],
+        }),
+      })
+    );
+  }
 
   const payload = await response.json();
   const message = payload.choices?.[0]?.message?.content;
@@ -160,7 +186,7 @@ async function translateSubtitles(
     return subtitles;
   }
 
-  const BATCH_SIZE = 50;
+  const BATCH_SIZE = 35;
   const translatedAll: SubtitleItem[] = [];
 
   for (let i = 0; i < subtitles.length; i += BATCH_SIZE) {
@@ -168,7 +194,7 @@ async function translateSubtitles(
     const translatedBatch = await translateBatch(batch, sourceLanguage, targetLanguage, groqApiKey);
     translatedAll.push(...translatedBatch);
     if (i + BATCH_SIZE < subtitles.length) {
-      await new Promise((resolve) => setTimeout(resolve, 1500));
+      await new Promise((resolve) => setTimeout(resolve, 2000));
     }
   }
 
