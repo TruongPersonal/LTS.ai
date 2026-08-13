@@ -1,5 +1,9 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import {
+  ProviderRequestError,
+  fetchProviderWithRetry,
+} from './providerRequest.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -60,21 +64,21 @@ async function transcribeFlac(
   offsetSeconds: number,
   groqApiKey: string
 ) {
-  const formData = new FormData();
-  formData.append('file', blob, fileName || 'audio.flac');
-  formData.append('model', 'whisper-large-v3-turbo');
-  formData.append('response_format', 'verbose_json');
+  const response = await fetchProviderWithRetry(
+    'https://api.groq.com/openai/v1/audio/transcriptions',
+    () => {
+      const formData = new FormData();
+      formData.append('file', blob, fileName || 'audio.flac');
+      formData.append('model', 'whisper-large-v3-turbo');
+      formData.append('response_format', 'verbose_json');
 
-  const response = await fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${groqApiKey}` },
-    body: formData,
-  });
-
-  if (!response.ok) {
-    const detail = await response.text();
-    throw new Error(`Groq Whisper failed (${response.status}): ${detail.slice(0, 500)}`);
-  }
+      return {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${groqApiKey}` },
+        body: formData,
+      };
+    }
+  );
 
   const payload = await response.json();
   const subtitles = normalizeSegments(payload.segments || [], offsetSeconds);
@@ -421,6 +425,26 @@ serve(async (req) => {
 
     return jsonResponse({ error: 'Unsupported action.' }, 400);
   } catch (error) {
+    if (error instanceof ProviderRequestError) {
+      console.warn('Transcription provider request failed after retry handling.', {
+        status: error.status,
+        code: error.code,
+        retryable: error.retryable,
+        detail: error.detail,
+      });
+      return jsonResponse(
+        {
+          error: error.retryable
+            ? 'Transcription service is temporarily unavailable.'
+            : 'Transcription request could not be completed.',
+          code: error.code,
+          retryable: error.retryable,
+          provider_status: error.status,
+        },
+        error.status
+      );
+    }
+
     const message = error instanceof Error ? error.message : 'Unknown server error';
     return jsonResponse({ error: message }, 500);
   }

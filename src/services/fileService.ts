@@ -11,9 +11,26 @@ import i18n from '../i18n';
 
 type EdgeResult = {
   error?: string;
+  code?: string;
+  retryable?: boolean;
+  provider_status?: number;
   source_language?: string;
   subtitles?: Array<{ id: number; start: number; end: number; text: string }>;
 };
+
+class EdgeInvocationError extends Error {
+  readonly code?: string;
+  readonly retryable?: boolean;
+  readonly providerStatus?: number;
+
+  constructor(payload: EdgeResult) {
+    super(String(payload.error || 'Edge Function request failed.'));
+    this.name = 'EdgeInvocationError';
+    this.code = payload.code;
+    this.retryable = payload.retryable;
+    this.providerStatus = payload.provider_status;
+  }
+}
 
 const emitProgress = (
   onProgress: ProcessingProgressCallback | undefined,
@@ -60,12 +77,12 @@ async function downloadDriveMedia(file: FileMedia, accessToken: string): Promise
 async function handleInvokeError(error: any): Promise<never> {
   if (error && typeof error === 'object' && 'context' in error && error.context) {
     try {
-      const resJson = await error.context.json();
+      const resJson = (await error.context.json()) as EdgeResult;
       if (resJson?.error) {
-        throw new Error(String(resJson.error));
+        throw new EdgeInvocationError(resJson);
       }
-    } catch (e: any) {
-      if (e.message && !e.message.includes('json') && !e.message.includes('non-2xx')) throw e;
+    } catch (parsedError) {
+      if (parsedError instanceof EdgeInvocationError) throw parsedError;
     }
   }
   throw error;
@@ -106,6 +123,15 @@ async function transcribeChunk(
 }
 
 function sanitizeErrorMessage(rawError: unknown): string {
+  if (rawError instanceof EdgeInvocationError) {
+    if (rawError.code === 'TRANSCRIPTION_PROVIDER_UNAVAILABLE') {
+      return i18n.t('media.systemQuotaExceeded');
+    }
+    if (rawError.code === 'TRANSCRIPTION_PROVIDER_REQUEST_FAILED') {
+      return i18n.t('processing.processFailed');
+    }
+  }
+
   const rawMessage = rawError instanceof Error ? rawError.message : String(rawError || '');
   if (!rawMessage || rawMessage.includes('Failed to fetch') || rawMessage.includes('NetworkError')) {
     return i18n.t('processing.processFailed');
