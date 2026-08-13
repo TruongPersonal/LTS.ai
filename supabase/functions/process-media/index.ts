@@ -108,10 +108,10 @@ async function transcribeFlac(
 }
 
 const GEMINI_MODELS = [
-  'gemini-1.5-flash',
-  'gemini-1.5-flash-latest',
+  'gemini-3.5-flash',
+  'gemini-3.6-flash',
   'gemini-2.5-flash',
-  'gemini-1.5-pro',
+  'gemini-1.5-flash',
 ] as const;
 
 async function translateBatchGemini(
