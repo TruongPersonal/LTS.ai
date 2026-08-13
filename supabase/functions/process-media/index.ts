@@ -1,9 +1,6 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-import {
-  ProviderRequestError,
-  fetchProviderWithRetry,
-} from './providerRequest.ts';
+
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -114,73 +111,69 @@ async function translateBatch(
   subtitles: SubtitleItem[],
   sourceLanguage: string,
   targetLanguage: string,
+  model: string,
   groqApiKey: string
 ): Promise<SubtitleItem[]> {
-  let lastError: unknown = null;
+  const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${groqApiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model,
+      response_format: { type: 'json_object' },
+      temperature: 0.2,
+      max_completion_tokens: 4096,
+      messages: [
+        {
+          role: 'system',
+          content: `You are a subtitle translator. Translate subtitle text from ${sourceLanguage} to ${targetLanguage}. Preserve every id, start and end value. Return JSON only in this shape: {"subtitles":[{"id":1,"start":0,"end":1,"text":"..."}]}. Do not add or remove cues.`,
+        },
+        { role: 'user', content: JSON.stringify({ subtitles }) },
+      ],
+    }),
+  });
 
-  for (const model of TRANSLATION_MODELS) {
-    try {
-      const response = await fetchProviderWithRetry(
-        'https://api.groq.com/openai/v1/chat/completions',
-        () => ({
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${groqApiKey}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            model,
-            response_format: { type: 'json_object' },
-            temperature: 0.2,
-            max_completion_tokens: 4096,
-            messages: [
-              {
-                role: 'system',
-                content: `You are a subtitle translator. Translate subtitle text from ${sourceLanguage} to ${targetLanguage}. Preserve every id, start and end value. Return JSON only in this shape: {"subtitles":[{"id":1,"start":0,"end":1,"text":"..."}]}. Do not add or remove cues.`,
-              },
-              { role: 'user', content: JSON.stringify({ subtitles }) },
-            ],
-          }),
-        })
-      );
-
-      const payload = await response.json();
-      const message = payload.choices?.[0]?.message?.content;
-      if (!message) throw new Error(`${model} returned an empty response.`);
-
-      let parsed: { subtitles?: any[] };
-      try {
-        parsed = JSON.parse(message);
-      } catch {
-        throw new Error(`${model} returned invalid JSON.`);
-      }
-
-      const translated = normalizeSegments(parsed.subtitles || []);
-      if (translated.length !== subtitles.length) {
-        throw new Error(`${model} returned an unexpected number of subtitle cues.`);
-      }
-
-      const sourceById = new Map(subtitles.map((item) => [item.id, item]));
-      const translatedIds = new Set<number>();
-      for (const item of translated) {
-        if (!sourceById.has(item.id) || translatedIds.has(item.id)) {
-          throw new Error(`${model} returned invalid or duplicate subtitle IDs.`);
-        }
-        translatedIds.add(item.id);
-      }
-
-      const translatedById = new Map(translated.map((item) => [item.id, item]));
-      return subtitles.map((source) => {
-        const item = translatedById.get(source.id)!;
-        return { ...item, start: source.start, end: source.end };
-      });
-    } catch (err) {
-      lastError = err;
-      console.warn(`[Translation Cascade] Model '${model}' failed, swapping to next model...`);
-    }
+  if (!response.ok) {
+    const detail = await response.text();
+    const is429 = response.status === 429 || detail.includes('429') || detail.toLowerCase().includes('rate limit');
+    const err: any = new Error(`${model} failed (${response.status}): ${detail.slice(0, 200)}`);
+    err.is429 = is429;
+    err.status = response.status;
+    throw err;
   }
 
-  throw lastError || new Error('All translation models failed.');
+  const payload = await response.json();
+  const message = payload.choices?.[0]?.message?.content;
+  if (!message) throw new Error(`${model} returned an empty response.`);
+
+  let parsed: { subtitles?: any[] };
+  try {
+    parsed = JSON.parse(message);
+  } catch {
+    throw new Error(`${model} returned invalid JSON.`);
+  }
+
+  const translated = normalizeSegments(parsed.subtitles || []);
+  if (translated.length !== subtitles.length) {
+    throw new Error(`${model} returned an unexpected number of subtitle cues.`);
+  }
+
+  const sourceById = new Map(subtitles.map((item) => [item.id, item]));
+  const translatedIds = new Set<number>();
+  for (const item of translated) {
+    if (!sourceById.has(item.id) || translatedIds.has(item.id)) {
+      throw new Error(`${model} returned invalid or duplicate subtitle IDs.`);
+    }
+    translatedIds.add(item.id);
+  }
+
+  const translatedById = new Map(translated.map((item) => [item.id, item]));
+  return subtitles.map((source) => {
+    const item = translatedById.get(source.id)!;
+    return { ...item, start: source.start, end: source.end };
+  });
 }
 
 const MODEL_TPM_BUDGETS: Record<string, number> = {
@@ -201,14 +194,16 @@ async function translateSubtitles(
   const BATCH_SIZE = 25;
   const translatedAll: SubtitleItem[] = [];
 
+  let currentModelIndex = 0;
   let windowStartTime = Date.now();
   let tokensUsedInCurrentWindow = 0;
-  let activeModel = TRANSLATION_MODELS[0];
 
   for (let i = 0; i < subtitles.length; i += BATCH_SIZE) {
     const batch = subtitles.slice(i, i + BATCH_SIZE);
     const estimatedBatchTokens = Math.max(700, Math.ceil(JSON.stringify(batch).length * 1.5));
-    const modelBudget = MODEL_TPM_BUDGETS[activeModel] || 4500;
+    
+    let activeModel = TRANSLATION_MODELS[currentModelIndex];
+    let modelBudget = MODEL_TPM_BUDGETS[activeModel] || 4500;
 
     if (tokensUsedInCurrentWindow + estimatedBatchTokens > modelBudget) {
       const elapsedMs = Date.now() - windowStartTime;
@@ -218,7 +213,7 @@ async function translateSubtitles(
         console.log(
           `[Token Governor] 60s TPM budget for ${activeModel} reached (${tokensUsedInCurrentWindow}/${modelBudget} tokens). Resting ${Math.ceil(
             remainingMsInWindow / 1000
-          )}s for Groq 1-minute window reset...`
+          )}s for 1-minute window reset...`
         );
         await new Promise((resolve) => setTimeout(resolve, remainingMsInWindow));
       }
@@ -227,9 +222,30 @@ async function translateSubtitles(
       tokensUsedInCurrentWindow = 0;
     }
 
-    const translatedBatch = await translateBatch(batch, sourceLanguage, targetLanguage, groqApiKey);
-    translatedAll.push(...translatedBatch);
-    tokensUsedInCurrentWindow += estimatedBatchTokens;
+    try {
+      const translatedBatch = await translateBatch(batch, sourceLanguage, targetLanguage, activeModel, groqApiKey);
+      translatedAll.push(...translatedBatch);
+      tokensUsedInCurrentWindow += estimatedBatchTokens;
+    } catch (err: any) {
+      if (err?.is429 && currentModelIndex < TRANSLATION_MODELS.length - 1) {
+        console.warn(
+          `[Translation] Model '${activeModel}' hit rate limit. Switching to fallback model '${
+            TRANSLATION_MODELS[currentModelIndex + 1]
+          }'...`
+        );
+        currentModelIndex++;
+        activeModel = TRANSLATION_MODELS[currentModelIndex];
+
+        windowStartTime = Date.now();
+        tokensUsedInCurrentWindow = 0;
+
+        const translatedBatch = await translateBatch(batch, sourceLanguage, targetLanguage, activeModel, groqApiKey);
+        translatedAll.push(...translatedBatch);
+        tokensUsedInCurrentWindow += estimatedBatchTokens;
+      } else {
+        throw err;
+      }
+    }
   }
 
   return translatedAll;
