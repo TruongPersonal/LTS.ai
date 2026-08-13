@@ -422,7 +422,7 @@ a:focus-visible {
   position: relative;
   width: 100%;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
   padding: 0 68px;
 }
@@ -434,17 +434,19 @@ a:focus-visible {
   width: 100%;
   min-width: 0;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
 }
 
 .editor-cue-source {
-  max-height: 4.35em;
-  overflow-y: auto;
+  height: auto;
+  max-height: none;
+  overflow-y: visible;
   color: var(--ui-text-muted);
   font-size: clamp(14px, 1vw, 17px);
   line-height: 1.45;
   text-align: center;
+  overflow-wrap: anywhere;
 }
 
 .editor-translation-static {
@@ -1299,8 +1301,28 @@ div[aria-label*="Google Drive"],
     width: min(100%, 1440px, 118dvh);
     max-height: calc(100dvh - 155px);
   }
-  .editor-workspace[data-cue-density="focus"] .editor-cue-section {
-    width: min(100%, 1440px, 118dvh);
+}
+
+@media (max-height: 520px), (orientation: landscape) and (max-height: 600px) {
+  /* Mobile landscape mode: unlock full page vertical scrolling */
+  .editor-workspace {
+    min-height: auto;
+    overflow-y: auto;
+  }
+  .editor-main {
+    height: auto;
+    max-height: none;
+    overflow: visible;
+  }
+  .editor-cue-section {
+    height: auto;
+    max-height: none;
+    overflow: visible;
+  }
+  .editor-cue-viewport {
+    height: auto !important;
+    max-height: none !important;
+    overflow-y: visible !important;
   }
 }
 
