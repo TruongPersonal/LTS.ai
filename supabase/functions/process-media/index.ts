@@ -68,7 +68,7 @@ async function fetchGroqChatWithRetry(
   model: string,
   messages: Array<{ role: string; content: string }>,
   groqApiKey: string,
-  maxAttempts = 3
+  maxAttempts = 2
 ): Promise<Response> {
   let attempt = 0;
   while (attempt < maxAttempts) {
@@ -89,7 +89,7 @@ async function fetchGroqChatWithRetry(
 
     if (response.status === 429 && attempt < maxAttempts) {
       const retryAfterHeader = response.headers.get('retry-after');
-      const delayMs = retryAfterHeader ? Math.min(parseInt(retryAfterHeader, 10) * 1000, 5000) : 2000;
+      const delayMs = retryAfterHeader ? Math.min(parseInt(retryAfterHeader, 10) * 1000, 3000) : 1000;
       await new Promise((resolve) => setTimeout(resolve, delayMs));
       continue;
     }
@@ -110,7 +110,7 @@ async function transcribeFlac(
     try {
       let attempt = 0;
       let response: Response | null = null;
-      while (attempt < 3) {
+      while (attempt < 2) {
         attempt++;
         const formData = new FormData();
         formData.append('file', blob, fileName || 'audio.flac');
@@ -123,9 +123,9 @@ async function transcribeFlac(
           body: formData,
         });
 
-        if (response.status === 429 && attempt < 3) {
+        if (response.status === 429 && attempt < 2) {
           const retryAfterHeader = response.headers.get('retry-after');
-          const delayMs = retryAfterHeader ? Math.min(parseInt(retryAfterHeader, 10) * 1000, 5000) : 2000;
+          const delayMs = retryAfterHeader ? Math.min(parseInt(retryAfterHeader, 10) * 1000, 3000) : 1000;
           await new Promise((resolve) => setTimeout(resolve, delayMs));
           continue;
         }
