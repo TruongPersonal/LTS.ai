@@ -186,7 +186,7 @@ async function translateSubtitles(
     return subtitles;
   }
 
-  const BATCH_SIZE = 35;
+  const BATCH_SIZE = 50;
   const translatedAll: SubtitleItem[] = [];
 
   for (let i = 0; i < subtitles.length; i += BATCH_SIZE) {
@@ -194,7 +194,7 @@ async function translateSubtitles(
     const translatedBatch = await translateBatch(batch, sourceLanguage, targetLanguage, groqApiKey);
     translatedAll.push(...translatedBatch);
     if (i + BATCH_SIZE < subtitles.length) {
-      await new Promise((resolve) => setTimeout(resolve, 2000));
+      await new Promise((resolve) => setTimeout(resolve, 1000));
     }
   }
 
