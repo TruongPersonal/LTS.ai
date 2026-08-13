@@ -57,14 +57,13 @@ function normalizeSubmittedSubtitles(value: unknown): SubtitleItem[] {
 const TRANSCRIPTION_MODELS = [
   'whisper-large-v3-turbo',
   'whisper-large-v3',
-  'distil-whisper-large-v3',
 ] as const;
 
 const TRANSLATION_MODELS = [
   'llama-3.3-70b-versatile',
   'llama-3.1-8b-instant',
-  'gemma2-9b-it',
-  'mixtral-8x7b-32768',
+  'llama3-70b-8192',
+  'llama3-8b-8192',
 ] as const;
 
 async function transcribeFlac(

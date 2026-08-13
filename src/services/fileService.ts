@@ -115,7 +115,14 @@ async function transcribeChunk(
 
 function sanitizeErrorMessage(rawError: unknown): string {
   const rawMessage = rawError instanceof Error ? rawError.message : String(rawError || '');
-  if (!rawMessage || rawMessage.includes('Failed to fetch') || rawMessage.includes('NetworkError')) {
+  if (
+    !rawMessage ||
+    rawMessage.includes('Failed to fetch') ||
+    rawMessage.includes('NetworkError') ||
+    rawMessage.includes('Failed to send a request') ||
+    rawMessage.includes('FunctionsFetchError') ||
+    rawMessage.includes('Relay Error')
+  ) {
     return i18n.t('processing.processFailed');
   }
   if (rawMessage.includes('429') || rawMessage.toLowerCase().includes('rate limit')) {
@@ -127,7 +134,8 @@ function sanitizeErrorMessage(rawError: unknown): string {
     rawMessage.includes('500') ||
     rawMessage.includes('502') ||
     rawMessage.includes('503') ||
-    rawMessage.includes('504')
+    rawMessage.includes('504') ||
+    rawMessage.includes('model_decommissioned')
   ) {
     return i18n.t('media.serverError');
   }
