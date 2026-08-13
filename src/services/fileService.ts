@@ -134,7 +134,7 @@ function sanitizeErrorMessage(rawError: unknown): string {
 
   const rawMessage = rawError instanceof Error ? rawError.message : String(rawError || '');
   
-  // 1. Connection & Local Load errors (e.g. "Load failed", FFmpeg WASM load, network disconnects)
+  // 1. Connection & Local Load & Processing Payload errors
   if (
     !rawMessage ||
     rawMessage.includes('Failed to fetch') ||
@@ -143,7 +143,13 @@ function sanitizeErrorMessage(rawError: unknown): string {
     rawMessage.includes('FunctionsFetchError') ||
     rawMessage.includes('Relay Error') ||
     rawMessage.toLowerCase().includes('load failed') ||
-    rawMessage.toLowerCase().includes('ffmpeg')
+    rawMessage.toLowerCase().includes('ffmpeg') ||
+    rawMessage.toLowerCase().includes('unexpected number of subtitle cues') ||
+    rawMessage.toLowerCase().includes('returned invalid json') ||
+    rawMessage.toLowerCase().includes('returned an empty response') ||
+    rawMessage.toLowerCase().includes('duplicate subtitle ids') ||
+    rawMessage.toLowerCase().includes('all translation models failed') ||
+    rawMessage.toLowerCase().includes('all transcription models failed')
   ) {
     return i18n.t('processing.processFailed');
   }
