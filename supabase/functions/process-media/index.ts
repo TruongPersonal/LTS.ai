@@ -78,21 +78,21 @@ async function transcribeFlac(
 
   for (const model of TRANSCRIPTION_MODELS) {
     try {
-      const response = await fetchProviderWithRetry(
-        'https://api.groq.com/openai/v1/audio/transcriptions',
-        () => {
-          const formData = new FormData();
-          formData.append('file', blob, fileName || 'audio.flac');
-          formData.append('model', model);
-          formData.append('response_format', 'verbose_json');
+      const formData = new FormData();
+      formData.append('file', blob, fileName || 'audio.flac');
+      formData.append('model', model);
+      formData.append('response_format', 'verbose_json');
 
-          return {
-            method: 'POST',
-            headers: { Authorization: `Bearer ${groqApiKey}` },
-            body: formData,
-          };
-        }
-      );
+      const response = await fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${groqApiKey}` },
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const detail = await response.text();
+        throw new Error(`${model} failed (${response.status}): ${detail.slice(0, 200)}`);
+      }
 
       const payload = await response.json();
       const subtitles = normalizeSegments(payload.segments || [], offsetSeconds);
@@ -103,7 +103,7 @@ async function transcribeFlac(
       };
     } catch (err) {
       lastError = err;
-      console.warn(`[Transcription Cascade] Model '${model}' failed, swapping to next model...`);
+      console.warn(`[Transcription Cascade] Model '${model}' failed, swapping to next model immediately...`);
     }
   }
 
