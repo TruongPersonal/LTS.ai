@@ -69,9 +69,8 @@ async function fetchGroqChatWithRetry(
   messages: Array<{ role: string; content: string }>,
   groqApiKey: string
 ): Promise<Response> {
-  // If primary 70B model, do NOT wait — swap to 8B instant model in 0.01s on 429!
   const isPrimaryModel = model.includes('70b');
-  const maxAttempts = isPrimaryModel ? 1 : 2;
+  const maxAttempts = isPrimaryModel ? 1 : 3;
   let attempt = 0;
 
   while (attempt < maxAttempts) {
@@ -92,7 +91,7 @@ async function fetchGroqChatWithRetry(
 
     if (response.status === 429 && attempt < maxAttempts) {
       const retryAfterHeader = response.headers.get('retry-after');
-      const delayMs = retryAfterHeader ? Math.min(parseInt(retryAfterHeader, 10) * 1000, 2000) : 800;
+      const delayMs = retryAfterHeader ? Math.min(parseInt(retryAfterHeader, 10) * 1000, 5000) : 1500;
       await new Promise((resolve) => setTimeout(resolve, delayMs));
       continue;
     }
@@ -112,7 +111,7 @@ async function transcribeFlac(
   for (const model of TRANSCRIPTION_MODELS) {
     try {
       const isPrimaryModel = model.includes('turbo');
-      const maxAttempts = isPrimaryModel ? 1 : 2;
+      const maxAttempts = isPrimaryModel ? 1 : 3;
       let attempt = 0;
       let response: Response | null = null;
 
@@ -131,7 +130,7 @@ async function transcribeFlac(
 
         if (response.status === 429 && attempt < maxAttempts) {
           const retryAfterHeader = response.headers.get('retry-after');
-          const delayMs = retryAfterHeader ? Math.min(parseInt(retryAfterHeader, 10) * 1000, 2000) : 800;
+          const delayMs = retryAfterHeader ? Math.min(parseInt(retryAfterHeader, 10) * 1000, 5000) : 1500;
           await new Promise((resolve) => setTimeout(resolve, delayMs));
           continue;
         }
