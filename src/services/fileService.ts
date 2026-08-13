@@ -422,18 +422,51 @@ async function translateSubtitlesClientSide(
         windowStartTime = Date.now();
         tokensUsedInCurrentWindow = 0;
 
-        const res = await invokeJson({
-          action: 'translate-batch',
-          project_id: projectId,
-          file_id: fileId,
-          subtitles: batch,
-          source_language: sourceLanguage,
-          target_language: targetLanguage,
-          model: activeModel,
-        });
+        try {
+          const res = await invokeJson({
+            action: 'translate-batch',
+            project_id: projectId,
+            file_id: fileId,
+            subtitles: batch,
+            source_language: sourceLanguage,
+            target_language: targetLanguage,
+            model: activeModel,
+          });
 
-        translatedAll.push(...(res.subtitles || []));
-        tokensUsedInCurrentWindow += estimatedBatchTokens;
+          translatedAll.push(...(res.subtitles || []));
+          tokensUsedInCurrentWindow += estimatedBatchTokens;
+        } catch (retryErr: any) {
+          const isRetry429 = retryErr?.message?.includes('429') || retryErr?.message?.toLowerCase()?.includes('rate limit');
+          if (isRetry429) {
+            console.warn('[Client Translation] Fallback model also hit 429. Resting 60s for window reset...');
+            emitProgress(
+              onProgress,
+              fileId,
+              'finalizing',
+              90 + Math.floor((batchIndex / totalBatches) * 8),
+              `Hệ thống tạm hết hạn mức AI ngày. Đang nghỉ 60s trước khi thử lại lô ${batchIndex}/${totalBatches}...`,
+              batchIndex,
+              totalBatches
+            );
+            await new Promise((resolve) => setTimeout(resolve, 60_000));
+            windowStartTime = Date.now();
+            tokensUsedInCurrentWindow = 0;
+
+            const res = await invokeJson({
+              action: 'translate-batch',
+              project_id: projectId,
+              file_id: fileId,
+              subtitles: batch,
+              source_language: sourceLanguage,
+              target_language: targetLanguage,
+              model: activeModel,
+            });
+            translatedAll.push(...(res.subtitles || []));
+            tokensUsedInCurrentWindow += estimatedBatchTokens;
+          } else {
+            throw retryErr;
+          }
+        }
       } else {
         throw err;
       }

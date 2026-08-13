@@ -48,11 +48,9 @@ const useFixedLoading = (authLoading: boolean, durationMs = 1200) => {
 };
 
 const PublicLandingRoute: React.FC = () => {
-  const { profile, loading } = useAuth();
+  const { profile } = useAuth();
   const navigate = useNavigate();
-  const isAppLoading = useFixedLoading(loading, 1200);
 
-  if (isAppLoading) return <PulseLoadingScreen />;
   if (profile) return <Navigate to="/projects" replace />;
 
   return (
