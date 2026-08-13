@@ -345,48 +345,12 @@ async function translateSubtitlesClientSide(
   }
 
   const BATCH_SIZE = 100;
-  const MODEL_TPM_BUDGETS: Record<string, number> = {
-    'llama-3.3-70b-versatile': 9000,
-    'llama-3.1-8b-instant': 4500,
-  };
-  const TRANSLATION_MODELS = ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant'];
-
   const translatedAll: Array<{ id: number; start: number; end: number; text: string }> = [];
-  let currentModelIndex = 0;
-  let windowStartTime = Date.now();
-  let tokensUsedInCurrentWindow = 0;
-
   const totalBatches = Math.ceil(sourceSubtitles.length / BATCH_SIZE);
 
   for (let i = 0; i < sourceSubtitles.length; i += BATCH_SIZE) {
     const batchIndex = Math.floor(i / BATCH_SIZE) + 1;
     const batch = sourceSubtitles.slice(i, i + BATCH_SIZE);
-    const estimatedBatchTokens = Math.max(700, Math.ceil(JSON.stringify(batch).length * 1.5));
-
-    let activeModel = TRANSLATION_MODELS[currentModelIndex];
-    let modelBudget = MODEL_TPM_BUDGETS[activeModel] || 4500;
-
-    if (tokensUsedInCurrentWindow + estimatedBatchTokens > modelBudget) {
-      const elapsedMs = Date.now() - windowStartTime;
-      const remainingMsInWindow = 61_000 - elapsedMs;
-
-      if (remainingMsInWindow > 0) {
-        const secondsToWait = Math.ceil(remainingMsInWindow / 1000);
-        emitProgress(
-          onProgress,
-          fileId,
-          'finalizing',
-          90 + Math.floor((batchIndex / totalBatches) * 8),
-          `Đang dừng ${secondsToWait}s để giải tỏa hạn mức API trước khi dịch tiếp (lô ${batchIndex}/${totalBatches})...`,
-          batchIndex,
-          totalBatches
-        );
-        await new Promise((resolve) => setTimeout(resolve, remainingMsInWindow));
-      }
-
-      windowStartTime = Date.now();
-      tokensUsedInCurrentWindow = 0;
-    }
 
     const progressPercent = 90 + Math.floor((batchIndex / totalBatches) * 8);
     emitProgress(
@@ -394,72 +358,21 @@ async function translateSubtitlesClientSide(
       fileId,
       'finalizing',
       progressPercent,
-      `Đang dịch phụ đề · lô ${batchIndex}/${totalBatches}`,
+      `Đang dịch phụ đề với Gemini 2.0 Flash · lô ${batchIndex}/${totalBatches}`,
       batchIndex,
       totalBatches
     );
 
-    let batchSuccess = false;
-    while (!batchSuccess) {
-      activeModel = TRANSLATION_MODELS[currentModelIndex];
+    const res = await invokeJson({
+      action: 'translate-batch',
+      project_id: projectId,
+      file_id: fileId,
+      subtitles: batch,
+      source_language: sourceLanguage,
+      target_language: targetLanguage,
+    });
 
-      try {
-        const res = await invokeJson({
-          action: 'translate-batch',
-          project_id: projectId,
-          file_id: fileId,
-          subtitles: batch,
-          source_language: sourceLanguage,
-          target_language: targetLanguage,
-          model: activeModel,
-        });
-
-        translatedAll.push(...(res.subtitles || []));
-        tokensUsedInCurrentWindow += estimatedBatchTokens;
-        batchSuccess = true;
-      } catch (err: any) {
-        const is429 = err?.message?.includes('429') || err?.is429;
-        const isRateDay = err?.rate_limit_type === 'day' || /per day|TPD|requests per day|tokens per day/i.test(err?.message || '');
-
-        if (!is429) {
-          throw err;
-        }
-
-        if (isRateDay) {
-          // --- HẠN MỨC NGÀY (TPD): ĐỔI NGAY SANG MODEL KHÁC ---
-          if (currentModelIndex < TRANSLATION_MODELS.length - 1) {
-            console.warn(
-              `[Rate Limit Classifier] Model '${activeModel}' hit DAILY limit (TPD). Switching IMMEDIATELY to fallback model '${
-                TRANSLATION_MODELS[currentModelIndex + 1]
-              }'...`
-            );
-            currentModelIndex++;
-            windowStartTime = Date.now();
-            tokensUsedInCurrentWindow = 0;
-            // Vòng lặp while sẽ tự động thử lại lô này với Model mới ngay lập tức!
-          } else {
-            console.error('[Rate Limit Classifier] All models hit DAILY limit (TPD). Daily quota exhausted.');
-            throw new Error(i18n.t('media.systemQuotaExceeded'));
-          }
-        } else {
-          // --- HẠN MỨC PHÚT (TPM): NGHỈ 60s RỒI THỬ LẠI CÙNG MODEL ---
-          console.warn(`[Rate Limit Classifier] Model '${activeModel}' hit MINUTE limit (TPM). Resting 60s for window reset...`);
-          emitProgress(
-            onProgress,
-            fileId,
-            'finalizing',
-            90 + Math.floor((batchIndex / totalBatches) * 8),
-            `Chạm hạn mức phút (TPM). Đang dừng 60s để nạp lại hạn mức cho ${activeModel} (lô ${batchIndex}/${totalBatches})...`,
-            batchIndex,
-            totalBatches
-          );
-          await new Promise((resolve) => setTimeout(resolve, 61_000));
-          windowStartTime = Date.now();
-          tokensUsedInCurrentWindow = 0;
-          // Vòng lặp while sẽ tự động thử lại lô này với cùng Model!
-        }
-      }
-    }
+    translatedAll.push(...(res.subtitles || []));
   }
 
   return translatedAll;

@@ -177,80 +177,7 @@ Do not add, remove, or merge subtitle cues. Input cues count: ${subtitles.length
   });
 }
 
-const MODEL_TPM_BUDGETS: Record<string, number> = {
-  'llama-3.3-70b-versatile': 9000,
-  'llama-3.1-8b-instant': 4500,
-};
 
-async function translateSubtitles(
-  subtitles: SubtitleItem[],
-  sourceLanguage: string,
-  targetLanguage: string,
-  groqApiKey: string
-): Promise<SubtitleItem[]> {
-  if (sourceLanguage.toLowerCase() === targetLanguage.toLowerCase()) {
-    return subtitles;
-  }
-
-  const BATCH_SIZE = 25;
-  const translatedAll: SubtitleItem[] = [];
-
-  let currentModelIndex = 0;
-  let windowStartTime = Date.now();
-  let tokensUsedInCurrentWindow = 0;
-
-  for (let i = 0; i < subtitles.length; i += BATCH_SIZE) {
-    const batch = subtitles.slice(i, i + BATCH_SIZE);
-    const estimatedBatchTokens = Math.max(700, Math.ceil(JSON.stringify(batch).length * 1.5));
-
-    let activeModel = TRANSLATION_MODELS[currentModelIndex];
-    let modelBudget = MODEL_TPM_BUDGETS[activeModel] || 4500;
-
-    if (tokensUsedInCurrentWindow + estimatedBatchTokens > modelBudget) {
-      const elapsedMs = Date.now() - windowStartTime;
-      const remainingMsInWindow = 61_000 - elapsedMs;
-
-      if (remainingMsInWindow > 0) {
-        console.log(
-          `[Token Governor] 60s TPM budget for ${activeModel} reached (${tokensUsedInCurrentWindow}/${modelBudget} tokens). Resting ${Math.ceil(
-            remainingMsInWindow / 1000
-          )}s for 1-minute window reset...`
-        );
-        await new Promise((resolve) => setTimeout(resolve, remainingMsInWindow));
-      }
-
-      windowStartTime = Date.now();
-      tokensUsedInCurrentWindow = 0;
-    }
-
-    try {
-      const translatedBatch = await translateBatch(batch, sourceLanguage, targetLanguage, activeModel, groqApiKey);
-      translatedAll.push(...translatedBatch);
-      tokensUsedInCurrentWindow += estimatedBatchTokens;
-    } catch (err: any) {
-      if (err?.is429 && currentModelIndex < TRANSLATION_MODELS.length - 1) {
-        console.warn(
-          `[Translation Fallback] Model '${activeModel}' hit rate limit. Switching to fallback model '${
-            TRANSLATION_MODELS[currentModelIndex + 1]
-          }'...`
-        );
-        currentModelIndex++;
-        activeModel = TRANSLATION_MODELS[currentModelIndex];
-
-        windowStartTime = Date.now();
-        tokensUsedInCurrentWindow = 0;
-
-        const translatedBatch = await translateBatch(batch, sourceLanguage, targetLanguage, activeModel, groqApiKey);
-        translatedAll.push(...translatedBatch);
-        tokensUsedInCurrentWindow += estimatedBatchTokens;
-      } else {
-        throw err;
-      }
-    }
-  }
-
-  return translatedAll;
-}
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
@@ -301,39 +228,18 @@ serve(async (req) => {
         const subtitles = normalizeSubmittedSubtitles(jsonBody.subtitles || []);
         const sourceLanguage = String(jsonBody.source_language || 'en');
         const targetLanguage = String(jsonBody.target_language || 'vi');
-
         const geminiApiKey = Deno.env.get('GEMINI_API_KEY') ?? '';
-        if (geminiApiKey) {
-          const translatedBatch = await translateBatchGemini(
-            subtitles,
-            sourceLanguage,
-            targetLanguage,
-            geminiApiKey
-          );
-          return jsonResponse({ success: true, subtitles: translatedBatch, provider: 'gemini-2.0-flash' });
-        }
 
-        const model = String(jsonBody.model || TRANSLATION_MODELS[0]);
-        const translatedBatch = await translateBatch(
+        const translatedBatch = await translateBatchGemini(
           subtitles,
           sourceLanguage,
           targetLanguage,
-          model,
-          groqApiKey
+          geminiApiKey
         );
-        return jsonResponse({ success: true, subtitles: translatedBatch, provider: model });
+        return jsonResponse({ success: true, subtitles: translatedBatch, provider: 'gemini-2.0-flash' });
       } catch (err: any) {
-        if (err?.is429) {
-          return jsonResponse(
-            {
-              error: err.message,
-              is429: true,
-              rate_limit_type: err.isTPD ? 'day' : 'minute',
-            },
-            429
-          );
-        }
-        throw err;
+        const message = err instanceof Error ? err.message : String(err || 'Gemini translation failed.');
+        return jsonResponse({ error: message }, 500);
       }
     }
 
