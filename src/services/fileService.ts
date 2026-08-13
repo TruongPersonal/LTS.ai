@@ -11,26 +11,9 @@ import i18n from '../i18n';
 
 type EdgeResult = {
   error?: string;
-  code?: string;
-  retryable?: boolean;
-  provider_status?: number;
   source_language?: string;
   subtitles?: Array<{ id: number; start: number; end: number; text: string }>;
 };
-
-class EdgeInvocationError extends Error {
-  readonly code?: string;
-  readonly retryable?: boolean;
-  readonly providerStatus?: number;
-
-  constructor(payload: EdgeResult) {
-    super(String(payload.error || 'Edge Function request failed.'));
-    this.name = 'EdgeInvocationError';
-    this.code = payload.code;
-    this.retryable = payload.retryable;
-    this.providerStatus = payload.provider_status;
-  }
-}
 
 const emitProgress = (
   onProgress: ProcessingProgressCallback | undefined,
@@ -52,6 +35,12 @@ const emitProgress = (
 };
 
 async function downloadDriveMedia(file: FileMedia, accessToken: string): Promise<Blob> {
+  if (file.input_source !== 'media') {
+    throw new Error('Chỉ hỗ trợ tải tệp media.');
+  }
+  if (!file.drive_file_id) {
+    throw new Error('Thiếu ID tệp Google Drive.');
+  }
   if (!accessToken) {
     throw new Error(i18n.t('editor.video.downloadFailed'));
   }
@@ -79,10 +68,12 @@ async function handleInvokeError(error: any): Promise<never> {
     try {
       const resJson = (await error.context.json()) as EdgeResult;
       if (resJson?.error) {
-        throw new EdgeInvocationError(resJson);
+        throw new Error(resJson.error);
       }
-    } catch (parsedError) {
-      if (parsedError instanceof EdgeInvocationError) throw parsedError;
+    } catch (parsedError: any) {
+      if (parsedError?.message && !parsedError.message.includes('json') && !parsedError.message.includes('non-2xx')) {
+        throw parsedError;
+      }
     }
   }
   throw error;
@@ -123,15 +114,6 @@ async function transcribeChunk(
 }
 
 function sanitizeErrorMessage(rawError: unknown): string {
-  if (rawError instanceof EdgeInvocationError) {
-    if (rawError.code === 'TRANSCRIPTION_PROVIDER_UNAVAILABLE') {
-      return i18n.t('media.systemQuotaExceeded');
-    }
-    if (rawError.code === 'TRANSCRIPTION_PROVIDER_REQUEST_FAILED') {
-      return i18n.t('media.serverError');
-    }
-  }
-
   const rawMessage = rawError instanceof Error ? rawError.message : String(rawError || '');
   if (!rawMessage || rawMessage.includes('Failed to fetch') || rawMessage.includes('NetworkError')) {
     return i18n.t('processing.processFailed');
