@@ -194,12 +194,36 @@ async function translateSubtitles(
   }
 
   const BATCH_SIZE = 15;
+  const SAFE_MINUTE_TOKEN_BUDGET = 4500;
   const translatedAll: SubtitleItem[] = [];
+
+  let windowStartTime = Date.now();
+  let tokensUsedInCurrentWindow = 0;
 
   for (let i = 0; i < subtitles.length; i += BATCH_SIZE) {
     const batch = subtitles.slice(i, i + BATCH_SIZE);
+    const estimatedBatchTokens = Math.max(500, Math.ceil(JSON.stringify(batch).length * 1.5));
+
+    if (tokensUsedInCurrentWindow + estimatedBatchTokens > SAFE_MINUTE_TOKEN_BUDGET) {
+      const elapsedMs = Date.now() - windowStartTime;
+      const remainingMsInWindow = 61_000 - elapsedMs;
+
+      if (remainingMsInWindow > 0) {
+        console.log(
+          `[Token Governor] 60s TPM budget reached (${tokensUsedInCurrentWindow} tokens). Resting ${Math.ceil(
+            remainingMsInWindow / 1000
+          )}s for Groq 1-minute window reset...`
+        );
+        await new Promise((resolve) => setTimeout(resolve, remainingMsInWindow));
+      }
+
+      windowStartTime = Date.now();
+      tokensUsedInCurrentWindow = 0;
+    }
+
     const translatedBatch = await translateBatch(batch, sourceLanguage, targetLanguage, groqApiKey);
     translatedAll.push(...translatedBatch);
+    tokensUsedInCurrentWindow += estimatedBatchTokens;
   }
 
   return translatedAll;
