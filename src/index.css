@@ -1207,7 +1207,7 @@ div[aria-label*="Google Drive"],
   }
   .editor-cue-source-row,
   .editor-translation-row {
-    padding-right: 56px;
+    padding-right: 82px;
   }
   .editor-cue-source {
     font-size: 14px;
@@ -1266,7 +1266,7 @@ div[aria-label*="Google Drive"],
   }
   .editor-cue-source-row,
   .editor-translation-row {
-    padding-right: 52px;
+    padding-right: 80px;
   }
   .editor-cue-source { font-size: 14px; }
   .editor-translation-static,
@@ -1596,7 +1596,7 @@ div[aria-label*="Google Drive"],
   }
   .editor-cue-source-row,
   .editor-translation-row {
-    padding-right: 72px !important;
+    padding-right: 76px !important;
     gap: 3px !important;
   }
   .editor-inline-actions {
@@ -1638,7 +1638,7 @@ div[aria-label*="Google Drive"],
   }
   .editor-cue-source-row,
   .editor-translation-row {
-    padding-right: 68px !important;
+    padding-right: 72px !important;
     padding-left: 0px !important;
   }
   .editor-inline-actions button,
