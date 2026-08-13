@@ -132,6 +132,7 @@ async function translateBatch(
             model,
             response_format: { type: 'json_object' },
             temperature: 0.2,
+            max_completion_tokens: 4096,
             messages: [
               {
                 role: 'system',
@@ -192,7 +193,7 @@ async function translateSubtitles(
     return subtitles;
   }
 
-  const BATCH_SIZE = 30;
+  const BATCH_SIZE = 15;
   const translatedAll: SubtitleItem[] = [];
 
   for (let i = 0; i < subtitles.length; i += BATCH_SIZE) {
