@@ -502,26 +502,6 @@ serve(async (req) => {
 
     return jsonResponse({ error: 'Unsupported action.' }, 400);
   } catch (error) {
-    if (error instanceof ProviderRequestError) {
-      console.warn('Transcription provider request failed after retry handling.', {
-        status: error.status,
-        code: error.code,
-        retryable: error.retryable,
-        detail: error.detail,
-      });
-      return jsonResponse(
-        {
-          error: error.retryable
-            ? 'Transcription service is temporarily unavailable.'
-            : 'Transcription request could not be completed.',
-          code: error.code,
-          retryable: error.retryable,
-          provider_status: error.status,
-        },
-        error.status
-      );
-    }
-
     const message = error instanceof Error ? error.message : 'Unknown server error';
     return jsonResponse({ error: message }, 500);
   }
