@@ -372,10 +372,20 @@ async function translateSubtitlesClientSide(
       target_language: targetLanguage,
     });
 
-    translatedAll.push(...(res.subtitles || []));
+  const batchTranslated = res.subtitles || [];
+    translatedAll.push(...batchTranslated);
   }
 
-  return translatedAll;
+  // Force exact 1-to-1 alignment with sourceSubtitles to guarantee continuous global IDs (1..N) and exact timestamps
+  return sourceSubtitles.map((source, index) => {
+    const translatedItem = translatedAll[index];
+    return {
+      id: index + 1,
+      start: source.start,
+      end: source.end,
+      text: translatedItem?.text ? String(translatedItem.text).trim() : source.text,
+    };
+  });
 }
 
 async function processExistingSubtitleFile(
@@ -385,12 +395,48 @@ async function processExistingSubtitleFile(
 ): Promise<void> {
   try {
     emitProgress(onProgress, file.id, 'preparing', 20, 'Đang chuẩn bị phụ đề đã nhập...');
-    emitProgress(onProgress, file.id, 'finalizing', 75, 'Đang dịch và lưu phụ đề...');
-    await invokeJson({
-      action: 'process_existing_subtitle',
-      project_id: projectId,
-      file_id: file.id,
-    });
+    
+    const sourceLanguage = file.detected_source_lang || 'en';
+    const { data: existing, error: existingError } = await supabase
+      .from('subtitles')
+      .select('content')
+      .eq('file_id', file.id)
+      .eq('language', sourceLanguage)
+      .maybeSingle();
+    if (existingError) throw existingError;
+
+    const sourceSubtitles: Array<{ id: number; start: number; end: number; text: string }> = existing?.content || [];
+
+    const { data: projectData } = await supabase
+      .from('projects')
+      .select('target_language')
+      .eq('id', projectId)
+      .single();
+    const targetLanguage = projectData?.target_language || 'vi';
+
+    emitProgress(onProgress, file.id, 'finalizing', 75, 'Đang dịch phụ đề...');
+
+    const translatedSubtitles = await translateSubtitlesClientSide(
+      projectId,
+      file.id,
+      sourceSubtitles,
+      sourceLanguage,
+      targetLanguage,
+      onProgress
+    );
+
+    await supabase.from('subtitles').upsert(
+      {
+        file_id: file.id,
+        language: targetLanguage,
+        content: translatedSubtitles,
+        is_edited: false,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: 'file_id,language' }
+    );
+
+    await supabase.from('files_media').update({ status: 'completed', error_message: null }).eq('id', file.id);
     emitProgress(onProgress, file.id, 'completed', 100, 'Hoàn thành xử lý phụ đề.');
   } catch (error) {
     const message = sanitizeErrorMessage(error);

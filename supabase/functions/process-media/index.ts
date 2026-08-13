@@ -132,8 +132,8 @@ Translate every subtitle text from ${sourceLanguage} to ${targetLanguage}.
 
 Translation Principles:
 1. Translate naturally and idiomatically with high fluency, proper sentence structure, and appropriate tone for the video context.
-2. Preserve exact "id", "start", and "end" values for every subtitle item without modifying timestamps.
-3. Return ONLY valid JSON in this exact shape: {"subtitles":[{"id":1,"start":0.0,"end":1.5,"text":"translated text"}]}.
+2. Preserve the exact "id", "start", and "end" values for every input item without changing any IDs or timestamps.
+3. Return ONLY valid JSON in this exact shape: {"subtitles":[{"id":101,"start":421.82,"end":426.38,"text":"translated text"}]}.
 4. Do not add, omit, split, or merge subtitle cues. Input cues count: ${subtitles.length}.`;
 
   let lastError: unknown = null;
