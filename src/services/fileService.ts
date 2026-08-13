@@ -128,7 +128,7 @@ function sanitizeErrorMessage(rawError: unknown): string {
       return i18n.t('media.systemQuotaExceeded');
     }
     if (rawError.code === 'TRANSCRIPTION_PROVIDER_REQUEST_FAILED') {
-      return i18n.t('processing.processFailed');
+      return i18n.t('media.serverError');
     }
   }
 
@@ -136,14 +136,18 @@ function sanitizeErrorMessage(rawError: unknown): string {
   if (!rawMessage || rawMessage.includes('Failed to fetch') || rawMessage.includes('NetworkError')) {
     return i18n.t('processing.processFailed');
   }
+  if (rawMessage.includes('429') || rawMessage.toLowerCase().includes('rate limit')) {
+    return i18n.t('media.systemQuotaExceeded');
+  }
   if (
     rawMessage.includes('non-2xx status code') ||
     rawMessage.includes('FunctionsHttpError') ||
     rawMessage.includes('500') ||
     rawMessage.includes('502') ||
-    rawMessage.includes('429')
+    rawMessage.includes('503') ||
+    rawMessage.includes('504')
   ) {
-    return i18n.t('media.systemQuotaExceeded');
+    return i18n.t('media.serverError');
   }
   return rawMessage;
 }
