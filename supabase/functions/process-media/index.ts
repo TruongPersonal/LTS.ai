@@ -85,6 +85,7 @@ async function fetchGroqChatWithRetry(
         model,
         response_format: { type: 'json_object' },
         temperature: 0.2,
+        max_completion_tokens: 4096,
         messages,
       }),
     });
@@ -231,7 +232,7 @@ async function translateSubtitles(
     return subtitles;
   }
 
-  const BATCH_SIZE = 30;
+  const BATCH_SIZE = 15;
   const translatedAll: SubtitleItem[] = [];
 
   for (let i = 0; i < subtitles.length; i += BATCH_SIZE) {
@@ -494,26 +495,7 @@ serve(async (req) => {
 
     return jsonResponse({ error: 'Unsupported action.' }, 400);
   } catch (error) {
-    if (error instanceof ProviderRequestError) {
-      console.warn('Transcription provider request failed after retry handling.', {
-        status: error.status,
-        code: error.code,
-        retryable: error.retryable,
-        detail: error.detail,
-      });
-      return jsonResponse(
-        {
-          error: error.retryable
-            ? 'Transcription service is temporarily unavailable.'
-            : 'Transcription request could not be completed.',
-          code: error.code,
-          retryable: error.retryable,
-          provider_status: error.status,
-        },
-        error.status
-      );
-    }
-
+    console.error('[Process-Media Error]', error);
     const message = error instanceof Error ? error.message : 'Unknown server error';
     return jsonResponse({ error: message }, 500);
   }
