@@ -58,35 +58,56 @@ function normalizeSubmittedSubtitles(value: unknown): SubtitleItem[] {
     .map((item, index) => ({ ...item, id: index + 1 }));
 }
 
+const TRANSCRIPTION_MODELS = [
+  'whisper-large-v3-turbo',
+  'whisper-large-v3',
+] as const;
+
+const TRANSLATION_MODELS = [
+  'llama-3.3-70b-versatile',
+  'llama-3.1-8b-instant',
+] as const;
+
 async function transcribeFlac(
   blob: Blob,
   fileName: string,
   offsetSeconds: number,
   groqApiKey: string
 ) {
-  const response = await fetchProviderWithRetry(
-    'https://api.groq.com/openai/v1/audio/transcriptions',
-    () => {
-      const formData = new FormData();
-      formData.append('file', blob, fileName || 'audio.flac');
-      formData.append('model', 'whisper-large-v3-turbo');
-      formData.append('response_format', 'verbose_json');
+  let lastError: unknown = null;
+
+  for (const model of TRANSCRIPTION_MODELS) {
+    try {
+      const response = await fetchProviderWithRetry(
+        'https://api.groq.com/openai/v1/audio/transcriptions',
+        () => {
+          const formData = new FormData();
+          formData.append('file', blob, fileName || 'audio.flac');
+          formData.append('model', model);
+          formData.append('response_format', 'verbose_json');
+
+          return {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${groqApiKey}` },
+            body: formData,
+          };
+        }
+      );
+
+      const payload = await response.json();
+      const subtitles = normalizeSegments(payload.segments || [], offsetSeconds);
 
       return {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${groqApiKey}` },
-        body: formData,
+        sourceLanguage: String(payload.language || 'en'),
+        subtitles,
       };
+    } catch (err) {
+      lastError = err;
+      console.warn(`[Transcription Cascade] Model '${model}' failed, swapping to next model...`);
     }
-  );
+  }
 
-  const payload = await response.json();
-  const subtitles = normalizeSegments(payload.segments || [], offsetSeconds);
-
-  return {
-    sourceLanguage: String(payload.language || 'en'),
-    subtitles,
-  };
+  throw lastError || new Error('All transcription models failed.');
 }
 
 async function translateBatch(
@@ -95,59 +116,70 @@ async function translateBatch(
   targetLanguage: string,
   groqApiKey: string
 ): Promise<SubtitleItem[]> {
-  const response = await fetchProviderWithRetry(
-    'https://api.groq.com/openai/v1/chat/completions',
-    () => ({
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${groqApiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'llama-3.3-70b-versatile',
-        response_format: { type: 'json_object' },
-        temperature: 0.2,
-        messages: [
-          {
-            role: 'system',
-            content: `You are a subtitle translator. Translate subtitle text from ${sourceLanguage} to ${targetLanguage}. Preserve every id, start and end value. Return JSON only in this shape: {"subtitles":[{"id":1,"start":0,"end":1,"text":"..."}]}. Do not add or remove cues.`,
+  let lastError: unknown = null;
+
+  for (const model of TRANSLATION_MODELS) {
+    try {
+      const response = await fetchProviderWithRetry(
+        'https://api.groq.com/openai/v1/chat/completions',
+        () => ({
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${groqApiKey}`,
+            'Content-Type': 'application/json',
           },
-          { role: 'user', content: JSON.stringify({ subtitles }) },
-        ],
-      }),
-    })
-  );
+          body: JSON.stringify({
+            model,
+            response_format: { type: 'json_object' },
+            temperature: 0.2,
+            messages: [
+              {
+                role: 'system',
+                content: `You are a subtitle translator. Translate subtitle text from ${sourceLanguage} to ${targetLanguage}. Preserve every id, start and end value. Return JSON only in this shape: {"subtitles":[{"id":1,"start":0,"end":1,"text":"..."}]}. Do not add or remove cues.`,
+              },
+              { role: 'user', content: JSON.stringify({ subtitles }) },
+            ],
+          }),
+        })
+      );
 
-  const payload = await response.json();
-  const message = payload.choices?.[0]?.message?.content;
-  if (!message) throw new Error('Groq translation returned an empty response.');
+      const payload = await response.json();
+      const message = payload.choices?.[0]?.message?.content;
+      if (!message) throw new Error(`${model} returned an empty response.`);
 
-  let parsed: { subtitles?: any[] };
-  try {
-    parsed = JSON.parse(message);
-  } catch {
-    throw new Error('Groq translation returned invalid JSON.');
-  }
+      let parsed: { subtitles?: any[] };
+      try {
+        parsed = JSON.parse(message);
+      } catch {
+        throw new Error(`${model} returned invalid JSON.`);
+      }
 
-  const translated = normalizeSegments(parsed.subtitles || []);
-  if (translated.length !== subtitles.length) {
-    throw new Error('Groq translation returned an unexpected number of subtitle cues.');
-  }
+      const translated = normalizeSegments(parsed.subtitles || []);
+      if (translated.length !== subtitles.length) {
+        throw new Error(`${model} returned an unexpected number of subtitle cues.`);
+      }
 
-  const sourceById = new Map(subtitles.map((item) => [item.id, item]));
-  const translatedIds = new Set<number>();
-  for (const item of translated) {
-    if (!sourceById.has(item.id) || translatedIds.has(item.id)) {
-      throw new Error('Groq translation returned invalid or duplicate subtitle IDs.');
+      const sourceById = new Map(subtitles.map((item) => [item.id, item]));
+      const translatedIds = new Set<number>();
+      for (const item of translated) {
+        if (!sourceById.has(item.id) || translatedIds.has(item.id)) {
+          throw new Error(`${model} returned invalid or duplicate subtitle IDs.`);
+        }
+        translatedIds.add(item.id);
+      }
+
+      const translatedById = new Map(translated.map((item) => [item.id, item]));
+      return subtitles.map((source) => {
+        const item = translatedById.get(source.id)!;
+        return { ...item, start: source.start, end: source.end };
+      });
+    } catch (err) {
+      lastError = err;
+      console.warn(`[Translation Cascade] Model '${model}' failed, swapping to next model...`);
     }
-    translatedIds.add(item.id);
   }
 
-  const translatedById = new Map(translated.map((item) => [item.id, item]));
-  return subtitles.map((source) => {
-    const item = translatedById.get(source.id)!;
-    return { ...item, start: source.start, end: source.end };
-  });
+  throw lastError || new Error('All translation models failed.');
 }
 
 async function translateSubtitles(
@@ -160,7 +192,7 @@ async function translateSubtitles(
     return subtitles;
   }
 
-  const BATCH_SIZE = 50;
+  const BATCH_SIZE = 30;
   const translatedAll: SubtitleItem[] = [];
 
   for (let i = 0; i < subtitles.length; i += BATCH_SIZE) {
