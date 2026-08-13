@@ -64,42 +64,61 @@ const TRANSLATION_MODELS = [
   'llama-3.1-8b-instant',
 ] as const;
 
+function getGroqKeys(rawKeysString: string): string[] {
+  const keys = rawKeysString
+    .split(',')
+    .map((k) => k.trim())
+    .filter(Boolean);
+  return keys.length > 0 ? keys : [''];
+}
+
 async function fetchGroqChatWithRetry(
   model: string,
   messages: Array<{ role: string; content: string }>,
   groqApiKey: string
 ): Promise<Response> {
+  const keys = getGroqKeys(groqApiKey);
   const isPrimaryModel = model.includes('70b');
   const maxAttempts = isPrimaryModel ? 1 : 3;
-  let attempt = 0;
 
-  while (attempt < maxAttempts) {
-    attempt++;
-    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${groqApiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model,
-        response_format: { type: 'json_object' },
-        temperature: 0.2,
-        max_completion_tokens: 4096,
-        messages,
-      }),
-    });
+  for (let k = 0; k < keys.length; k++) {
+    const key = keys[k];
+    let attempt = 0;
 
-    if (response.status === 429 && attempt < maxAttempts) {
-      const retryAfterHeader = response.headers.get('retry-after');
-      const delayMs = retryAfterHeader ? Math.min(parseInt(retryAfterHeader, 10) * 1000, 5000) : 1500;
-      await new Promise((resolve) => setTimeout(resolve, delayMs));
-      continue;
+    while (attempt < maxAttempts) {
+      attempt++;
+      const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${key}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model,
+          response_format: { type: 'json_object' },
+          temperature: 0.2,
+          max_completion_tokens: 4096,
+          messages,
+        }),
+      });
+
+      if (response.status === 429) {
+        if (k < keys.length - 1) {
+          console.warn(`[Groq Multi-Key] Key ${k + 1} hit 429, rotating to Key ${k + 2}...`);
+          break;
+        }
+        if (attempt < maxAttempts) {
+          const retryAfterHeader = response.headers.get('retry-after');
+          const delayMs = retryAfterHeader ? Math.min(parseInt(retryAfterHeader, 10) * 1000, 5000) : 1500;
+          await new Promise((resolve) => setTimeout(resolve, delayMs));
+          continue;
+        }
+      }
+
+      return response;
     }
-
-    return response;
   }
-  throw new Error(`Groq request for model ${model} failed.`);
+  throw new Error(`Groq request for model ${model} failed after key rotation.`);
 }
 
 async function transcribeFlac(
@@ -108,34 +127,47 @@ async function transcribeFlac(
   offsetSeconds: number,
   groqApiKey: string
 ) {
+  const keys = getGroqKeys(groqApiKey);
   let lastError: unknown = null;
+
   for (const model of TRANSCRIPTION_MODELS) {
     try {
       const isPrimaryModel = model.includes('turbo');
       const maxAttempts = isPrimaryModel ? 1 : 3;
-      let attempt = 0;
       let response: Response | null = null;
 
-      while (attempt < maxAttempts) {
-        attempt++;
-        const formData = new FormData();
-        formData.append('file', blob, fileName || 'audio.flac');
-        formData.append('model', model);
-        formData.append('response_format', 'verbose_json');
+      for (let k = 0; k < keys.length; k++) {
+        const key = keys[k];
+        let attempt = 0;
 
-        response = await fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
-          method: 'POST',
-          headers: { Authorization: `Bearer ${groqApiKey}` },
-          body: formData,
-        });
+        while (attempt < maxAttempts) {
+          attempt++;
+          const formData = new FormData();
+          formData.append('file', blob, fileName || 'audio.flac');
+          formData.append('model', model);
+          formData.append('response_format', 'verbose_json');
 
-        if (response.status === 429 && attempt < maxAttempts) {
-          const retryAfterHeader = response.headers.get('retry-after');
-          const delayMs = retryAfterHeader ? Math.min(parseInt(retryAfterHeader, 10) * 1000, 5000) : 1500;
-          await new Promise((resolve) => setTimeout(resolve, delayMs));
-          continue;
+          response = await fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${key}` },
+            body: formData,
+          });
+
+          if (response.status === 429) {
+            if (k < keys.length - 1) {
+              console.warn(`[Groq Multi-Key] Key ${k + 1} hit 429, rotating to Key ${k + 2}...`);
+              break;
+            }
+            if (attempt < maxAttempts) {
+              const retryAfterHeader = response.headers.get('retry-after');
+              const delayMs = retryAfterHeader ? Math.min(parseInt(retryAfterHeader, 10) * 1000, 5000) : 1500;
+              await new Promise((resolve) => setTimeout(resolve, delayMs));
+              continue;
+            }
+          }
+          break;
         }
-        break;
+        if (response && response.ok) break;
       }
 
       if (!response || !response.ok) {
