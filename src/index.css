@@ -421,41 +421,43 @@ a:focus-visible {
 .editor-translation-row {
   position: relative;
   width: 100%;
-  display: flex;
-  align-items: flex-start;
-  justify-content: center;
-  padding: 0 68px;
+  padding: 0 48px;
 }
 
-.editor-cue-source,
-.editor-translation-static,
 .editor-source-edit,
 .editor-translation-edit {
   width: 100%;
   min-width: 0;
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: center;
 }
 
 .editor-cue-source {
+  display: block;
+  width: 100%;
   height: auto;
-  max-height: none;
-  overflow-y: visible;
+  margin: 0;
   color: var(--ui-text-muted);
-  font-size: clamp(14px, 1vw, 17px);
-  line-height: 1.45;
+  font-size: clamp(13px, 1vw, 16px);
+  line-height: 1.5;
   text-align: center;
   overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .editor-translation-static {
+  display: block;
+  width: 100%;
+  height: auto;
+  margin: 0;
   color: var(--ui-text);
-  font-size: clamp(15px, 1.1vw, 18px);
+  font-size: clamp(14px, 1.1vw, 17px);
   line-height: 1.5;
   font-weight: 600;
   text-align: center;
   overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .editor-target-input {
@@ -1303,26 +1305,44 @@ div[aria-label*="Google Drive"],
   }
 }
 
-@media (max-height: 520px), (orientation: landscape) and (max-height: 600px) {
-  /* Mobile landscape mode: unlock full page vertical scrolling */
+@media (max-height: 520px) and (orientation: landscape), (orientation: landscape) and (max-height: 600px) {
+  /* Mobile landscape mode: Side-by-Side 2-Column Layout */
   .editor-workspace {
-    min-height: auto;
-    overflow-y: auto;
+    min-height: 100dvh;
+    overflow: hidden;
   }
   .editor-main {
-    height: auto;
-    max-height: none;
-    overflow: visible;
+    display: grid !important;
+    grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr) !important;
+    gap: 12px !important;
+    height: calc(100dvh - 58px) !important;
+    padding: 6px 12px !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    align-items: stretch !important;
+  }
+  .editor-video-shell {
+    width: 100% !important;
+    max-height: calc(100dvh - 70px) !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+  .editor-video-shell video {
+    max-height: calc(100dvh - 70px) !important;
+    object-fit: contain !important;
   }
   .editor-cue-section {
-    height: auto;
-    max-height: none;
-    overflow: visible;
+    width: 100% !important;
+    height: calc(100dvh - 70px) !important;
+    display: flex !important;
+    flex-direction: column !important;
   }
   .editor-cue-viewport {
-    height: auto !important;
+    flex: 1 1 auto !important;
+    height: 100% !important;
     max-height: none !important;
-    overflow-y: visible !important;
+    overflow-y: auto !important;
   }
 }
 
