@@ -147,9 +147,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signOut = async () => {
     try {
-      if (typeof window !== 'undefined') {
-        sessionStorage.setItem('skip_landing_loading', 'true');
-      }
       clearGoogleAccessToken();
       await supabase.auth.signOut();
       setUser(null);
