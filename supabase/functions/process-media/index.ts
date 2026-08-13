@@ -67,9 +67,10 @@ const TRANSLATION_MODELS = [
 async function fetchGroqChatWithRetry(
   model: string,
   messages: Array<{ role: string; content: string }>,
-  groqApiKey: string,
-  maxAttempts = 3
+  groqApiKey: string
 ): Promise<Response> {
+  const isPrimaryModel = model.includes('70b');
+  const maxAttempts = isPrimaryModel ? 1 : 3;
   let attempt = 0;
 
   while (attempt < maxAttempts) {
@@ -109,7 +110,8 @@ async function transcribeFlac(
   let lastError: unknown = null;
   for (const model of TRANSCRIPTION_MODELS) {
     try {
-      const maxAttempts = 3;
+      const isPrimaryModel = model.includes('turbo');
+      const maxAttempts = isPrimaryModel ? 1 : 3;
       let attempt = 0;
       let response: Response | null = null;
 
@@ -212,7 +214,7 @@ async function translateBatch(
       });
     } catch (err) {
       lastError = err;
-      console.warn(`[Translation Cascade] Model '${model}' failed, swapping to next model immediately...`);
+      console.warn(`[Translation Cascade] Model '${model}' failed, swapping to next model...`);
     }
   }
 
@@ -229,7 +231,7 @@ async function translateSubtitles(
     return subtitles;
   }
 
-  const BATCH_SIZE = 50;
+  const BATCH_SIZE = 30;
   const translatedAll: SubtitleItem[] = [];
 
   for (let i = 0; i < subtitles.length; i += BATCH_SIZE) {
