@@ -88,7 +88,7 @@ const ProtectedLayout: React.FC = () => {
   if (isAppLoading) return <PulseLoadingScreen />;
 
   if (!profile) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to="/" replace />;
   }
 
   const isEditorView = location.pathname.includes('/editor');

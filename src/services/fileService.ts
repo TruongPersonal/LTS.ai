@@ -273,14 +273,54 @@ async function processMediaFile(
     emitProgress(onProgress, file.id, 'finalizing', 86, 'Đang ghép các đoạn phụ đề...');
     const merged = mergeTranscriptionChunks(chunkResults);
 
-    emitProgress(onProgress, file.id, 'finalizing', 90, 'Đang dịch và lưu phụ đề...');
-    await invokeJson({
-      action: 'finalize_media',
-      project_id: projectId,
-      file_id: file.id,
-      source_language: merged.sourceLanguage,
-      subtitles: merged.subtitles,
-    });
+    // 1. Save source subtitles to Supabase DB
+    await supabase.from('subtitles').upsert(
+      {
+        file_id: file.id,
+        language: merged.sourceLanguage,
+        content: merged.subtitles,
+        is_edited: false,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: 'file_id,language' }
+    );
+
+    // 2. Fetch project target language
+    const { data: projectData } = await supabase
+      .from('projects')
+      .select('target_language')
+      .eq('id', projectId)
+      .single();
+    const targetLanguage = projectData?.target_language || 'vi';
+
+    // 3. Client-driven batching for translation
+    const translatedSubtitles = await translateSubtitlesClientSide(
+      projectId,
+      file.id,
+      merged.subtitles,
+      merged.sourceLanguage,
+      targetLanguage,
+      onProgress
+    );
+
+    // 4. Save target translated subtitles to Supabase DB
+    await supabase.from('subtitles').upsert(
+      {
+        file_id: file.id,
+        language: targetLanguage,
+        content: translatedSubtitles,
+        is_edited: false,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: 'file_id,language' }
+    );
+
+    // 5. Update file status to completed
+    await supabase.from('files_media').update({
+      status: 'completed',
+      detected_source_lang: merged.sourceLanguage,
+      error_message: null,
+    }).eq('id', file.id);
 
     await fileService.recordProcessedDurationSeconds(effectiveDuration);
     emitProgress(onProgress, file.id, 'completed', 100, 'Hoàn thành xử lý video.');
@@ -290,6 +330,117 @@ async function processMediaFile(
     emitProgress(onProgress, file.id, 'failed', 100, message);
     throw new Error(message);
   }
+}
+
+async function translateSubtitlesClientSide(
+  projectId: string,
+  fileId: string,
+  sourceSubtitles: Array<{ id: number; start: number; end: number; text: string }>,
+  sourceLanguage: string,
+  targetLanguage: string,
+  onProgress?: ProcessingProgressCallback
+): Promise<Array<{ id: number; start: number; end: number; text: string }>> {
+  if (sourceLanguage.toLowerCase() === targetLanguage.toLowerCase()) {
+    return sourceSubtitles;
+  }
+
+  const BATCH_SIZE = 25;
+  const MODEL_TPM_BUDGETS: Record<string, number> = {
+    'llama-3.3-70b-versatile': 9000,
+    'llama-3.1-8b-instant': 4500,
+  };
+  const TRANSLATION_MODELS = ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant'];
+
+  const translatedAll: Array<{ id: number; start: number; end: number; text: string }> = [];
+  let currentModelIndex = 0;
+  let windowStartTime = Date.now();
+  let tokensUsedInCurrentWindow = 0;
+
+  const totalBatches = Math.ceil(sourceSubtitles.length / BATCH_SIZE);
+
+  for (let i = 0; i < sourceSubtitles.length; i += BATCH_SIZE) {
+    const batchIndex = Math.floor(i / BATCH_SIZE) + 1;
+    const batch = sourceSubtitles.slice(i, i + BATCH_SIZE);
+    const estimatedBatchTokens = Math.max(700, Math.ceil(JSON.stringify(batch).length * 1.5));
+
+    let activeModel = TRANSLATION_MODELS[currentModelIndex];
+    let modelBudget = MODEL_TPM_BUDGETS[activeModel] || 4500;
+
+    if (tokensUsedInCurrentWindow + estimatedBatchTokens > modelBudget) {
+      const elapsedMs = Date.now() - windowStartTime;
+      const remainingMsInWindow = 61_000 - elapsedMs;
+
+      if (remainingMsInWindow > 0) {
+        const secondsToWait = Math.ceil(remainingMsInWindow / 1000);
+        emitProgress(
+          onProgress,
+          fileId,
+          'finalizing',
+          90 + Math.floor((batchIndex / totalBatches) * 8),
+          `Đang dừng ${secondsToWait}s để giải tỏa hạn mức API trước khi dịch tiếp (lô ${batchIndex}/${totalBatches})...`,
+          batchIndex,
+          totalBatches
+        );
+        await new Promise((resolve) => setTimeout(resolve, remainingMsInWindow));
+      }
+
+      windowStartTime = Date.now();
+      tokensUsedInCurrentWindow = 0;
+    }
+
+    const progressPercent = 90 + Math.floor((batchIndex / totalBatches) * 8);
+    emitProgress(
+      onProgress,
+      fileId,
+      'finalizing',
+      progressPercent,
+      `Đang dịch phụ đề · lô ${batchIndex}/${totalBatches}`,
+      batchIndex,
+      totalBatches
+    );
+
+    try {
+      const res = await invokeJson({
+        action: 'translate-batch',
+        project_id: projectId,
+        file_id: fileId,
+        subtitles: batch,
+        source_language: sourceLanguage,
+        target_language: targetLanguage,
+        model: activeModel,
+      });
+
+      translatedAll.push(...(res.subtitles || []));
+      tokensUsedInCurrentWindow += estimatedBatchTokens;
+    } catch (err: any) {
+      const is429 = err?.message?.includes('429') || err?.message?.toLowerCase()?.includes('rate limit');
+      if (is429 && currentModelIndex < TRANSLATION_MODELS.length - 1) {
+        currentModelIndex++;
+        activeModel = TRANSLATION_MODELS[currentModelIndex];
+        console.warn(`[Client Translation] Swapping model to ${activeModel}...`);
+
+        windowStartTime = Date.now();
+        tokensUsedInCurrentWindow = 0;
+
+        const res = await invokeJson({
+          action: 'translate-batch',
+          project_id: projectId,
+          file_id: fileId,
+          subtitles: batch,
+          source_language: sourceLanguage,
+          target_language: targetLanguage,
+          model: activeModel,
+        });
+
+        translatedAll.push(...(res.subtitles || []));
+        tokensUsedInCurrentWindow += estimatedBatchTokens;
+      } else {
+        throw err;
+      }
+    }
+  }
+
+  return translatedAll;
 }
 
 async function processExistingSubtitleFile(

@@ -81,8 +81,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     setUser(authUser);
     await fetchProfile(authUser);
-    if (typeof window !== 'undefined' && window.location.hash) {
-      window.history.replaceState(null, '', window.location.pathname + window.location.search);
+    if (typeof window !== 'undefined') {
+      if (window.location.hash || window.location.href.endsWith('#')) {
+        const cleanUrl = window.location.pathname + window.location.search;
+        window.history.replaceState(null, '', cleanUrl || '/');
+      }
     }
   };
 
@@ -148,9 +151,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       await supabase.auth.signOut();
       setUser(null);
       setProfile(null);
+      if (typeof window !== 'undefined') {
+        window.location.href = '/';
+      }
     } catch (err) {
       console.error('Error signing out:', err);
-      throw err;
+      if (typeof window !== 'undefined') {
+        window.location.href = '/';
+      }
     }
   };
 

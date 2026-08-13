@@ -294,6 +294,23 @@ serve(async (req) => {
     }
 
     if (!action) return jsonResponse({ error: 'Missing action.' }, 400);
+
+    if (action === 'translate-batch') {
+      const subtitles = normalizeSubmittedSubtitles(jsonBody.subtitles || []);
+      const sourceLanguage = String(jsonBody.source_language || 'en');
+      const targetLanguage = String(jsonBody.target_language || 'vi');
+      const model = String(jsonBody.model || TRANSLATION_MODELS[0]);
+
+      const translatedBatch = await translateBatch(
+        subtitles,
+        sourceLanguage,
+        targetLanguage,
+        model,
+        groqApiKey
+      );
+      return jsonResponse({ success: true, subtitles: translatedBatch });
+    }
+
     if (!projectId || !fileId) return jsonResponse({ error: 'Missing project_id or file_id.' }, 400);
 
     const { data: project, error: projectError } = await supabase
