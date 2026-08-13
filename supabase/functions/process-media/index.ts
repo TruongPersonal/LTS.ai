@@ -181,26 +181,15 @@ const MODEL_TPM_BUDGETS: Record<string, number> = {
   'llama-3.1-8b-instant': 4500,
 };
 
-function getGroqKeys(rawKeys: string): string[] {
-  const keys = String(rawKeys || '')
-    .split(',')
-    .map((k) => k.trim())
-    .filter(Boolean);
-  return keys.length > 0 ? keys : [''];
-}
-
 async function translateSubtitles(
   subtitles: SubtitleItem[],
   sourceLanguage: string,
   targetLanguage: string,
-  groqApiKeyRaw: string
+  groqApiKey: string
 ): Promise<SubtitleItem[]> {
   if (sourceLanguage.toLowerCase() === targetLanguage.toLowerCase()) {
     return subtitles;
   }
-
-  const keys = getGroqKeys(groqApiKeyRaw);
-  let currentKeyIndex = 0;
 
   const BATCH_SIZE = 25;
   const translatedAll: SubtitleItem[] = [];
@@ -217,74 +206,45 @@ async function translateSubtitles(
     let modelBudget = MODEL_TPM_BUDGETS[activeModel] || 4500;
 
     if (tokensUsedInCurrentWindow + estimatedBatchTokens > modelBudget) {
-      if (keys.length > 1) {
-        currentKeyIndex = (currentKeyIndex + 1) % keys.length;
+      const elapsedMs = Date.now() - windowStartTime;
+      const remainingMsInWindow = 61_000 - elapsedMs;
+
+      if (remainingMsInWindow > 0) {
         console.log(
-          `[Key Rotation] 60s TPM budget reached for key ${currentKeyIndex}. Rotating to Groq Key #${
-            currentKeyIndex + 1
-          }...`
+          `[Token Governor] 60s TPM budget for ${activeModel} reached (${tokensUsedInCurrentWindow}/${modelBudget} tokens). Resting ${Math.ceil(
+            remainingMsInWindow / 1000
+          )}s for 1-minute window reset...`
         );
-        windowStartTime = Date.now();
-        tokensUsedInCurrentWindow = 0;
-      } else {
-        const elapsedMs = Date.now() - windowStartTime;
-        const remainingMsInWindow = Math.min(15_000, 61_000 - elapsedMs);
-
-        if (remainingMsInWindow > 0) {
-          console.log(
-            `[Token Governor] 60s TPM budget for ${activeModel} reached (${tokensUsedInCurrentWindow}/${modelBudget} tokens). Capped pause of ${Math.ceil(
-              remainingMsInWindow / 1000
-            )}s to prevent Supabase 150s function timeout shutdown...`
-          );
-          await new Promise((resolve) => setTimeout(resolve, remainingMsInWindow));
-        }
-
-        windowStartTime = Date.now();
-        tokensUsedInCurrentWindow = 0;
+        await new Promise((resolve) => setTimeout(resolve, remainingMsInWindow));
       }
+
+      windowStartTime = Date.now();
+      tokensUsedInCurrentWindow = 0;
     }
 
-    const currentKey = keys[currentKeyIndex];
-
     try {
-      const translatedBatch = await translateBatch(batch, sourceLanguage, targetLanguage, activeModel, currentKey);
+      const translatedBatch = await translateBatch(batch, sourceLanguage, targetLanguage, activeModel, groqApiKey);
       translatedAll.push(...translatedBatch);
       tokensUsedInCurrentWindow += estimatedBatchTokens;
     } catch (err: any) {
-      if (err?.is429) {
-        if (keys.length > 1) {
-          currentKeyIndex = (currentKeyIndex + 1) % keys.length;
-          const nextKey = keys[currentKeyIndex];
-          console.warn(`[Translation Key Rotation] Key hit 429 rate limit. Rotating to Groq Key #${currentKeyIndex + 1}...`);
-          windowStartTime = Date.now();
-          tokensUsedInCurrentWindow = 0;
+      if (err?.is429 && currentModelIndex < TRANSLATION_MODELS.length - 1) {
+        console.warn(
+          `[Translation Fallback] Model '${activeModel}' hit rate limit. Switching to fallback model '${
+            TRANSLATION_MODELS[currentModelIndex + 1]
+          }'...`
+        );
+        currentModelIndex++;
+        activeModel = TRANSLATION_MODELS[currentModelIndex];
 
-          const translatedBatch = await translateBatch(batch, sourceLanguage, targetLanguage, activeModel, nextKey);
-          translatedAll.push(...translatedBatch);
-          tokensUsedInCurrentWindow += estimatedBatchTokens;
-          continue;
-        }
+        windowStartTime = Date.now();
+        tokensUsedInCurrentWindow = 0;
 
-        if (currentModelIndex < TRANSLATION_MODELS.length - 1) {
-          console.warn(
-            `[Translation Fallback] Model '${activeModel}' hit rate limit. Switching to fallback model '${
-              TRANSLATION_MODELS[currentModelIndex + 1]
-            }'...`
-          );
-          currentModelIndex++;
-          activeModel = TRANSLATION_MODELS[currentModelIndex];
-
-          windowStartTime = Date.now();
-          tokensUsedInCurrentWindow = 0;
-
-          const translatedBatch = await translateBatch(batch, sourceLanguage, targetLanguage, activeModel, currentKey);
-          translatedAll.push(...translatedBatch);
-          tokensUsedInCurrentWindow += estimatedBatchTokens;
-          continue;
-        }
+        const translatedBatch = await translateBatch(batch, sourceLanguage, targetLanguage, activeModel, groqApiKey);
+        translatedAll.push(...translatedBatch);
+        tokensUsedInCurrentWindow += estimatedBatchTokens;
+      } else {
+        throw err;
       }
-
-      throw err;
     }
   }
 
