@@ -1,5 +1,9 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import {
+  ProviderRequestError,
+  fetchProviderWithRetry,
+} from './providerRequest.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -54,140 +58,35 @@ function normalizeSubmittedSubtitles(value: unknown): SubtitleItem[] {
     .map((item, index) => ({ ...item, id: index + 1 }));
 }
 
-const TRANSCRIPTION_MODELS = [
-  'whisper-large-v3-turbo',
-  'whisper-large-v3',
-] as const;
-
-const TRANSLATION_MODELS = [
-  'llama-3.3-70b-versatile',
-  'llama-3.1-8b-instant',
-] as const;
-
-function getGroqKeys(rawKeysString: string): string[] {
-  const keys = rawKeysString
-    .split(',')
-    .map((k) => k.trim())
-    .filter(Boolean);
-  return keys.length > 0 ? keys : [''];
-}
-
-async function fetchGroqChatWithRetry(
-  model: string,
-  messages: Array<{ role: string; content: string }>,
-  groqApiKey: string
-): Promise<Response> {
-  const keys = getGroqKeys(groqApiKey);
-  const isPrimaryModel = model.includes('70b');
-  const maxAttempts = isPrimaryModel ? 1 : 3;
-
-  for (let k = 0; k < keys.length; k++) {
-    const key = keys[k];
-    let attempt = 0;
-
-    while (attempt < maxAttempts) {
-      attempt++;
-      const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${key}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model,
-          response_format: { type: 'json_object' },
-          temperature: 0.2,
-          max_completion_tokens: 4096,
-          messages,
-        }),
-      });
-
-      if (response.status === 429) {
-        if (k < keys.length - 1) {
-          console.warn(`[Groq Multi-Key] Key ${k + 1} hit 429, rotating to Key ${k + 2}...`);
-          break;
-        }
-        if (attempt < maxAttempts) {
-          const retryAfterHeader = response.headers.get('retry-after');
-          const delayMs = retryAfterHeader ? Math.min(parseInt(retryAfterHeader, 10) * 1000, 5000) : 1500;
-          await new Promise((resolve) => setTimeout(resolve, delayMs));
-          continue;
-        }
-      }
-
-      return response;
-    }
-  }
-  throw new Error(`Groq request for model ${model} failed after key rotation.`);
-}
-
 async function transcribeFlac(
   blob: Blob,
   fileName: string,
   offsetSeconds: number,
   groqApiKey: string
 ) {
-  const keys = getGroqKeys(groqApiKey);
-  let lastError: unknown = null;
-
-  for (const model of TRANSCRIPTION_MODELS) {
-    try {
-      const isPrimaryModel = model.includes('turbo');
-      const maxAttempts = isPrimaryModel ? 1 : 3;
-      let response: Response | null = null;
-
-      for (let k = 0; k < keys.length; k++) {
-        const key = keys[k];
-        let attempt = 0;
-
-        while (attempt < maxAttempts) {
-          attempt++;
-          const formData = new FormData();
-          formData.append('file', blob, fileName || 'audio.flac');
-          formData.append('model', model);
-          formData.append('response_format', 'verbose_json');
-
-          response = await fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
-            method: 'POST',
-            headers: { Authorization: `Bearer ${key}` },
-            body: formData,
-          });
-
-          if (response.status === 429) {
-            if (k < keys.length - 1) {
-              console.warn(`[Groq Multi-Key] Key ${k + 1} hit 429, rotating to Key ${k + 2}...`);
-              break;
-            }
-            if (attempt < maxAttempts) {
-              const retryAfterHeader = response.headers.get('retry-after');
-              const delayMs = retryAfterHeader ? Math.min(parseInt(retryAfterHeader, 10) * 1000, 5000) : 1500;
-              await new Promise((resolve) => setTimeout(resolve, delayMs));
-              continue;
-            }
-          }
-          break;
-        }
-        if (response && response.ok) break;
-      }
-
-      if (!response || !response.ok) {
-        const detail = response ? await response.text() : 'No response';
-        throw new Error(`${model} failed (${response?.status}): ${detail.slice(0, 200)}`);
-      }
-
-      const payload = await response.json();
-      const subtitles = normalizeSegments(payload.segments || [], offsetSeconds);
+  const response = await fetchProviderWithRetry(
+    'https://api.groq.com/openai/v1/audio/transcriptions',
+    () => {
+      const formData = new FormData();
+      formData.append('file', blob, fileName || 'audio.flac');
+      formData.append('model', 'whisper-large-v3-turbo');
+      formData.append('response_format', 'verbose_json');
 
       return {
-        sourceLanguage: String(payload.language || 'en'),
-        subtitles,
+        method: 'POST',
+        headers: { Authorization: `Bearer ${groqApiKey}` },
+        body: formData,
       };
-    } catch (err) {
-      lastError = err;
-      console.warn(`[Transcription Cascade] Model '${model}' failed, swapping to next model...`);
     }
-  }
-  throw lastError || new Error('All transcription models failed.');
+  );
+
+  const payload = await response.json();
+  const subtitles = normalizeSegments(payload.segments || [], offsetSeconds);
+
+  return {
+    sourceLanguage: String(payload.language || 'en'),
+    subtitles,
+  };
 }
 
 async function translateBatch(
@@ -196,62 +95,61 @@ async function translateBatch(
   targetLanguage: string,
   groqApiKey: string
 ): Promise<SubtitleItem[]> {
-  let lastError: unknown = null;
-
-  for (const model of TRANSLATION_MODELS) {
-    try {
-      const messages = [
+  const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${groqApiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: 'llama-3.3-70b-versatile',
+      response_format: { type: 'json_object' },
+      temperature: 0.2,
+      messages: [
         {
           role: 'system',
           content: `You are a subtitle translator. Translate subtitle text from ${sourceLanguage} to ${targetLanguage}. Preserve every id, start and end value. Return JSON only in this shape: {"subtitles":[{"id":1,"start":0,"end":1,"text":"..."}]}. Do not add or remove cues.`,
         },
         { role: 'user', content: JSON.stringify({ subtitles }) },
-      ];
+      ],
+    }),
+  });
 
-      const response = await fetchGroqChatWithRetry(model, messages, groqApiKey);
-
-      if (!response.ok) {
-        const detail = await response.text();
-        throw new Error(`${model} failed (${response.status}): ${detail.slice(0, 200)}`);
-      }
-
-      const payload = await response.json();
-      const message = payload.choices?.[0]?.message?.content;
-      if (!message) throw new Error(`${model} returned an empty response.`);
-
-      let parsed: { subtitles?: any[] };
-      try {
-        parsed = JSON.parse(message);
-      } catch {
-        throw new Error(`${model} returned invalid JSON.`);
-      }
-
-      const translated = normalizeSegments(parsed.subtitles || []);
-      if (translated.length !== subtitles.length) {
-        throw new Error(`${model} returned an unexpected number of subtitle cues.`);
-      }
-
-      const sourceById = new Map(subtitles.map((item) => [item.id, item]));
-      const translatedIds = new Set<number>();
-      for (const item of translated) {
-        if (!sourceById.has(item.id) || translatedIds.has(item.id)) {
-          throw new Error(`${model} returned invalid or duplicate subtitle IDs.`);
-        }
-        translatedIds.add(item.id);
-      }
-
-      const translatedById = new Map(translated.map((item) => [item.id, item]));
-      return subtitles.map((source) => {
-        const item = translatedById.get(source.id)!;
-        return { ...item, start: source.start, end: source.end };
-      });
-    } catch (err) {
-      lastError = err;
-      console.warn(`[Translation Cascade] Model '${model}' failed, swapping to next model...`);
-    }
+  if (!response.ok) {
+    const detail = await response.text();
+    throw new Error(`Groq translation failed (${response.status}): ${detail.slice(0, 500)}`);
   }
 
-  throw lastError || new Error('All translation models failed.');
+  const payload = await response.json();
+  const message = payload.choices?.[0]?.message?.content;
+  if (!message) throw new Error('Groq translation returned an empty response.');
+
+  let parsed: { subtitles?: any[] };
+  try {
+    parsed = JSON.parse(message);
+  } catch {
+    throw new Error('Groq translation returned invalid JSON.');
+  }
+
+  const translated = normalizeSegments(parsed.subtitles || []);
+  if (translated.length !== subtitles.length) {
+    throw new Error('Groq translation returned an unexpected number of subtitle cues.');
+  }
+
+  const sourceById = new Map(subtitles.map((item) => [item.id, item]));
+  const translatedIds = new Set<number>();
+  for (const item of translated) {
+    if (!sourceById.has(item.id) || translatedIds.has(item.id)) {
+      throw new Error('Groq translation returned invalid or duplicate subtitle IDs.');
+    }
+    translatedIds.add(item.id);
+  }
+
+  const translatedById = new Map(translated.map((item) => [item.id, item]));
+  return subtitles.map((source) => {
+    const item = translatedById.get(source.id)!;
+    return { ...item, start: source.start, end: source.end };
+  });
 }
 
 async function translateSubtitles(
@@ -264,7 +162,7 @@ async function translateSubtitles(
     return subtitles;
   }
 
-  const BATCH_SIZE = 15;
+  const BATCH_SIZE = 50;
   const translatedAll: SubtitleItem[] = [];
 
   for (let i = 0; i < subtitles.length; i += BATCH_SIZE) {
@@ -527,7 +425,26 @@ serve(async (req) => {
 
     return jsonResponse({ error: 'Unsupported action.' }, 400);
   } catch (error) {
-    console.error('[Process-Media Error]', error);
+    if (error instanceof ProviderRequestError) {
+      console.warn('Transcription provider request failed after retry handling.', {
+        status: error.status,
+        code: error.code,
+        retryable: error.retryable,
+        detail: error.detail,
+      });
+      return jsonResponse(
+        {
+          error: error.retryable
+            ? 'Transcription service is temporarily unavailable.'
+            : 'Transcription request could not be completed.',
+          code: error.code,
+          retryable: error.retryable,
+          provider_status: error.status,
+        },
+        error.status
+      );
+    }
+
     const message = error instanceof Error ? error.message : 'Unknown server error';
     return jsonResponse({ error: message }, 500);
   }

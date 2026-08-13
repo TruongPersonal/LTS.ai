@@ -29,7 +29,7 @@ export function inspectFlacMetadata(data: Uint8Array): FlacMetadataInspection {
     throw new Error('FLAC container is invalid.');
   }
 
-  let offset: number = FLAC_SIGNATURE.length;
+  let offset:number = FLAC_SIGNATURE.length;
   let totalSamples: number | null = null;
   let sawLastMetadataBlock = false;
 
