@@ -62,9 +62,42 @@ const TRANSCRIPTION_MODELS = [
 const TRANSLATION_MODELS = [
   'llama-3.3-70b-versatile',
   'llama-3.1-8b-instant',
-  'openai/gpt-oss-120b',
-  'openai/gpt-oss-20b',
 ] as const;
+
+async function fetchGroqChatWithRetry(
+  model: string,
+  messages: Array<{ role: string; content: string }>,
+  groqApiKey: string,
+  maxAttempts = 3
+): Promise<Response> {
+  let attempt = 0;
+  while (attempt < maxAttempts) {
+    attempt++;
+    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${groqApiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model,
+        response_format: { type: 'json_object' },
+        temperature: 0.2,
+        messages,
+      }),
+    });
+
+    if (response.status === 429 && attempt < maxAttempts) {
+      const retryAfterHeader = response.headers.get('retry-after');
+      const delayMs = retryAfterHeader ? Math.min(parseInt(retryAfterHeader, 10) * 1000, 5000) : 2000;
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
+      continue;
+    }
+
+    return response;
+  }
+  throw new Error(`Groq request for model ${model} failed.`);
+}
 
 async function transcribeFlac(
   blob: Blob,
@@ -75,20 +108,33 @@ async function transcribeFlac(
   let lastError: unknown = null;
   for (const model of TRANSCRIPTION_MODELS) {
     try {
-      const formData = new FormData();
-      formData.append('file', blob, fileName || 'audio.flac');
-      formData.append('model', model);
-      formData.append('response_format', 'verbose_json');
+      let attempt = 0;
+      let response: Response | null = null;
+      while (attempt < 3) {
+        attempt++;
+        const formData = new FormData();
+        formData.append('file', blob, fileName || 'audio.flac');
+        formData.append('model', model);
+        formData.append('response_format', 'verbose_json');
 
-      const response = await fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${groqApiKey}` },
-        body: formData,
-      });
+        response = await fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${groqApiKey}` },
+          body: formData,
+        });
 
-      if (!response.ok) {
-        const detail = await response.text();
-        throw new Error(`${model} failed (${response.status}): ${detail.slice(0, 200)}`);
+        if (response.status === 429 && attempt < 3) {
+          const retryAfterHeader = response.headers.get('retry-after');
+          const delayMs = retryAfterHeader ? Math.min(parseInt(retryAfterHeader, 10) * 1000, 5000) : 2000;
+          await new Promise((resolve) => setTimeout(resolve, delayMs));
+          continue;
+        }
+        break;
+      }
+
+      if (!response || !response.ok) {
+        const detail = response ? await response.text() : 'No response';
+        throw new Error(`${model} failed (${response?.status}): ${detail.slice(0, 200)}`);
       }
 
       const payload = await response.json();
@@ -100,7 +146,7 @@ async function transcribeFlac(
       };
     } catch (err) {
       lastError = err;
-      console.warn(`[Transcription Cascade] Model '${model}' failed, swapping to next model immediately...`);
+      console.warn(`[Transcription Cascade] Model '${model}' failed, swapping to next model...`);
     }
   }
   throw lastError || new Error('All transcription models failed.');
@@ -116,25 +162,15 @@ async function translateBatch(
 
   for (const model of TRANSLATION_MODELS) {
     try {
-      const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${groqApiKey}`,
-          'Content-Type': 'application/json',
+      const messages = [
+        {
+          role: 'system',
+          content: `You are a subtitle translator. Translate subtitle text from ${sourceLanguage} to ${targetLanguage}. Preserve every id, start and end value. Return JSON only in this shape: {"subtitles":[{"id":1,"start":0,"end":1,"text":"..."}]}. Do not add or remove cues.`,
         },
-        body: JSON.stringify({
-          model,
-          response_format: { type: 'json_object' },
-          temperature: 0.2,
-          messages: [
-            {
-              role: 'system',
-              content: `You are a subtitle translator. Translate subtitle text from ${sourceLanguage} to ${targetLanguage}. Preserve every id, start and end value. Return JSON only in this shape: {"subtitles":[{"id":1,"start":0,"end":1,"text":"..."}]}. Do not add or remove cues.`,
-            },
-            { role: 'user', content: JSON.stringify({ subtitles }) },
-          ],
-        }),
-      });
+        { role: 'user', content: JSON.stringify({ subtitles }) },
+      ];
+
+      const response = await fetchGroqChatWithRetry(model, messages, groqApiKey);
 
       if (!response.ok) {
         const detail = await response.text();
