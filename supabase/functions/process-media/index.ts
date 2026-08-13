@@ -183,6 +183,11 @@ async function translateBatch(
   throw lastError || new Error('All translation models failed.');
 }
 
+const MODEL_TPM_BUDGETS: Record<string, number> = {
+  'llama-3.3-70b-versatile': 9000,
+  'llama-3.1-8b-instant': 4500,
+};
+
 async function translateSubtitles(
   subtitles: SubtitleItem[],
   sourceLanguage: string,
@@ -193,24 +198,25 @@ async function translateSubtitles(
     return subtitles;
   }
 
-  const BATCH_SIZE = 15;
-  const SAFE_MINUTE_TOKEN_BUDGET = 4500;
+  const BATCH_SIZE = 25;
   const translatedAll: SubtitleItem[] = [];
 
   let windowStartTime = Date.now();
   let tokensUsedInCurrentWindow = 0;
+  let activeModel = TRANSLATION_MODELS[0];
 
   for (let i = 0; i < subtitles.length; i += BATCH_SIZE) {
     const batch = subtitles.slice(i, i + BATCH_SIZE);
-    const estimatedBatchTokens = Math.max(500, Math.ceil(JSON.stringify(batch).length * 1.5));
+    const estimatedBatchTokens = Math.max(700, Math.ceil(JSON.stringify(batch).length * 1.5));
+    const modelBudget = MODEL_TPM_BUDGETS[activeModel] || 4500;
 
-    if (tokensUsedInCurrentWindow + estimatedBatchTokens > SAFE_MINUTE_TOKEN_BUDGET) {
+    if (tokensUsedInCurrentWindow + estimatedBatchTokens > modelBudget) {
       const elapsedMs = Date.now() - windowStartTime;
       const remainingMsInWindow = 61_000 - elapsedMs;
 
       if (remainingMsInWindow > 0) {
         console.log(
-          `[Token Governor] 60s TPM budget reached (${tokensUsedInCurrentWindow} tokens). Resting ${Math.ceil(
+          `[Token Governor] 60s TPM budget for ${activeModel} reached (${tokensUsedInCurrentWindow}/${modelBudget} tokens). Resting ${Math.ceil(
             remainingMsInWindow / 1000
           )}s for Groq 1-minute window reset...`
         );
