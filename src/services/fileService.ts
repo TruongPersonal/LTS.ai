@@ -121,7 +121,9 @@ function sanitizeErrorMessage(rawError: unknown): string {
     rawMessage.includes('NetworkError') ||
     rawMessage.includes('Failed to send a request') ||
     rawMessage.includes('FunctionsFetchError') ||
-    rawMessage.includes('Relay Error')
+    rawMessage.includes('Relay Error') ||
+    rawMessage.toLowerCase().includes('load failed') ||
+    rawMessage.toLowerCase().includes('ffmpeg')
   ) {
     return i18n.t('processing.processFailed');
   }
