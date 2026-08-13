@@ -80,21 +80,21 @@ async function transcribeFlac(
   let lastError: unknown = null;
   for (const model of TRANSCRIPTION_MODELS) {
     try {
-      const response = await fetchProviderWithRetry(
-        'https://api.groq.com/openai/v1/audio/transcriptions',
-        () => {
-          const formData = new FormData();
-          formData.append('file', blob, fileName || 'audio.flac');
-          formData.append('model', model);
-          formData.append('response_format', 'verbose_json');
+      const formData = new FormData();
+      formData.append('file', blob, fileName || 'audio.flac');
+      formData.append('model', model);
+      formData.append('response_format', 'verbose_json');
 
-          return {
-            method: 'POST',
-            headers: { Authorization: `Bearer ${groqApiKey}` },
-            body: formData,
-          };
-        }
-      );
+      const response = await fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${groqApiKey}` },
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const detail = await response.text();
+        throw new Error(`${model} failed (${response.status}): ${detail.slice(0, 200)}`);
+      }
 
       const payload = await response.json();
       const subtitles = normalizeSegments(payload.segments || [], offsetSeconds);
@@ -105,7 +105,7 @@ async function transcribeFlac(
       };
     } catch (err) {
       lastError = err;
-      console.warn(`[Transcription Cascade] Model '${model}' failed, trying next...`);
+      console.warn(`[Transcription Cascade] Model '${model}' failed, swapping to next model immediately...`);
     }
   }
   throw lastError || new Error('All transcription models failed.');
@@ -121,28 +121,30 @@ async function translateBatch(
 
   for (const model of TRANSLATION_MODELS) {
     try {
-      const response = await fetchProviderWithRetry(
-        'https://api.groq.com/openai/v1/chat/completions',
-        () => ({
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${groqApiKey}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            model,
-            response_format: { type: 'json_object' },
-            temperature: 0.2,
-            messages: [
-              {
-                role: 'system',
-                content: `You are a subtitle translator. Translate subtitle text from ${sourceLanguage} to ${targetLanguage}. Preserve every id, start and end value. Return JSON only in this shape: {"subtitles":[{"id":1,"start":0,"end":1,"text":"..."}]}. Do not add or remove cues.`,
-              },
-              { role: 'user', content: JSON.stringify({ subtitles }) },
-            ],
-          }),
-        })
-      );
+      const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${groqApiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model,
+          response_format: { type: 'json_object' },
+          temperature: 0.2,
+          messages: [
+            {
+              role: 'system',
+              content: `You are a subtitle translator. Translate subtitle text from ${sourceLanguage} to ${targetLanguage}. Preserve every id, start and end value. Return JSON only in this shape: {"subtitles":[{"id":1,"start":0,"end":1,"text":"..."}]}. Do not add or remove cues.`,
+            },
+            { role: 'user', content: JSON.stringify({ subtitles }) },
+          ],
+        }),
+      });
+
+      if (!response.ok) {
+        const detail = await response.text();
+        throw new Error(`${model} failed (${response.status}): ${detail.slice(0, 200)}`);
+      }
 
       const payload = await response.json();
       const message = payload.choices?.[0]?.message?.content;
@@ -176,7 +178,7 @@ async function translateBatch(
       });
     } catch (err) {
       lastError = err;
-      console.warn(`[Translation Cascade] Model '${model}' failed, trying next...`);
+      console.warn(`[Translation Cascade] Model '${model}' failed, swapping to next model immediately...`);
     }
   }
 
@@ -200,9 +202,6 @@ async function translateSubtitles(
     const batch = subtitles.slice(i, i + BATCH_SIZE);
     const translatedBatch = await translateBatch(batch, sourceLanguage, targetLanguage, groqApiKey);
     translatedAll.push(...translatedBatch);
-    if (i + BATCH_SIZE < subtitles.length) {
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-    }
   }
 
   return translatedAll;
