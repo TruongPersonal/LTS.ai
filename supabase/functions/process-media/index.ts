@@ -107,76 +107,73 @@ async function transcribeFlac(
   throw lastError || new Error('All transcription models failed.');
 }
 
-async function translateBatch(
+async function translateBatchGemini(
   subtitles: SubtitleItem[],
   sourceLanguage: string,
   targetLanguage: string,
-  model: string,
-  groqApiKey: string
+  geminiApiKey: string
 ): Promise<SubtitleItem[]> {
-  const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${groqApiKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model,
-      response_format: { type: 'json_object' },
-      temperature: 0.2,
-      max_completion_tokens: 4096,
-      messages: [
-        {
-          role: 'system',
-          content: `You are a subtitle translator. Translate subtitle text from ${sourceLanguage} to ${targetLanguage}. Preserve every id, start and end value. Return JSON only in this shape: {"subtitles":[{"id":1,"start":0,"end":1,"text":"..."}]}. Do not add or remove cues.`,
+  if (sourceLanguage.toLowerCase() === targetLanguage.toLowerCase()) {
+    return subtitles;
+  }
+  if (!geminiApiKey) {
+    throw new Error('GEMINI_API_KEY is not configured.');
+  }
+
+  const prompt = `You are a professional subtitle translator. Translate every subtitle text from ${sourceLanguage} to ${targetLanguage}.
+Preserve exact id, start, and end values for every item.
+Return JSON only in this exact shape: {"subtitles":[{"id":1,"start":0.0,"end":1.5,"text":"translated text"}]}.
+Do not add, remove, or merge subtitle cues. Input cues count: ${subtitles.length}.`;
+
+  const response = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiApiKey}`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [
+          {
+            parts: [
+              { text: prompt },
+              { text: JSON.stringify({ subtitles }) },
+            ],
+          },
+        ],
+        generationConfig: {
+          responseMimeType: 'application/json',
+          temperature: 0.1,
         },
-        { role: 'user', content: JSON.stringify({ subtitles }) },
-      ],
-    }),
-  });
+      }),
+    }
+  );
 
   if (!response.ok) {
-    const detail = await response.text();
-    const is429 = response.status === 429 || detail.includes('429') || detail.toLowerCase().includes('rate limit');
-    const isTPD = /per day|TPD|requests per day|tokens per day/i.test(detail);
-    const isTPM = /per minute|TPM|RPM|requests per minute|tokens per minute/i.test(detail) || (!isTPD && is429);
-    const err: any = new Error(`${model} failed (${response.status}): ${detail.slice(0, 200)}`);
-    err.is429 = is429;
-    err.isTPD = isTPD;
-    err.isTPM = isTPM;
-    err.status = response.status;
-    throw err;
+    const errorText = await response.text();
+    throw new Error(`Gemini 2.0 Flash failed (${response.status}): ${errorText.slice(0, 200)}`);
   }
 
   const payload = await response.json();
-  const message = payload.choices?.[0]?.message?.content;
-  if (!message) throw new Error(`${model} returned an empty response.`);
+  const textContent = payload.candidates?.[0]?.content?.parts?.[0]?.text;
+  if (!textContent) {
+    throw new Error('Gemini Flash returned an empty response.');
+  }
 
   let parsed: { subtitles?: any[] };
   try {
-    parsed = JSON.parse(message);
+    parsed = JSON.parse(textContent);
   } catch {
-    throw new Error(`${model} returned invalid JSON.`);
+    throw new Error('Gemini Flash returned invalid JSON.');
   }
 
   const translated = normalizeSegments(parsed.subtitles || []);
   if (translated.length !== subtitles.length) {
-    throw new Error(`${model} returned an unexpected number of subtitle cues.`);
-  }
-
-  const sourceById = new Map(subtitles.map((item) => [item.id, item]));
-  const translatedIds = new Set<number>();
-  for (const item of translated) {
-    if (!sourceById.has(item.id) || translatedIds.has(item.id)) {
-      throw new Error(`${model} returned invalid or duplicate subtitle IDs.`);
-    }
-    translatedIds.add(item.id);
+    throw new Error(`Gemini Flash returned ${translated.length} cues, expected ${subtitles.length}.`);
   }
 
   const translatedById = new Map(translated.map((item) => [item.id, item]));
   return subtitles.map((source) => {
-    const item = translatedById.get(source.id)!;
-    return { ...item, start: source.start, end: source.end };
+    const item = translatedById.get(source.id) || source;
+    return { id: source.id, start: source.start, end: source.end, text: item.text || source.text };
   });
 }
 
@@ -304,8 +301,19 @@ serve(async (req) => {
         const subtitles = normalizeSubmittedSubtitles(jsonBody.subtitles || []);
         const sourceLanguage = String(jsonBody.source_language || 'en');
         const targetLanguage = String(jsonBody.target_language || 'vi');
-        const model = String(jsonBody.model || TRANSLATION_MODELS[0]);
 
+        const geminiApiKey = Deno.env.get('GEMINI_API_KEY') ?? '';
+        if (geminiApiKey) {
+          const translatedBatch = await translateBatchGemini(
+            subtitles,
+            sourceLanguage,
+            targetLanguage,
+            geminiApiKey
+          );
+          return jsonResponse({ success: true, subtitles: translatedBatch, provider: 'gemini-2.0-flash' });
+        }
+
+        const model = String(jsonBody.model || TRANSLATION_MODELS[0]);
         const translatedBatch = await translateBatch(
           subtitles,
           sourceLanguage,
@@ -313,7 +321,7 @@ serve(async (req) => {
           model,
           groqApiKey
         );
-        return jsonResponse({ success: true, subtitles: translatedBatch });
+        return jsonResponse({ success: true, subtitles: translatedBatch, provider: model });
       } catch (err: any) {
         if (err?.is429) {
           return jsonResponse(

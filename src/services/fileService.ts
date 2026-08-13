@@ -344,7 +344,7 @@ async function translateSubtitlesClientSide(
     return sourceSubtitles;
   }
 
-  const BATCH_SIZE = 25;
+  const BATCH_SIZE = 100;
   const MODEL_TPM_BUDGETS: Record<string, number> = {
     'llama-3.3-70b-versatile': 9000,
     'llama-3.1-8b-instant': 4500,
