@@ -185,10 +185,14 @@ Translation Principles:
         throw new Error(`${model} returned ${translated.length} cues, expected ${subtitles.length}.`);
       }
 
-      const translatedById = new Map(translated.map((item) => [item.id, item]));
-      return subtitles.map((source) => {
-        const item = translatedById.get(source.id) || source;
-        return { id: source.id, start: source.start, end: source.end, text: item.text || source.text };
+      return subtitles.map((source, index) => {
+        const item = translated[index];
+        return {
+          id: source.id,
+          start: source.start,
+          end: source.end,
+          text: item?.text ? String(item.text).trim() : source.text,
+        };
       });
     } catch (err) {
       lastError = err;
