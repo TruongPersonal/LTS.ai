@@ -31,14 +31,11 @@ export const ProjectDetailPage: React.FC<ProjectDetailPageProps> = ({ project, r
   const [deletingFile, setDeletingFile] = useState<FileMedia | null>(null);
   const [processingProgressByFile, setProcessingProgressByFile] = useState<Record<string, ProcessingProgress>>({});
 
-  const [todayProcessedDuration, setTodayProcessedDuration] = useState<number>(0);
-
   const loadFiles = React.useCallback(async () => {
     setLoading(true);
     setLoadError(null);
     try {
       setFiles(await fileService.getFilesByProject(project.id));
-      setTodayProcessedDuration(await fileService.getTodayProcessedDurationSeconds());
     }
     catch (error) { console.error('Error loading files:', error); setLoadError(t('project.loadError')); }
     finally { setLoading(false); }
@@ -134,10 +131,8 @@ export const ProjectDetailPage: React.FC<ProjectDetailPageProps> = ({ project, r
 
   const hasActiveProcessing = files.some(
     (f) => f.status === 'processing' || f.status === 'queued'
-  ) || Object.values(processingProgressByFile).some(
-    (p) => p && !['completed', 'failed'].includes(p.stage)
   );
-  const isQuotaExceeded = todayProcessedDuration >= 3600;
+
 
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
@@ -171,7 +166,7 @@ export const ProjectDetailPage: React.FC<ProjectDetailPageProps> = ({ project, r
         </div>
         <div className="project-action-buttons flex items-center gap-2 shrink-0 flex-nowrap whitespace-nowrap">
           <button onClick={() => setIsProjectZipExportOpen(true)} className="ui-button ui-button-secondary whitespace-nowrap"><Archive className="size-4" />{t('project.exportZip')}</button>
-          <button onClick={() => setIsDrivePickerOpen(true)} disabled={isQuotaExceeded} className="ui-button ui-button-primary whitespace-nowrap"><HardDrive className="size-4" />{t('media.addDrive')}</button>
+          <button onClick={() => setIsDrivePickerOpen(true)} className="ui-button ui-button-primary whitespace-nowrap"><HardDrive className="size-4" />{t('media.addDrive')}</button>
         </div>
       </header>
 
