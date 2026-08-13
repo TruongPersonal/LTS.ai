@@ -1312,7 +1312,7 @@ div[aria-label*="Google Drive"],
   }
   .editor-main {
     display: grid !important;
-    grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr) !important;
+    /* grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr) !important; */
     gap: 12px !important;
     height: calc(100dvh - 58px) !important;
     padding: 6px 12px !important;
