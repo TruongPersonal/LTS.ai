@@ -67,10 +67,13 @@ const TRANSLATION_MODELS = [
 async function fetchGroqChatWithRetry(
   model: string,
   messages: Array<{ role: string; content: string }>,
-  groqApiKey: string,
-  maxAttempts = 2
+  groqApiKey: string
 ): Promise<Response> {
+  // If primary 70B model, do NOT wait — swap to 8B instant model in 0.01s on 429!
+  const isPrimaryModel = model.includes('70b');
+  const maxAttempts = isPrimaryModel ? 1 : 2;
   let attempt = 0;
+
   while (attempt < maxAttempts) {
     attempt++;
     const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
@@ -89,7 +92,7 @@ async function fetchGroqChatWithRetry(
 
     if (response.status === 429 && attempt < maxAttempts) {
       const retryAfterHeader = response.headers.get('retry-after');
-      const delayMs = retryAfterHeader ? Math.min(parseInt(retryAfterHeader, 10) * 1000, 3000) : 1000;
+      const delayMs = retryAfterHeader ? Math.min(parseInt(retryAfterHeader, 10) * 1000, 2000) : 800;
       await new Promise((resolve) => setTimeout(resolve, delayMs));
       continue;
     }
@@ -108,9 +111,12 @@ async function transcribeFlac(
   let lastError: unknown = null;
   for (const model of TRANSCRIPTION_MODELS) {
     try {
+      const isPrimaryModel = model.includes('turbo');
+      const maxAttempts = isPrimaryModel ? 1 : 2;
       let attempt = 0;
       let response: Response | null = null;
-      while (attempt < 2) {
+
+      while (attempt < maxAttempts) {
         attempt++;
         const formData = new FormData();
         formData.append('file', blob, fileName || 'audio.flac');
@@ -123,9 +129,9 @@ async function transcribeFlac(
           body: formData,
         });
 
-        if (response.status === 429 && attempt < 2) {
+        if (response.status === 429 && attempt < maxAttempts) {
           const retryAfterHeader = response.headers.get('retry-after');
-          const delayMs = retryAfterHeader ? Math.min(parseInt(retryAfterHeader, 10) * 1000, 3000) : 1000;
+          const delayMs = retryAfterHeader ? Math.min(parseInt(retryAfterHeader, 10) * 1000, 2000) : 800;
           await new Promise((resolve) => setTimeout(resolve, delayMs));
           continue;
         }
