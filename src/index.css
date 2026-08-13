@@ -421,7 +421,7 @@ a:focus-visible {
 .editor-translation-row {
   position: relative;
   width: 100%;
-  padding-right: 68px;
+  padding-right: 84px;
   padding-left: 4px;
   box-sizing: border-box;
 }
@@ -1312,7 +1312,7 @@ div[aria-label*="Google Drive"],
   }
   .editor-main {
     display: grid !important;
-    /* grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr) !important; */
+    grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr) !important;
     gap: 12px !important;
     height: calc(100dvh - 58px) !important;
     padding: 6px 12px !important;
@@ -1596,10 +1596,11 @@ div[aria-label*="Google Drive"],
   }
   .editor-cue-source-row,
   .editor-translation-row {
-    grid-template-columns: minmax(12px, 0.2fr) minmax(0, 1fr) minmax(62px, auto) !important;
+    padding-right: 72px !important;
     gap: 3px !important;
   }
   .editor-inline-actions {
+    right: 2px !important;
     gap: 3px !important;
   }
   .editor-target-input {
@@ -1637,8 +1638,8 @@ div[aria-label*="Google Drive"],
   }
   .editor-cue-source-row,
   .editor-translation-row {
-    grid-template-columns: minmax(10px, 0.15fr) minmax(0, 1fr) minmax(58px, auto) !important;
-    gap: 2px !important;
+    padding-right: 68px !important;
+    padding-left: 0px !important;
   }
   .editor-inline-actions button,
   .editor-cue-header-actions button {
