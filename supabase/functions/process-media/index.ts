@@ -67,10 +67,9 @@ const TRANSLATION_MODELS = [
 async function fetchGroqChatWithRetry(
   model: string,
   messages: Array<{ role: string; content: string }>,
-  groqApiKey: string
+  groqApiKey: string,
+  maxAttempts = 3
 ): Promise<Response> {
-  const isPrimaryModel = model.includes('70b');
-  const maxAttempts = isPrimaryModel ? 1 : 3;
   let attempt = 0;
 
   while (attempt < maxAttempts) {
@@ -110,8 +109,7 @@ async function transcribeFlac(
   let lastError: unknown = null;
   for (const model of TRANSCRIPTION_MODELS) {
     try {
-      const isPrimaryModel = model.includes('turbo');
-      const maxAttempts = isPrimaryModel ? 1 : 3;
+      const maxAttempts = 3;
       let attempt = 0;
       let response: Response | null = null;
 
