@@ -48,9 +48,22 @@ const useFixedLoading = (authLoading: boolean, durationMs = 1200) => {
 };
 
 const PublicLandingRoute: React.FC = () => {
-  const { profile } = useAuth();
+  const { profile, loading } = useAuth();
   const navigate = useNavigate();
+  const isAppLoading = useFixedLoading(loading, 1200);
 
+  const [skipLoading] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const shouldSkip = sessionStorage.getItem('skip_landing_loading') === 'true';
+      if (shouldSkip) {
+        sessionStorage.removeItem('skip_landing_loading');
+        return true;
+      }
+    }
+    return false;
+  });
+
+  if (isAppLoading && !skipLoading) return <PulseLoadingScreen />;
   if (profile) return <Navigate to="/projects" replace />;
 
   return (
