@@ -399,76 +399,65 @@ async function translateSubtitlesClientSide(
       totalBatches
     );
 
-    try {
-      const res = await invokeJson({
-        action: 'translate-batch',
-        project_id: projectId,
-        file_id: fileId,
-        subtitles: batch,
-        source_language: sourceLanguage,
-        target_language: targetLanguage,
-        model: activeModel,
-      });
+    let batchSuccess = false;
+    while (!batchSuccess) {
+      activeModel = TRANSLATION_MODELS[currentModelIndex];
 
-      translatedAll.push(...(res.subtitles || []));
-      tokensUsedInCurrentWindow += estimatedBatchTokens;
-    } catch (err: any) {
-      const is429 = err?.message?.includes('429') || err?.message?.toLowerCase()?.includes('rate limit');
-      if (is429 && currentModelIndex < TRANSLATION_MODELS.length - 1) {
-        currentModelIndex++;
-        activeModel = TRANSLATION_MODELS[currentModelIndex];
-        console.warn(`[Client Translation] Swapping model to ${activeModel}...`);
+      try {
+        const res = await invokeJson({
+          action: 'translate-batch',
+          project_id: projectId,
+          file_id: fileId,
+          subtitles: batch,
+          source_language: sourceLanguage,
+          target_language: targetLanguage,
+          model: activeModel,
+        });
 
-        windowStartTime = Date.now();
-        tokensUsedInCurrentWindow = 0;
+        translatedAll.push(...(res.subtitles || []));
+        tokensUsedInCurrentWindow += estimatedBatchTokens;
+        batchSuccess = true;
+      } catch (err: any) {
+        const is429 = err?.message?.includes('429') || err?.is429;
+        const isRateDay = err?.rate_limit_type === 'day' || /per day|TPD|requests per day|tokens per day/i.test(err?.message || '');
 
-        try {
-          const res = await invokeJson({
-            action: 'translate-batch',
-            project_id: projectId,
-            file_id: fileId,
-            subtitles: batch,
-            source_language: sourceLanguage,
-            target_language: targetLanguage,
-            model: activeModel,
-          });
+        if (!is429) {
+          throw err;
+        }
 
-          translatedAll.push(...(res.subtitles || []));
-          tokensUsedInCurrentWindow += estimatedBatchTokens;
-        } catch (retryErr: any) {
-          const isRetry429 = retryErr?.message?.includes('429') || retryErr?.message?.toLowerCase()?.includes('rate limit');
-          if (isRetry429) {
-            console.warn('[Client Translation] Fallback model also hit 429. Resting 60s for window reset...');
-            emitProgress(
-              onProgress,
-              fileId,
-              'finalizing',
-              90 + Math.floor((batchIndex / totalBatches) * 8),
-              `Hệ thống tạm hết hạn mức AI ngày. Đang nghỉ 60s trước khi thử lại lô ${batchIndex}/${totalBatches}...`,
-              batchIndex,
-              totalBatches
+        if (isRateDay) {
+          // --- HẠN MỨC NGÀY (TPD): ĐỔI NGAY SANG MODEL KHÁC ---
+          if (currentModelIndex < TRANSLATION_MODELS.length - 1) {
+            console.warn(
+              `[Rate Limit Classifier] Model '${activeModel}' hit DAILY limit (TPD). Switching IMMEDIATELY to fallback model '${
+                TRANSLATION_MODELS[currentModelIndex + 1]
+              }'...`
             );
-            await new Promise((resolve) => setTimeout(resolve, 60_000));
+            currentModelIndex++;
             windowStartTime = Date.now();
             tokensUsedInCurrentWindow = 0;
-
-            const res = await invokeJson({
-              action: 'translate-batch',
-              project_id: projectId,
-              file_id: fileId,
-              subtitles: batch,
-              source_language: sourceLanguage,
-              target_language: targetLanguage,
-              model: activeModel,
-            });
-            translatedAll.push(...(res.subtitles || []));
-            tokensUsedInCurrentWindow += estimatedBatchTokens;
+            // Vòng lặp while sẽ tự động thử lại lô này với Model mới ngay lập tức!
           } else {
-            throw retryErr;
+            console.error('[Rate Limit Classifier] All models hit DAILY limit (TPD). Daily quota exhausted.');
+            throw new Error(i18n.t('media.systemQuotaExceeded'));
           }
+        } else {
+          // --- HẠN MỨC PHÚT (TPM): NGHỈ 60s RỒI THỬ LẠI CÙNG MODEL ---
+          console.warn(`[Rate Limit Classifier] Model '${activeModel}' hit MINUTE limit (TPM). Resting 60s for window reset...`);
+          emitProgress(
+            onProgress,
+            fileId,
+            'finalizing',
+            90 + Math.floor((batchIndex / totalBatches) * 8),
+            `Chạm hạn mức phút (TPM). Đang dừng 60s để nạp lại hạn mức cho ${activeModel} (lô ${batchIndex}/${totalBatches})...`,
+            batchIndex,
+            totalBatches
+          );
+          await new Promise((resolve) => setTimeout(resolve, 61_000));
+          windowStartTime = Date.now();
+          tokensUsedInCurrentWindow = 0;
+          // Vòng lặp while sẽ tự động thử lại lô này với cùng Model!
         }
-      } else {
-        throw err;
       }
     }
   }

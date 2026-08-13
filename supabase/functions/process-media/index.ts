@@ -138,8 +138,12 @@ async function translateBatch(
   if (!response.ok) {
     const detail = await response.text();
     const is429 = response.status === 429 || detail.includes('429') || detail.toLowerCase().includes('rate limit');
+    const isTPD = /per day|TPD|requests per day|tokens per day/i.test(detail);
+    const isTPM = /per minute|TPM|RPM|requests per minute|tokens per minute/i.test(detail) || (!isTPD && is429);
     const err: any = new Error(`${model} failed (${response.status}): ${detail.slice(0, 200)}`);
     err.is429 = is429;
+    err.isTPD = isTPD;
+    err.isTPM = isTPM;
     err.status = response.status;
     throw err;
   }
@@ -296,19 +300,33 @@ serve(async (req) => {
     if (!action) return jsonResponse({ error: 'Missing action.' }, 400);
 
     if (action === 'translate-batch') {
-      const subtitles = normalizeSubmittedSubtitles(jsonBody.subtitles || []);
-      const sourceLanguage = String(jsonBody.source_language || 'en');
-      const targetLanguage = String(jsonBody.target_language || 'vi');
-      const model = String(jsonBody.model || TRANSLATION_MODELS[0]);
+      try {
+        const subtitles = normalizeSubmittedSubtitles(jsonBody.subtitles || []);
+        const sourceLanguage = String(jsonBody.source_language || 'en');
+        const targetLanguage = String(jsonBody.target_language || 'vi');
+        const model = String(jsonBody.model || TRANSLATION_MODELS[0]);
 
-      const translatedBatch = await translateBatch(
-        subtitles,
-        sourceLanguage,
-        targetLanguage,
-        model,
-        groqApiKey
-      );
-      return jsonResponse({ success: true, subtitles: translatedBatch });
+        const translatedBatch = await translateBatch(
+          subtitles,
+          sourceLanguage,
+          targetLanguage,
+          model,
+          groqApiKey
+        );
+        return jsonResponse({ success: true, subtitles: translatedBatch });
+      } catch (err: any) {
+        if (err?.is429) {
+          return jsonResponse(
+            {
+              error: err.message,
+              is429: true,
+              rate_limit_type: err.isTPD ? 'day' : 'minute',
+            },
+            429
+          );
+        }
+        throw err;
+      }
     }
 
     if (!projectId || !fileId) return jsonResponse({ error: 'Missing project_id or file_id.' }, 400);
