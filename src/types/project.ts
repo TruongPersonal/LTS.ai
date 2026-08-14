@@ -19,6 +19,7 @@ export const TARGET_LANGUAGES: LanguageOption[] = [
 ];
 
 export const NATIVE_LANGUAGE_NAMES: Record<string, string> = {
+  // ISO-639-1 Codes
   vi: 'Tiếng Việt',
   en: 'English',
   ja: '日本語',
@@ -32,10 +33,26 @@ export const NATIVE_LANGUAGE_NAMES: Record<string, string> = {
   pt: 'Português',
   th: 'ไทย',
   id: 'Bahasa Indonesia',
+
+  // Full English names from Whisper/Gemini/AI detection
+  vietnamese: 'Tiếng Việt',
+  english: 'English',
+  japanese: '日本語',
+  korean: '한국어',
+  chinese: '中文',
+  french: 'Français',
+  italian: 'Italiano',
+  spanish: 'Español',
+  german: 'Deutsch',
+  russian: 'Русский',
+  portuguese: 'Português',
+  thai: 'ไทย',
+  indonesian: 'Bahasa Indonesia',
 };
 
 export const getLanguageOption = (code: string): LanguageOption | undefined => {
-  return TARGET_LANGUAGES.find((lang) => lang.code === code.toLowerCase().trim());
+  const c = code.toLowerCase().trim();
+  return TARGET_LANGUAGES.find((lang) => lang.code === c);
 };
 
 export const getNativeLanguageName = (code: string | null | undefined): string => {
@@ -58,6 +75,12 @@ export const getLanguageName = (code: string | null | undefined, locale: string 
     pt: 'Tiếng Bồ Đào Nha',
     th: 'Tiếng Thái',
     id: 'Tiếng Indonesia',
+    spanish: 'Tiếng Tây Ban Nha',
+    german: 'Tiếng Đức',
+    russian: 'Tiếng Nga',
+    portuguese: 'Tiếng Bồ Đào Nha',
+    thai: 'Tiếng Thái',
+    indonesian: 'Tiếng Indonesia',
   };
   const extraLangsEn: Record<string, string> = {
     es: 'Spanish',
@@ -66,6 +89,12 @@ export const getLanguageName = (code: string | null | undefined, locale: string 
     pt: 'Portuguese',
     th: 'Thai',
     id: 'Indonesian',
+    spanish: 'Spanish',
+    german: 'German',
+    russian: 'Russian',
+    portuguese: 'Portuguese',
+    thai: 'Thai',
+    indonesian: 'Indonesian',
   };
   if (locale.startsWith('vi') && extraLangsVi[c]) return extraLangsVi[c];
   if (!locale.startsWith('vi') && extraLangsEn[c]) return extraLangsEn[c];
