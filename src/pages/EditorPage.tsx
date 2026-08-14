@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { FileMedia, Project } from '../types/database';
-import { getLanguageOption } from '../types/project';
+import { getLanguageName } from '../types/project';
 import { VideoPlayer } from '../components/editor/VideoPlayer';
 import { ExportModal } from '../components/editor/ExportModal';
 import { EditorToolbar } from '../components/editor/EditorToolbar';
@@ -95,14 +95,12 @@ export const EditorPage: React.FC<EditorPageProps> = ({
     getResolvedVisibility,
   } = useCueVisibility();
 
-  const getNativeLanguageName = (code: string | null | undefined): string => {
-    if (!code) return 'English';
-    const opt = getLanguageOption(code.toLowerCase());
-    return opt ? opt.nativeName : code;
-  };
-
-  const sourceLanguageLabel = getNativeLanguageName(sourceLanguage || file.detected_source_lang);
-  const targetLanguageLabel = getNativeLanguageName(project.target_language);
+  const { i18n } = useTranslation();
+  const sourceLanguageLabel = getLanguageName(
+    sourceLanguage || file.detected_source_lang,
+    i18n.language
+  );
+  const targetLanguageLabel = getLanguageName(project.target_language, i18n.language);
   const activeCueId = findActiveCueId(subtitles, currentTime);
 
   const editingTextCue =

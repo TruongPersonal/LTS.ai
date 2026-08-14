@@ -32,11 +32,36 @@ export const useEditorVideo = ({ driveFileId, inputSource }: UseEditorVideoParam
           return;
         }
 
-        const streamUrl = `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(
-          driveFileId
-        )}?alt=media&access_token=${encodeURIComponent(accessToken)}`;
+        const response = await fetch(
+          `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(driveFileId)}?alt=media`,
+          {
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+            },
+          }
+        );
 
-        setVideoUrl(streamUrl);
+        if (!response.ok) {
+          if (response.status === 401 || response.status === 403) {
+            setVideoError(t('editor.video.sessionExpired'));
+            return;
+          }
+          throw new Error(`Google Drive fetch failed with status: ${response.status}`);
+        }
+
+        const blob = await response.blob();
+        if (blob.size === 0) {
+          setVideoError(t('processing.emptyMediaFile'));
+          return;
+        }
+
+        const objectUrl = URL.createObjectURL(blob);
+        setVideoUrl((prev) => {
+          if (prev && prev.startsWith('blob:')) {
+            URL.revokeObjectURL(prev);
+          }
+          return objectUrl;
+        });
       } else {
         setVideoUrl(driveFileId);
       }
@@ -50,6 +75,14 @@ export const useEditorVideo = ({ driveFileId, inputSource }: UseEditorVideoParam
 
   useEffect(() => {
     void loadVideo();
+    return () => {
+      setVideoUrl((prev) => {
+        if (prev && prev.startsWith('blob:')) {
+          URL.revokeObjectURL(prev);
+        }
+        return '';
+      });
+    };
   }, [loadVideo]);
 
   return {
