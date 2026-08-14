@@ -9,34 +9,16 @@
     "cancel": "Hủy",
     "confirm": "Xác nhận",
     "close": "Đóng",
-    "retry": "Thử lại",
-    "delete": "Xóa",
     "edit": "Chỉnh sửa",
     "open": "Mở",
     "back": "Quay lại",
-    "loading": "Đang tải",
-    "search": "Tìm kiếm",
-    "total": "Tổng cộng",
-    "source": "Nguồn",
-    "target": "Đích",
     "language": "Ngôn ngữ",
     "theme": "Giao diện",
-    "logout": "Đăng xuất",
-    "create": "Tạo mới",
-    "update": "Cập nhật",
-    "download": "Tải về",
-    "export": "Xuất",
-    "files": "tệp",
-    "projects": "dự án",
-    "or": "hoặc",
-    "unknown": "Không xác định",
     "more": "Thêm tùy chọn"
   },
   "navigation": {
     "dashboard": "Dự án",
     "logout": "Đăng xuất",
-    "backHome": "Trang chủ",
-    "backProjects": "Về danh sách dự án",
     "workspaceNavigation": "Điều hướng không gian làm việc",
     "newProject": "Dự án mới",
     "searchProjects": "Tìm dự án",
@@ -49,10 +31,7 @@
     "subtitle": "Tạo và dịch phụ đề video bằng AI.",
     "googleContinue": "Tiếp tục với Google",
     "redirecting": "Đang chuyển hướng...",
-    "googleDriveExplanation": "Google Drive được sử dụng để đọc video bạn chủ động chọn trong quá trình xử lý và xem trước.",
     "loginError": "Không thể đăng nhập bằng Google. Vui lòng thử lại.",
-    "googleAccount": "Tài khoản Google",
-    "googleAccountDescription": "LTS.ai sử dụng Google OAuth để đăng nhập và truy cập các video Google Drive bạn chọn. Ứng dụng không có mật khẩu riêng.",
     "badge": "Tham gia hệ thống",
     "secure": "Tiện lợi",
     "fastAi": "Bảo mật",
@@ -108,7 +87,6 @@
     }
   },
   "dashboard": {
-    "eyebrow": "Workspace",
     "title": "Dự án",
     "description": "Tiếp tục công việc hoặc bắt đầu một dự án phụ đề mới.",
     "searchPlaceholder": "Tìm kiếm dự án...",
@@ -137,7 +115,6 @@
     "createAction": "Tạo dự án",
     "updating": "Đang lưu...",
     "updateAction": "Lưu thay đổi",
-    "defaultDescription": "Dự án phụ đề video.",
     "fileCount": "{{count}} tệp",
     "loadError": "Không thể tải tệp trong dự án.",
     "retryLoad": "Tải lại tệp",
@@ -152,9 +129,7 @@
     "updateError": "Có lỗi xảy ra khi lưu thay đổi.",
     "editAria": "Sửa dự án",
     "deleteAria": "Xóa dự án",
-    "openAria": "Mở dự án",
-    "videosTitle": "Media trong dự án",
-    "videosDescription": "Theo dõi quá trình xử lý, mở editor hoặc xuất phụ đề."
+    "openAria": "Mở dự án"
   },
   "media": {
     "tabs": {
@@ -162,11 +137,9 @@
       "completed": "Đã hoàn thành"
     },
     "addDrive": "Thêm tệp",
-    "quotaExceededTooltip": "Bạn đã đạt hạn mức 60 phút/ngày",
     "systemQuotaExceeded": "Xin lỗi, hệ thống đã đạt hạn mức xử lý.",
     "serverError": "Xin lỗi, máy chủ xử lý gặp sự cố tạm thời.",
     "startAll": "Xử lý ({{count}})",
-    "retry": "Thử lại",
     "edit": "Chỉnh sửa",
     "renameFile": "Sửa tệp",
     "renameModalTitle": "Sửa tệp",
@@ -193,9 +166,7 @@
       "exceedsSizeLimit": "Dung lượng tệp vượt quá giới hạn 500MB/tệp.",
       "dailyDurationExceeded": "Bạn đã đạt hạn mức 60 phút/ngày. Vui lòng quay lại vào ngày mai.",
       "fileType": "Loại tệp",
-      "duration": "Thời lượng",
       "fileName": "Tên tệp",
-      "fileNamePlaceholder": "VD: Bai_hoc_1.mp4",
       "hasSubtitle": "Có sẵn phụ đề?",
       "subtitleFile": "Chọn tệp phụ đề (.srt / .vtt)",
       "sourceLanguage": "Ngôn ngữ gốc",
@@ -234,38 +205,16 @@
     "driveDownloadFailedStatus": "Tải tệp từ Google Drive thất bại (Mã lỗi: {{status}})"
   },
   "editor": {
-    "saved": "Đã lưu",
     "export": "Xuất",
     "subtitleList": "Danh sách phụ đề",
     "noTargetSubtitle": "Chưa có phụ đề",
     "createFirstCue": "Tạo dòng mới",
-    "original": "Original",
     "loadError": "Không thể tải phụ đề.",
     "retryLoad": "Tải lại phụ đề",
     "saveError": "Không thể lưu phụ đề. Vui lòng thử lại.",
-    "invalidTiming": "Thời gian cue không hợp lệ. Thời gian kết thúc phải lớn hơn thời gian bắt đầu.",
     "timing": {
       "start": "Bắt đầu",
-      "end": "Kết thúc",
-      "edit": "Chỉnh thời gian",
-      "confirm": "Xác nhận thời gian",
-      "cancel": "Hủy chỉnh thời gian"
-    },
-    "cue": {
-      "addAfter": "Thêm cue sau",
-      "delete": "Xóa cue",
-      "editTimingAria": "Chỉnh thời gian cue {{index}}",
-      "addAfterAria": "Thêm cue sau cue {{index}}",
-      "deleteAria": "Xóa cue {{index}}",
-      "editTranslation": "Chỉnh bản dịch",
-      "confirmTranslation": "Xác nhận bản dịch",
-      "cancelTranslation": "Hủy chỉnh bản dịch",
-      "editTranslationAria": "Chỉnh bản dịch cue {{index}}"
-    },
-    "unsavedDialog": {
-      "title": "Có thay đổi chưa lưu",
-      "message": "Bạn có thay đổi phụ đề chưa lưu. Rời editor và bỏ các thay đổi này?",
-      "confirm": "Rời editor"
+      "end": "Kết thúc"
     },
     "deleteCueDialog": {
       "title": "Xác nhận xóa dòng phụ đề",
@@ -273,23 +222,17 @@
       "confirm": "Xóa dòng"
     },
     "video": {
-      "loading": "Đang tải...",
       "cannotOpen": "Không thể mở tệp.",
       "empty": "Chưa có tệp để phát.",
       "codecError": "Định dạng tệp không được hỗ trợ.",
       "sessionExpired": "Phiên làm việc đã hết hạn. Vui lòng đăng nhập lại bằng Google.",
-      "downloadFailed": "Phiên làm việc đã hết hạn. Vui lòng đăng nhập lại bằng Google.",
-      "emptyFile": "Tệp trên Google Drive không có dữ liệu."
+      "downloadFailed": "Phiên làm việc đã hết hạn. Vui lòng đăng nhập lại bằng Google."
     },
-    "details": "Xem",
     "backToProject": "Quay lại dự án",
     "visibility": {
       "title": "Cách hiển thị",
-      "details": "Chi tiết cue",
       "metadata": "Thông tin",
-      "metadataHint": "#, trạng thái và thời gian",
       "source": "Bản gốc",
-      "sourceHint": "Nội dung phụ đề nguồn",
       "actions": "Các nút",
       "actionsHint": "Chỉnh sửa, thêm và xóa cue"
     }
@@ -320,15 +263,7 @@
   "dialog": {
     "confirm": "Xác nhận",
     "cancel": "Hủy",
-    "delete": "Xóa",
     "close": "Đóng"
-  },
-  "errors": {
-    "generic": "Có lỗi xảy ra. Vui lòng thử lại.",
-    "load": "Không thể tải dữ liệu.",
-    "save": "Không thể lưu thay đổi.",
-    "network": "Lỗi kết nối mạng. Vui lòng kiểm tra đường truyền Internet.",
-    "session": "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại."
   },
   "accessibility": {
     "loadingProjects": "Đang tải dự án",

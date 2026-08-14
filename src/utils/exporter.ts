@@ -13,10 +13,6 @@ export interface FileSubtitleExportPackage {
   sourceSubtitles?: SubtitleItem[];
 }
 
-export const cleanFileNameHelper = (fileName: string): string => {
-  return fileName;
-};
-
 /**
  * Single subtitle file export
  */
@@ -27,7 +23,7 @@ export const downloadSubtitleFile = (
   format: SubtitleExportFormat,
   track: SubtitleExportTrack = 'target'
 ) => {
-  const cleanFileName = cleanFileNameHelper(fileName);
+  const cleanFileName = fileName;
 
   const getContent = (items: SubtitleItem[]) => {
     let content = '';
@@ -86,7 +82,7 @@ export const downloadProjectZip = async (
   };
 
   items.forEach((item) => {
-    const cleanFileName = cleanFileNameHelper(item.fileName);
+    const cleanFileName = item.fileName;
     const effectiveSource = (item.sourceSubtitles && item.sourceSubtitles.length > 0) ? item.sourceSubtitles : item.subtitles;
 
     if (track === 'source') {

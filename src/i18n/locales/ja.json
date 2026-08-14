@@ -9,34 +9,16 @@
     "cancel": "キャンセル",
     "confirm": "確認",
     "close": "閉じる",
-    "retry": "再試行",
-    "delete": "削除",
     "edit": "編集",
     "open": "開く",
     "back": "戻る",
-    "loading": "読み込み中",
-    "search": "検索",
-    "total": "合計",
-    "source": "原文",
-    "target": "翻訳先",
     "language": "言語",
     "theme": "表示",
-    "logout": "ログアウト",
-    "create": "新規作成",
-    "update": "更新",
-    "download": "ダウンロード",
-    "export": "書き出し",
-    "files": "ファイル",
-    "projects": "プロジェクト",
-    "or": "または",
-    "unknown": "不明",
     "more": "その他の操作"
   },
   "navigation": {
     "dashboard": "プロジェクト",
     "logout": "ログアウト",
-    "backHome": "ホーム",
-    "backProjects": "プロジェクト一覧へ",
     "workspaceNavigation": "ワークスペースナビゲーション",
     "newProject": "新しいプロジェクト",
     "searchProjects": "プロジェクトを検索",
@@ -49,10 +31,7 @@
     "subtitle": "AIで動画字幕を作成・翻訳します。",
     "googleContinue": "Googleで続行",
     "redirecting": "移動中...",
-    "googleDriveExplanation": "処理とプレビューには、あなたが選択したGoogle Drive動画のみを使用します。",
     "loginError": "Googleでログインできませんでした。もう一度お試しください。",
-    "googleAccount": "Googleアカウント",
-    "googleAccountDescription": "LTS.aiはGoogle OAuthでログインし、あなたが選んだDrive動画にアクセスします。専用パスワードはありません。",
     "badge": "システムに参加",
     "secure": "便利",
     "fastAi": "安全",
@@ -108,7 +87,6 @@
     }
   },
   "dashboard": {
-    "eyebrow": "Workspace",
     "title": "プロジェクト",
     "description": "続きから作業するか、新しい字幕プロジェクトを始めましょう。",
     "searchPlaceholder": "プロジェクトを検索...",
@@ -137,7 +115,6 @@
     "createAction": "作成",
     "updating": "保存中...",
     "updateAction": "変更を保存",
-    "defaultDescription": "動画字幕プロジェクト。",
     "fileCount": "{{count}} ファイル",
     "loadError": "プロジェクト内のファイルを読み込めませんでした。",
     "retryLoad": "ファイルを再読み込み",
@@ -152,9 +129,7 @@
     "updateError": "変更を保存できませんでした。",
     "editAria": "プロジェクトを編集",
     "deleteAria": "プロジェクトを削除",
-    "openAria": "プロジェクトを開く",
-    "videosTitle": "プロジェクトの動画",
-    "videosDescription": "処理状況を確認し、エディタを開くか字幕を書き出します。"
+    "openAria": "プロジェクトを開く"
   },
   "media": {
     "tabs": {
@@ -162,11 +137,9 @@
       "completed": "完了"
     },
     "addDrive": "ファイル追加",
-    "quotaExceededTooltip": "1日の制限時間（60分）に達しました",
     "systemQuotaExceeded": "申し訳ありません。システムの処理上限に達しました。",
     "serverError": "申し訳ありません。処理サーバーで一時的な障害が発生しました。",
     "startAll": "処理 ({{count}})",
-    "retry": "再試行",
     "edit": "編集",
     "renameFile": "ファイルを編集",
     "renameModalTitle": "ファイルを編集",
@@ -193,9 +166,7 @@
       "exceedsSizeLimit": "ファイルサイズが制限（500MB/ファイル）を超えています。",
       "dailyDurationExceeded": "1日の制限（60分）に達しました。明日再度お試しください。",
       "fileType": "ファイル形式",
-      "duration": "再生時間",
       "fileName": "ファイル名",
-      "fileNamePlaceholder": "例: lesson_1.mp4",
       "hasSubtitle": "既存の字幕がありますか？",
       "subtitleFile": "字幕ファイルを選択 (.srt / .vtt)",
       "sourceLanguage": "原文の言語",
@@ -234,38 +205,16 @@
     "driveDownloadFailedStatus": "Googleドライブからのダウンロードに失敗しました (ステータス: {{status}})"
   },
   "editor": {
-    "saved": "保存済み",
     "export": "書き出し",
     "subtitleList": "字幕一覧",
     "noTargetSubtitle": "字幕がまだありません",
     "createFirstCue": "新しい行を作成",
-    "original": "Original",
     "loadError": "字幕を読み込めませんでした。",
     "retryLoad": "字幕を再読み込み",
     "saveError": "字幕を保存できませんでした。もう一度お試しください。",
-    "invalidTiming": "キューの時間が正しくありません。終了時間は開始時間より後にしてください。",
     "timing": {
       "start": "開始",
-      "end": "終了",
-      "edit": "時間を編集",
-      "confirm": "時間を適用",
-      "cancel": "時間編集をキャンセル"
-    },
-    "cue": {
-      "addAfter": "次にキューを追加",
-      "delete": "キューを削除",
-      "editTimingAria": "キュー{{index}}の時間を編集",
-      "addAfterAria": "キュー{{index}}の後に追加",
-      "deleteAria": "キュー{{index}}を削除",
-      "editTranslation": "翻訳を編集",
-      "confirmTranslation": "翻訳を適用",
-      "cancelTranslation": "翻訳編集をキャンセル",
-      "editTranslationAria": "キュー{{index}}の翻訳を編集"
-    },
-    "unsavedDialog": {
-      "title": "未保存の変更があります",
-      "message": "字幕に未保存の変更があります。破棄してエディターを離れますか？",
-      "confirm": "エディターを離れる"
+      "end": "終了"
     },
     "deleteCueDialog": {
       "title": "字幕行の削除確認",
@@ -273,23 +222,17 @@
       "confirm": "行を削除"
     },
     "video": {
-      "loading": "読み込み中...",
       "cannotOpen": "ファイルを開けません。",
       "empty": "再生するファイルがありません。",
       "codecError": "未対応のファイル形式です。",
       "sessionExpired": "セッションの期限が切れました。Googleで再ログインしてください。",
-      "downloadFailed": "セッションの期限が切れました。Googleで再ログインしてください。",
-      "emptyFile": "Google Driveのファイルが空です。"
+      "downloadFailed": "セッションの期限が切れました。Googleで再ログインしてください。"
     },
-    "details": "表示",
     "backToProject": "プロジェクトに戻る",
     "visibility": {
       "title": "表示方法",
-      "details": "キュー詳細",
       "metadata": "情報",
-      "metadataHint": "番号・状態・時間",
       "source": "原文",
-      "sourceHint": "元の字幕テキスト",
       "actions": "ボタン",
       "actionsHint": "編集・追加・削除"
     }
@@ -320,15 +263,7 @@
   "dialog": {
     "confirm": "確認",
     "cancel": "キャンセル",
-    "delete": "削除",
     "close": "閉じる"
-  },
-  "errors": {
-    "generic": "エラーが発生しました。もう一度お試しください。",
-    "load": "データを読み込めませんでした。",
-    "save": "変更を保存できませんでした。",
-    "network": "ネットワークエラーです。インターネット接続をご確認ください。",
-    "session": "セッションの期限が切れました。再ログインしてください。"
   },
   "accessibility": {
     "loadingProjects": "プロジェクトを読み込み中",

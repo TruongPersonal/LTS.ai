@@ -9,34 +9,16 @@
     "cancel": "Cancel",
     "confirm": "Confirm",
     "close": "Close",
-    "retry": "Retry",
-    "delete": "Delete",
     "edit": "Edit",
     "open": "Open",
     "back": "Back",
-    "loading": "Loading",
-    "search": "Search",
-    "total": "Total",
-    "source": "Source",
-    "target": "Target",
     "language": "Language",
     "theme": "Theme",
-    "logout": "Log out",
-    "create": "Create",
-    "update": "Update",
-    "download": "Download",
-    "export": "Export",
-    "files": "files",
-    "projects": "projects",
-    "or": "or",
-    "unknown": "Unknown",
     "more": "More options"
   },
   "navigation": {
     "dashboard": "Projects",
     "logout": "Log out",
-    "backHome": "Home",
-    "backProjects": "Back to projects",
     "workspaceNavigation": "Workspace navigation",
     "newProject": "New project",
     "searchProjects": "Search projects",
@@ -49,10 +31,7 @@
     "subtitle": "Create and translate video subtitles with AI.",
     "googleContinue": "Continue with Google",
     "redirecting": "Redirecting...",
-    "googleDriveExplanation": "Google Drive is used only to read videos you choose for processing and preview.",
     "loginError": "Could not sign in with Google. Please try again.",
-    "googleAccount": "Google account",
-    "googleAccountDescription": "LTS.ai uses Google OAuth to sign in and access the Drive videos you choose. The app does not have a separate password.",
     "badge": "Join system",
     "secure": "Convenient",
     "fastAi": "Secure",
@@ -108,7 +87,6 @@
     }
   },
   "dashboard": {
-    "eyebrow": "Workspace",
     "title": "Projects",
     "description": "Continue where you left off or start a new subtitle project.",
     "searchPlaceholder": "Search projects...",
@@ -137,7 +115,6 @@
     "createAction": "Create project",
     "updating": "Saving...",
     "updateAction": "Save changes",
-    "defaultDescription": "Video subtitle project.",
     "fileCount": "{{count}} files",
     "loadError": "Could not load project files.",
     "retryLoad": "Reload files",
@@ -152,9 +129,7 @@
     "updateError": "Could not save project changes.",
     "editAria": "Edit project",
     "deleteAria": "Delete project",
-    "openAria": "Open project",
-    "videosTitle": "Project videos",
-    "videosDescription": "Track processing, open the editor, or export subtitles."
+    "openAria": "Open project"
   },
   "media": {
     "tabs": {
@@ -162,11 +137,9 @@
       "completed": "Completed"
     },
     "addDrive": "Add file",
-    "quotaExceededTooltip": "Daily 60-minute limit reached",
     "systemQuotaExceeded": "Sorry, the system processing quota has been reached.",
     "serverError": "Sorry, the processing server encountered a temporary issue.",
     "startAll": "Process ({{count}})",
-    "retry": "Retry",
     "edit": "Edit",
     "renameFile": "Edit file",
     "renameModalTitle": "Edit file",
@@ -193,9 +166,7 @@
       "exceedsSizeLimit": "File size exceeds the 500MB/file limit.",
       "dailyDurationExceeded": "Daily 60-minute quota reached. Please try again tomorrow.",
       "fileType": "Type",
-      "duration": "Duration",
       "fileName": "File name",
-      "fileNamePlaceholder": "Example: Lesson_1.mp4",
       "hasSubtitle": "Has existing subtitles?",
       "subtitleFile": "Select subtitle file (.srt / .vtt)",
       "sourceLanguage": "Source language",
@@ -234,7 +205,6 @@
     "driveDownloadFailedStatus": "Failed to download media from Google Drive (Status: {{status}})"
   },
   "editor": {
-    "saved": "Saved",
     "export": "Export",
     "subtitleList": "Subtitle list",
     "noTargetSubtitle": "No subtitles yet",
@@ -242,29 +212,9 @@
     "loadError": "Could not load subtitles.",
     "retryLoad": "Reload subtitles",
     "saveError": "Could not save subtitles. Please try again.",
-    "invalidTiming": "Invalid cue timing. End time must be greater than start time.",
     "timing": {
       "start": "Start",
-      "end": "End",
-      "edit": "Edit timing",
-      "confirm": "Apply timing",
-      "cancel": "Cancel timing edit"
-    },
-    "cue": {
-      "addAfter": "Add cue after",
-      "delete": "Delete cue",
-      "editTimingAria": "Edit timing for cue {{index}}",
-      "addAfterAria": "Add a cue after cue {{index}}",
-      "deleteAria": "Delete cue {{index}}",
-      "editTranslation": "Edit translation",
-      "confirmTranslation": "Apply translation",
-      "cancelTranslation": "Cancel translation edit",
-      "editTranslationAria": "Edit translation for cue {{index}}"
-    },
-    "unsavedDialog": {
-      "title": "Unsaved changes",
-      "message": "You have unsaved subtitle changes. Leave the editor and discard them?",
-      "confirm": "Leave editor"
+      "end": "End"
     },
     "deleteCueDialog": {
       "title": "Confirm delete subtitle line",
@@ -272,23 +222,17 @@
       "confirm": "Delete line"
     },
     "video": {
-      "loading": "Loading...",
       "cannotOpen": "Could not open file.",
       "empty": "No file to play.",
       "codecError": "Unsupported file format.",
       "sessionExpired": "Session expired. Please log in with Google again.",
-      "downloadFailed": "Session expired. Please log in with Google again.",
-      "emptyFile": "The file on Google Drive is empty."
+      "downloadFailed": "Session expired. Please log in with Google again."
     },
-    "details": "View",
     "backToProject": "Back to project",
     "visibility": {
       "title": "Display",
-      "details": "Cue details",
       "metadata": "Info",
-      "metadataHint": "Number, status and timing",
       "source": "Source text",
-      "sourceHint": "Original subtitle content",
       "actions": "Buttons",
       "actionsHint": "Edit, add and delete cues"
     }
@@ -319,15 +263,7 @@
   "dialog": {
     "confirm": "Confirm",
     "cancel": "Cancel",
-    "delete": "Delete",
     "close": "Close"
-  },
-  "errors": {
-    "generic": "Something went wrong. Please try again.",
-    "load": "Could not load data.",
-    "save": "Could not save changes.",
-    "network": "Network error. Check your internet connection.",
-    "session": "Your session has expired. Please sign in again."
   },
   "accessibility": {
     "loadingProjects": "Loading projects",

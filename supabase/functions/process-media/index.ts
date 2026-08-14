@@ -60,11 +60,6 @@ const TRANSCRIPTION_MODELS = [
   'whisper-large-v3',
 ] as const;
 
-const TRANSLATION_MODELS = [
-  'llama-3.3-70b-versatile',
-  'llama-3.1-8b-instant',
-] as const;
-
 async function transcribeFlac(
   blob: Blob,
   fileName: string,
