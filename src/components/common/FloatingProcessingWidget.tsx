@@ -85,21 +85,21 @@ export const FloatingProcessingWidget: React.FC = () => {
           {isAllSuccess && (
             <div className="flex items-center gap-1.5 pt-1 text-xs font-semibold text-[var(--ui-success)]">
               <Check className="size-4" />
-              <span>Đã hoàn thành {totalCount} tệp!</span>
+              <span>{t('processing.allCompleted', { count: totalCount })}</span>
             </div>
           )}
 
           {isPartialSuccess && (
             <div className="flex items-center gap-1.5 pt-1 text-xs font-semibold text-[var(--ui-warning)]">
               <AlertCircle className="size-4" />
-              <span>Xử lý {totalCount} tệp ({failedCount} tệp lỗi)!</span>
+              <span>{t('processing.partialCompleted', { total: totalCount, failed: failedCount })}</span>
             </div>
           )}
 
           {isAllFailed && (
             <div className="flex items-center gap-1.5 pt-1 text-xs font-semibold text-[var(--ui-danger)]">
               <X className="size-4 stroke-[2.5]" />
-              <span>Không hoàn thành {totalCount} tệp!</span>
+              <span>{t('processing.allFailed', { count: totalCount })}</span>
             </div>
           )}
         </div>
@@ -110,8 +110,8 @@ export const FloatingProcessingWidget: React.FC = () => {
         type="button"
         onClick={() => setExpanded((prev) => !prev)}
         className="group relative flex items-center justify-center size-14 rounded-full border border-[var(--ui-border-strong)] bg-[var(--ui-surface)]/95 backdrop-blur-xl shadow-2xl transition-all duration-300 hover:scale-105 hover:shadow-[0_0_20px_var(--ui-accent-glow)] cursor-pointer"
-        title={isAllDone ? 'Đã hoàn thành' : `${processedCount}/${totalCount}`}
-        aria-label={`Tiến trình xử lý ${processedCount}/${totalCount}`}
+        title={isAllDone ? t('processing.doneTitle') : `${processedCount}/${totalCount}`}
+        aria-label={t('processing.progressAria', { processed: processedCount, total: totalCount })}
       >
         {/* SVG Circular Progress Ring */}
         <svg className="absolute inset-0 size-14 -rotate-90" viewBox="0 0 56 56">

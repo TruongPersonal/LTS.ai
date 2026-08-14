@@ -202,7 +202,12 @@
     "retryFailed": "Could not retry the file.",
     "emptyMediaFile": "Google Drive media file is empty.",
     "invalidTranscriptionResult": "System returned invalid transcription result.",
-    "driveDownloadFailedStatus": "Failed to download media from Google Drive (Status: {{status}})"
+    "driveDownloadFailedStatus": "Failed to download media from Google Drive (Status: {{status}})",
+    "allCompleted": "Completed {{count}} files!",
+    "partialCompleted": "Processed {{total}} files ({{failed}} failed)!",
+    "allFailed": "Failed to complete {{count}} files!",
+    "progressAria": "Processing progress {{processed}}/{{total}}",
+    "doneTitle": "Completed"
   },
   "editor": {
     "export": "Export",

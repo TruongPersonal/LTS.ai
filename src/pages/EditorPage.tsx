@@ -69,6 +69,8 @@ export const EditorPage: React.FC<EditorPageProps> = ({
   } = useEditorVideo({
     driveFileId: file.drive_file_id,
     inputSource: file.input_source,
+    fileName: file.file_name,
+    mimeType: file.mime_type,
   });
 
   const {

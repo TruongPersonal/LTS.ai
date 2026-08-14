@@ -202,7 +202,12 @@
     "retryFailed": "Không thể thử lại tệp.",
     "emptyMediaFile": "Tệp trên Google Drive không có dữ liệu.",
     "invalidTranscriptionResult": "Hệ thống trả về kết quả nhận dạng không hợp lệ.",
-    "driveDownloadFailedStatus": "Tải tệp từ Google Drive thất bại (Mã lỗi: {{status}})"
+    "driveDownloadFailedStatus": "Tải tệp từ Google Drive thất bại (Mã lỗi: {{status}})",
+    "allCompleted": "Đã hoàn thành {{count}} tệp!",
+    "partialCompleted": "Xử lý {{total}} tệp ({{failed}} tệp lỗi)!",
+    "allFailed": "Không hoàn thành {{count}} tệp!",
+    "progressAria": "Tiến trình xử lý {{processed}}/{{total}}",
+    "doneTitle": "Đã hoàn thành"
   },
   "editor": {
     "export": "Xuất",

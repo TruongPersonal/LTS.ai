@@ -202,7 +202,12 @@
     "retryFailed": "ファイルを再試行できませんでした。",
     "emptyMediaFile": "Googleドライブのファイルが空です。",
     "invalidTranscriptionResult": "音声認識結果が無効です。",
-    "driveDownloadFailedStatus": "Googleドライブからのダウンロードに失敗しました (ステータス: {{status}})"
+    "driveDownloadFailedStatus": "Googleドライブからのダウンロードに失敗しました (ステータス: {{status}})",
+    "allCompleted": "{{count}}件のファイルを完了しました！",
+    "partialCompleted": "{{total}}件中{{failed}}件失敗！",
+    "allFailed": "{{count}}件のファイルを完了できませんでした！",
+    "progressAria": "処理進行状況 {{processed}}/{{total}}",
+    "doneTitle": "完了"
   },
   "editor": {
     "export": "書き出し",
