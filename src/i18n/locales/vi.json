@@ -178,10 +178,10 @@
     "emptyUnfinished": "Chưa có tệp nào chờ xử lý.",
     "emptyCompleted": "Chưa có tệp nào hoàn thành.",
     "status": {
-      "draft": "Chờ kích hoạt",
-      "queued": "Chờ xử lý",
+      "draft": "Chờ xử lý",
+      "queued": "Đang xếp hàng",
       "processing": "Đang xử lý",
-      "completed": "Thành công",
+      "completed": "Hoàn thành",
       "failed": "Thất bại"
     },
     "drive": {
@@ -207,18 +207,31 @@
       "loadFailed": "Không thể nạp tệp. Vui lòng thử lại!"
     }
   },
+  "routes": {
+    "projectNotFound": "Không tìm thấy dự án.",
+    "projectLoadError": "Không thể tải thông tin dự án.",
+    "editorDataNotFound": "Không tìm thấy tệp hoặc dự án.",
+    "editorDataLoadError": "Không thể tải dữ liệu biên tập.",
+    "backToProjects": "Về danh sách dự án",
+    "backToProject": "Quay lại dự án"
+  },
   "processing": {
     "queued": "Chờ xử lý...",
     "preparing": "Đang chuẩn bị...",
     "downloading": "Đang tải tệp...",
+    "preprocessing": "Đang khởi tạo FFmpeg và tách âm thanh...",
     "ffmpeg": "Xử lý âm thanh...",
     "transcribing": "Tạo phụ đề...",
+    "transcribingChunk": "Đang nhận dạng giọng nói ({{index}}/{{count}})...",
     "translating": "Dịch phụ đề...",
     "saving": "Lưu dữ liệu...",
     "completed": "Thành công",
     "chunkLabel": "Phần {{current}}/{{total}}",
     "processFailed": "Không thể xử lý tệp. Vui lòng thử lại.",
-    "retryFailed": "Không thể thử lại tệp."
+    "retryFailed": "Không thể thử lại tệp.",
+    "emptyMediaFile": "Tệp trên Google Drive không có dữ liệu.",
+    "invalidTranscriptionResult": "Hệ thống trả về kết quả nhận dạng không hợp lệ.",
+    "driveDownloadFailedStatus": "Tải tệp từ Google Drive thất bại (Mã lỗi: {{status}})"
   },
   "editor": {
     "saved": "Đã lưu",

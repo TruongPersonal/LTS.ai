@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
 import {
   clearGoogleAccessToken,
@@ -9,17 +9,7 @@ import {
   supabase,
 } from '../lib/supabase';
 import type { Profile } from '../types/database';
-
-interface AuthContextType {
-  user: SupabaseUser | null;
-  profile: Profile | null;
-  loading: boolean;
-  signInWithGoogle: () => Promise<void>;
-  signOut: () => Promise<void>;
-  updateProfile: (data: Partial<Profile>) => Promise<void>;
-}
-
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+import { AuthContext } from './auth-context';
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<SupabaseUser | null>(null);
@@ -41,7 +31,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (data) {
         setProfile(data);
       } else {
-        const name = authUser.user_metadata?.full_name || authUser.user_metadata?.name || authUser.email?.split('@')[0] || 'User';
+        const name =
+          authUser.user_metadata?.full_name ||
+          authUser.user_metadata?.name ||
+          authUser.email?.split('@')[0] ||
+          'User';
         const profilePayload = {
           id: authUser.id,
           email: authUser.email || '',
@@ -53,10 +47,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           .select('*')
           .single();
 
-        setProfile(createdData || {
-          ...profilePayload,
-          created_at: new Date().toISOString(),
-        });
+        setProfile(
+          createdData || {
+            ...profilePayload,
+            created_at: new Date().toISOString(),
+          }
+        );
       }
     } catch (err) {
       console.error('Error in fetchProfile:', err);
@@ -93,7 +89,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       const providerToken = persistGoogleProviderToken(session);
       if (session?.user && !isOneHourSessionExpired()) {
-        const accessToken = providerToken || await getGoogleAccessToken();
+        const accessToken = providerToken || (await getGoogleAccessToken());
         void acceptGoogleSession(session.user, accessToken);
       } else {
         if (isOneHourSessionExpired()) void signOut();
@@ -134,7 +130,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        scopes: 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.readonly',
+        scopes:
+          'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.readonly',
         queryParams: {
           prompt: 'consent',
           access_type: 'offline',
@@ -164,10 +161,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const updateProfile = async (data: Partial<Profile>) => {
     if (!user) return;
-    const { error } = await supabase
-      .from('profiles')
-      .update(data)
-      .eq('id', user.id);
+    const { error } = await supabase.from('profiles').update(data).eq('id', user.id);
 
     if (error) throw error;
     setProfile((prev) => (prev ? { ...prev, ...data } : null));
@@ -187,12 +181,4 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       {children}
     </AuthContext.Provider>
   );
-};
-
-export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
 };

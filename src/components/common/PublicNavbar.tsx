@@ -12,11 +12,26 @@ export const PublicNavbar: React.FC<PublicNavbarProps> = ({ onBack, onNext }) =>
   const { t } = useTranslation();
 
   return (
-    <header className="border-b border-[var(--ui-border)] bg-[var(--ui-surface)]">
+    <header
+      style={{
+        position: 'sticky',
+        top: 0,
+        zIndex: 50,
+        borderBottom: '1px solid var(--ui-border)',
+        background: 'color-mix(in srgb, var(--ui-canvas) 80%, transparent)',
+        backdropFilter: 'blur(16px)',
+        WebkitBackdropFilter: 'blur(16px)',
+      }}
+    >
       <div className="ui-container min-h-16 py-2 flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2.5">
           <img src="/logo.png" alt="LTS.ai" className="size-9 object-contain" />
-          <span className="font-extrabold text-base tracking-tight">LTS.ai</span>
+          <span
+            className="font-extrabold text-base tracking-tight"
+            style={{ fontFamily: 'var(--font-heading)' }}
+          >
+            LTS.ai
+          </span>
         </div>
         <div className="flex items-center gap-2 ml-auto">
           <PublicPreferencesControls />

@@ -62,22 +62,21 @@ async function downloadDriveMedia(file: FileMedia, accessToken: string): Promise
   );
 
   if (!response.ok) {
-    const detail = await response.text();
     if (response.status === 401 || response.status === 403) {
       throw new Error(i18n.t('editor.video.downloadFailed'));
     }
-    throw new Error(`Google Drive tải media thất bại (${response.status}): ${detail.slice(0, 240)}`);
+    throw new Error(i18n.t('processing.driveDownloadFailedStatus', { status: response.status }));
   }
 
   const blob = await response.blob();
-  if (blob.size === 0) throw new Error('Google Drive trả về tệp media rỗng.');
+  if (blob.size === 0) throw new Error(i18n.t('processing.emptyMediaFile'));
   return blob;
 }
 
-async function handleInvokeError(error: any): Promise<never> {
-  if (error && typeof error === 'object' && 'context' in error && error.context) {
+async function handleInvokeError(error: unknown): Promise<never> {
+  if (error && typeof error === 'object' && 'context' in error && error.context && typeof (error.context as any).json === 'function') {
     try {
-      const resJson = (await error.context.json()) as EdgeResult;
+      const resJson = (await (error.context as any).json()) as EdgeResult;
       if (resJson?.error) {
         throw new EdgeInvocationError(resJson);
       }
@@ -113,7 +112,7 @@ async function transcribeChunk(
   if (error) await handleInvokeError(error);
   if (data?.error) throw new Error(data.error);
   if (!data?.source_language || !Array.isArray(data?.subtitles)) {
-    throw new Error('Edge Function trả về kết quả transcription không hợp lệ.');
+    throw new Error(i18n.t('processing.invalidTranscriptionResult'));
   }
 
   return {
@@ -218,7 +217,7 @@ async function processMediaFile(
 ): Promise<void> {
   try {
     await supabase.from('files_media').update({ status: 'processing', error_message: null }).eq('id', file.id);
-    emitProgress(onProgress, file.id, 'downloading', 10, 'Đang tải...');
+    emitProgress(onProgress, file.id, 'downloading', 10, i18n.t('processing.downloading'));
     const mediaBlob = await downloadDriveMedia(file, accessToken);
 
     let effectiveDuration = file.duration_seconds || 0;
@@ -234,7 +233,7 @@ async function processMediaFile(
       }
     }
 
-    emitProgress(onProgress, file.id, 'preprocessing', 25, 'Đang khởi tạo FFmpeg và tách audio...');
+    emitProgress(onProgress, file.id, 'preprocessing', 25, i18n.t('processing.preprocessing'));
 
     const chunkResults: TranscriptionChunkResult[] = [];
     let sawChunk = false;
@@ -250,7 +249,7 @@ async function processMediaFile(
           file.id,
           'preprocessing',
           45,
-          `Đã tạo ${chunk.chunkCount} FLAC chunk (16 kHz mono).`,
+          i18n.t('processing.preprocessing'),
           0,
           chunk.chunkCount
         );
@@ -263,14 +262,14 @@ async function processMediaFile(
         file.id,
         'transcribing',
         transcriptionPercent,
-        `Đang nhận dạng giọng nói · chunk ${chunk.index + 1}/${chunk.chunkCount}`,
+        i18n.t('processing.transcribingChunk', { index: chunk.index + 1, count: chunk.chunkCount }),
         chunk.index + 1,
         chunk.chunkCount
       );
       chunkResults.push(await transcribeChunk(projectId, file.id, chunk));
     }
 
-    emitProgress(onProgress, file.id, 'finalizing', 86, 'Đang ghép các đoạn phụ đề...');
+    emitProgress(onProgress, file.id, 'finalizing', 86, i18n.t('processing.saving'));
     const merged = mergeTranscriptionChunks(chunkResults);
 
     // 1. Save source subtitles to Supabase DB
@@ -682,6 +681,21 @@ export const fileService = {
     }
 
     await processSingleFile(projectId, file as FileMedia, accessToken, onProgress);
+  },
+
+  async processSingleDraftFile(
+    projectId: string,
+    file: FileMedia,
+    onProgress?: ProcessingProgressCallback
+  ): Promise<void> {
+    const accessToken = file.input_source === 'media' ? await getGoogleAccessToken() : '';
+    if (file.input_source === 'media' && !accessToken) {
+      const error = new Error('Không thể tải tệp. Phiên Google Drive đã hết hạn.');
+      await supabase.from('files_media').update({ status: 'failed', error_message: error.message }).eq('id', file.id);
+      emitProgress(onProgress, file.id, 'failed', 100, error.message);
+      throw error;
+    }
+    await processSingleFile(projectId, file, accessToken, onProgress);
   },
 
   async updateFileName(fileId: string, fileName: string): Promise<void> {

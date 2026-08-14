@@ -9,7 +9,8 @@ import {
   useSearchParams,
   Outlet,
 } from 'react-router-dom';
-import { useAuth } from './context/AuthContext';
+import { useTranslation } from 'react-i18next';
+import { useAuth } from './hooks/useAuth';
 import { AppSidebar } from './components/common/AppSidebar';
 import { Footer } from './components/common/Footer';
 import { LandingPage } from './pages/LandingPage';
@@ -17,6 +18,7 @@ import { LoginPage } from './pages/LoginPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { ProjectDetailPage } from './pages/ProjectDetailPage';
 import { EditorPage } from './pages/EditorPage';
+import { EditorSkeleton } from './components/common/LoadingSkeleton';
 import { projectService } from './services/projectService';
 import { fileService } from './services/fileService';
 import type { Project, FileMedia } from './types/database';
@@ -24,8 +26,37 @@ import type { Project, FileMedia } from './types/database';
 const PulseLoadingScreen: React.FC = () => (
   <div className="app-shell flex items-center justify-center min-h-screen">
     <div className="app-loading flex flex-col items-center justify-center" role="status" aria-live="polite">
-      <div className="size-20 sm:size-24 rounded-3xl ui-card flex items-center justify-center p-3.5 shadow-xl border border-[var(--ui-border)] animate-pulse">
-        <img src="/logo.png" alt="LTS.ai" className="w-full h-full object-contain" />
+      <div className="relative" style={{ animation: 'float-gravity 3.5s ease-in-out infinite' }}>
+        <div
+          style={{
+            position: 'absolute',
+            inset: -3,
+            borderRadius: 28,
+            background: 'var(--cosmic-gradient)',
+            animation: 'spin 3s linear infinite',
+            opacity: 0.7,
+            zIndex: 0,
+          }}
+        />
+        <div
+          style={{
+            position: 'absolute',
+            inset: -3,
+            borderRadius: 28,
+            background: 'var(--ui-canvas)',
+            zIndex: 1,
+            insetInline: 'auto',
+          }}
+        />
+        <div
+          className="relative size-20 sm:size-24 rounded-3xl ui-card flex items-center justify-center p-3.5"
+          style={{
+            zIndex: 2,
+            boxShadow: '0 0 40px var(--ui-accent-glow)',
+          }}
+        >
+          <img src="/logo.png" alt="LTS.ai" className="w-full h-full object-contain" />
+        </div>
       </div>
     </div>
   </div>
@@ -86,10 +117,7 @@ const ProtectedLayout: React.FC = () => {
   const isAppLoading = useFixedLoading(loading, 1200);
 
   if (isAppLoading) return <PulseLoadingScreen />;
-
-  if (!profile) {
-    return <Navigate to="/" replace />;
-  }
+  if (!profile) return <Navigate to="/" replace />;
 
   const isEditorView = location.pathname.includes('/editor');
   const activeView = isEditorView
@@ -98,24 +126,12 @@ const ProtectedLayout: React.FC = () => {
     ? 'project'
     : 'projects';
 
-  const handleHome = () => {
-    navigate('/projects');
-  };
-
-  const handleCreateProject = () => {
-    navigate('/projects?intent=create');
-  };
-
-  const handleSearchProjects = () => {
-    navigate('/projects?intent=search');
-  };
-
   return (
     <div className="authenticated-shell">
       <AppSidebar
-        onHome={handleHome}
-        onCreateProject={handleCreateProject}
-        onSearchProjects={handleSearchProjects}
+        onHome={() => navigate('/projects')}
+        onCreateProject={() => navigate('/projects?intent=create')}
+        onSearchProjects={() => navigate('/projects?intent=search')}
         editorActive={isEditorView}
         activeView={activeView}
       />
@@ -138,9 +154,10 @@ const DashboardRoute: React.FC = () => {
     if (intentType) setIntentId((id) => id + 1);
   }, [intentType]);
 
-  const intent = intentType === 'create' || intentType === 'search'
-    ? { type: intentType as 'create' | 'search', id: intentId }
-    : null;
+  const intent =
+    intentType === 'create' || intentType === 'search'
+      ? { type: intentType as 'create' | 'search', id: intentId }
+      : null;
 
   return (
     <DashboardPage
@@ -153,6 +170,7 @@ const DashboardRoute: React.FC = () => {
 const ProjectDetailRoute: React.FC = () => {
   const { projectId } = useParams<{ projectId: string }>();
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const [project, setProject] = useState<Project | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -162,17 +180,18 @@ const ProjectDetailRoute: React.FC = () => {
     let mounted = true;
     setLoading(true);
     setError(null);
+
     projectService
       .getProjectById(projectId)
       .then((data) => {
         if (!mounted) return;
-        if (!data) setError('Không tìm thấy dự án.');
+        if (!data) setError(t('routes.projectNotFound'));
         else setProject(data);
       })
       .catch((err) => {
         if (!mounted) return;
         console.error('Error fetching project by ID:', err);
-        setError('Không thể tải thông tin dự án.');
+        setError(t('routes.projectLoadError'));
       })
       .finally(() => {
         if (mounted) setLoading(false);
@@ -181,20 +200,31 @@ const ProjectDetailRoute: React.FC = () => {
     return () => {
       mounted = false;
     };
-  }, [projectId]);
+  }, [projectId, t]);
 
   if (error && !loading) {
     return (
       <div className="workspace-page ui-container py-12 text-center space-y-4">
         <p className="text-sm font-bold text-[var(--ui-danger)]">{error}</p>
-        <button onClick={() => navigate('/projects')} className="ui-button ui-button-secondary">
-          Về danh sách dự án
+        <button
+          onClick={() => navigate('/projects')}
+          className="ui-button ui-button-secondary"
+        >
+          {t('routes.backToProjects')}
         </button>
       </div>
     );
   }
 
-  const activeProject = project || { id: projectId || '', title: '', description: null, target_language: 'vi', created_at: '', updated_at: '', user_id: '' };
+  const activeProject: Project = project || {
+    id: projectId || '',
+    title: '',
+    description: null,
+    target_language: 'vi',
+    created_at: '',
+    updated_at: '',
+    user_id: '',
+  };
 
   return (
     <ProjectDetailPage
@@ -209,6 +239,7 @@ const ProjectDetailRoute: React.FC = () => {
 const EditorRoute: React.FC = () => {
   const { projectId, fileId } = useParams<{ projectId: string; fileId: string }>();
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const [project, setProject] = useState<Project | null>(null);
   const [file, setFile] = useState<FileMedia | null>(null);
   const [loading, setLoading] = useState(true);
@@ -227,7 +258,7 @@ const EditorRoute: React.FC = () => {
       .then(([projData, fileData]) => {
         if (!mounted) return;
         if (!projData || !fileData) {
-          setError('Không tìm thấy tệp hoặc dự án.');
+          setError(t('routes.editorDataNotFound'));
         } else {
           setProject(projData);
           setFile(fileData);
@@ -236,7 +267,7 @@ const EditorRoute: React.FC = () => {
       .catch((err) => {
         if (!mounted) return;
         console.error('Error fetching editor data:', err);
-        setError('Không thể tải dữ liệu biên tập.');
+        setError(t('routes.editorDataLoadError'));
       })
       .finally(() => {
         if (mounted) setLoading(false);
@@ -245,27 +276,55 @@ const EditorRoute: React.FC = () => {
     return () => {
       mounted = false;
     };
-  }, [fileId, projectId]);
+  }, [fileId, projectId, t]);
 
-  if (error && !loading) {
+  if (loading) {
+    return <EditorSkeleton />;
+  }
+
+  if (error) {
     return (
       <div className="workspace-page ui-container py-12 text-center space-y-4">
         <p className="text-sm font-bold text-[var(--ui-danger)]">{error}</p>
-        <button onClick={() => navigate(`/projects/${projectId || ''}`)} className="ui-button ui-button-secondary">
-          Quay lại dự án
+        <button
+          onClick={() => navigate(`/projects/${projectId || ''}`)}
+          className="ui-button ui-button-secondary"
+        >
+          {t('routes.backToProject')}
         </button>
       </div>
     );
   }
 
-  const activeProject = project || { id: projectId || '', title: '', description: null, target_language: 'vi', created_at: '', updated_at: '', user_id: '' };
-  const activeFile = file || { id: fileId || '', project_id: projectId || '', drive_file_id: '', file_name: '', mime_type: 'video/mp4', duration_seconds: 0, status: 'draft', input_source: 'media', detected_source_lang: null, created_at: '', error_message: null };
+  const activeProject: Project = project || {
+    id: projectId || '',
+    title: '',
+    description: null,
+    target_language: 'vi',
+    created_at: '',
+    updated_at: '',
+    user_id: '',
+  };
+
+  const activeFile: FileMedia = file || {
+    id: fileId || '',
+    project_id: projectId || '',
+    drive_file_id: '',
+    file_name: '',
+    mime_type: 'video/mp4',
+    duration_seconds: 0,
+    status: 'draft',
+    input_source: 'media',
+    detected_source_lang: null,
+    created_at: '',
+    error_message: null,
+  };
 
   return (
     <EditorPage
       file={activeFile}
       project={activeProject}
-      routeLoading={loading}
+      routeLoading={false}
       onBack={() => navigate(`/projects/${activeProject.id}`)}
     />
   );

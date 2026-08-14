@@ -181,7 +181,7 @@
       "draft": "Draft",
       "queued": "Queued",
       "processing": "Processing",
-      "completed": "Success",
+      "completed": "Completed",
       "failed": "Failed"
     },
     "drive": {
@@ -207,18 +207,31 @@
       "loadFailed": "Failed to upload file. Please try again!"
     }
   },
+  "routes": {
+    "projectNotFound": "Project not found.",
+    "projectLoadError": "Failed to load project details.",
+    "editorDataNotFound": "File or project not found.",
+    "editorDataLoadError": "Failed to load editor data.",
+    "backToProjects": "Back to projects",
+    "backToProject": "Back to project"
+  },
   "processing": {
     "queued": "Waiting in queue...",
     "preparing": "Preparing...",
     "downloading": "Downloading file...",
+    "preprocessing": "Initializing FFmpeg & extracting audio...",
     "ffmpeg": "Processing audio...",
     "transcribing": "Generating subtitles...",
+    "transcribingChunk": "Transcribing audio chunk ({{index}}/{{count}})...",
     "translating": "Translating subtitles...",
     "saving": "Saving data...",
-    "completed": "Success",
+    "completed": "Completed",
     "chunkLabel": "Part {{current}}/{{total}}",
     "processFailed": "Could not process files. Please try again.",
-    "retryFailed": "Could not retry the file."
+    "retryFailed": "Could not retry the file.",
+    "emptyMediaFile": "Google Drive media file is empty.",
+    "invalidTranscriptionResult": "System returned invalid transcription result.",
+    "driveDownloadFailedStatus": "Failed to download media from Google Drive (Status: {{status}})"
   },
   "editor": {
     "saved": "Saved",

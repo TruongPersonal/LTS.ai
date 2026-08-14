@@ -1,10 +1,20 @@
-/**
- * Formats seconds into a human-readable string (e.g. 83.4 -> "01:23")
- */
 export const formatDisplayTime = (seconds: number): string => {
   if (isNaN(seconds) || seconds < 0) return '00:00';
   const mins = Math.floor(seconds / 60);
   const secs = Math.floor(seconds % 60);
+  return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+};
+
+export const formatDuration = (seconds?: number | null): string => {
+  if (!seconds || seconds <= 0 || isNaN(seconds)) return '';
+  const totalSecs = Math.round(seconds);
+  const mins = Math.floor(totalSecs / 60);
+  const secs = totalSecs % 60;
+  const hours = Math.floor(mins / 60);
+  const remMins = mins % 60;
+  if (hours > 0) {
+    return `${hours.toString().padStart(2, '0')}:${remMins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  }
   return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
 };
 

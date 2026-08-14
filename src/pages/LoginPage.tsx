@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { LogIn, Loader2, ShieldCheck, Sparkles, Zap } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../hooks/useAuth';
 import { PublicNavbar } from '../components/common/PublicNavbar';
 
 interface LoginPageProps {

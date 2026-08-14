@@ -2,6 +2,7 @@ import React from 'react';
 import { ArrowRight, ArrowDown, Edit3, HardDrive, Languages, Play, Sparkles } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { PublicNavbar } from '../components/common/PublicNavbar';
+import { CosmicBackground } from '../components/common/CosmicBackground';
 
 interface LandingPageProps {
   onGetStarted: () => void;
@@ -32,13 +33,14 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
 
   return (
     <div className="ui-page flex-1 landing-page">
+      <CosmicBackground />
       <PublicNavbar onNext={onGetStarted} />
 
       <main>
         <section className="landing-hero ui-container">
           <div className="landing-hero-copy">
             <span className="landing-eyebrow"><Sparkles className="size-3.5" />{t('landing.eyebrow')}</span>
-            <h1>{t('landing.hero.title')}</h1>
+            <h1 className="cosmic-gradient-text">{t('landing.hero.title')}</h1>
             <p>{t('landing.hero.description')}</p>
             <div className="landing-hero-actions">
               <button onClick={onGetStarted} className="ui-button ui-button-primary ui-button-large">{t('landing.hero.primary')}<ArrowRight className="size-4" /></button>

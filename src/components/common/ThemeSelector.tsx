@@ -1,7 +1,7 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { Sun, Moon, Laptop } from 'lucide-react';
-import { useTheme, type ThemeMode } from '../../context/ThemeContext';
+import { useTheme, type ThemeMode } from '../../hooks/useTheme';
 
 interface ThemeSelectorProps {
   compact?: boolean;

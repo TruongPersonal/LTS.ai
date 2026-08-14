@@ -181,7 +181,7 @@
       "draft": "下書き",
       "queued": "処理待ち",
       "processing": "処理中",
-      "completed": "成功",
+      "completed": "完了",
       "failed": "失敗"
     },
     "drive": {
@@ -207,18 +207,31 @@
       "loadFailed": "ファイルを追加できませんでした。もう一度お試しください。"
     }
   },
+  "routes": {
+    "projectNotFound": "プロジェクトが見つかりません。",
+    "projectLoadError": "プロジェクト情報を読み込めませんでした。",
+    "editorDataNotFound": "ファイルまたはプロジェクトが見つかりません。",
+    "editorDataLoadError": "エディターデータを読み込めませんでした。",
+    "backToProjects": "プロジェクト一覧に戻る",
+    "backToProject": "プロジェクトに戻る"
+  },
   "processing": {
     "queued": "処理待ち...",
     "preparing": "準備中...",
     "downloading": "ファイルをダウンロード中...",
+    "preprocessing": "FFmpeg初期化および音声を抽出中...",
     "ffmpeg": "音声処理中...",
     "transcribing": "字幕を生成中...",
+    "transcribingChunk": "音声認識中 ({{index}}/{{count}})...",
     "translating": "字幕を翻訳中...",
     "saving": "データを保存中...",
-    "completed": "成功",
+    "completed": "完了",
     "chunkLabel": "パート {{current}}/{{total}}",
     "processFailed": "ファイルを処理できませんでした。もう一度お試しください。",
-    "retryFailed": "ファイルを再試行できませんでした。"
+    "retryFailed": "ファイルを再試行できませんでした。",
+    "emptyMediaFile": "Googleドライブのファイルが空です。",
+    "invalidTranscriptionResult": "音声認識結果が無効です。",
+    "driveDownloadFailedStatus": "Googleドライブからのダウンロードに失敗しました (ステータス: {{status}})"
   },
   "editor": {
     "saved": "保存済み",

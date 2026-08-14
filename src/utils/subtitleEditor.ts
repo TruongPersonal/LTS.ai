@@ -12,19 +12,23 @@ export const findActiveCueId = (
 
 export const insertCueAfter = (
   items: SubtitleItem[],
-  afterId: number
+  afterId?: number
 ): SubtitleItem[] => {
-  const index = items.findIndex((item) => item.id === afterId);
-  if (index < 0) return items;
+  if (items.length === 0) {
+    return [{ id: 1, start: 0, end: 2, text: '' }];
+  }
 
-  const previous = items[index];
-  const next = items[index + 1];
+  const index = afterId !== undefined ? items.findIndex((item) => item.id === afterId) : items.length - 1;
+  const targetIndex = index >= 0 ? index : items.length - 1;
+
+  const previous = items[targetIndex];
+  const next = items[targetIndex + 1];
   const start = previous.end;
   const end = next && next.start > start ? next.start : start + 2;
   const nextId = items.reduce((maxId, item) => Math.max(maxId, item.id), 0) + 1;
   const inserted: SubtitleItem = { id: nextId, start, end, text: '' };
 
-  return [...items.slice(0, index + 1), inserted, ...items.slice(index + 1)];
+  return [...items.slice(0, targetIndex + 1), inserted, ...items.slice(targetIndex + 1)];
 };
 
 export const removeCue = (

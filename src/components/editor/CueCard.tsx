@@ -1,10 +1,13 @@
 import React from 'react';
-import { Check, Pencil, Plus, Trash2, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { Check, Pencil, Trash2, X } from 'lucide-react';
 import type { SubtitleItem } from '../../types/database';
-import { formatDisplayTime } from '../../utils/time';
 import { CueVisibilityMenu } from './CueVisibilityMenu';
 import type { CueVisibilityKey } from '../../utils/cueVisibility';
+import type { TimingDraft } from '../../hooks/useEditorDraft';
+import { CueHeader } from './cue/CueHeader';
+import { CueSourceView } from './cue/CueSourceView';
+import { CueTranslationView } from './cue/CueTranslationView';
 
 interface CueCardProps {
   item: SubtitleItem;
@@ -16,7 +19,7 @@ interface CueCardProps {
   cueActionsVisible: boolean;
   editingTimingCueId: number | null;
   editingTextCueId: number | null;
-  timingDraft: { start: string; end: string } | null;
+  timingDraft: TimingDraft | null;
   textDraft: string | null;
   sourceDraft: string | null;
   cardRef: (node: HTMLDivElement | null) => void;
@@ -26,8 +29,11 @@ interface CueCardProps {
   onStartTextEdit: (item: SubtitleItem) => void;
   onCancelTextEdit: () => void;
   onConfirmTextEdit: (id: number) => void;
+  onStartTimingEdit: (cue: SubtitleItem) => void;
+  onCancelTimingEdit: () => void;
+  onConfirmTimingEdit: (id: number) => void;
   onSetCuePendingDelete: (id: number) => void;
-  setTimingDraft: React.Dispatch<React.SetStateAction<{ start: string; end: string } | null>>;
+  setTimingDraft: React.Dispatch<React.SetStateAction<TimingDraft | null>>;
   setTextDraft: (text: string) => void;
   setSourceDraft: (text: string) => void;
 }
@@ -52,6 +58,9 @@ export const CueCard: React.FC<CueCardProps> = ({
   onStartTextEdit,
   onCancelTextEdit,
   onConfirmTextEdit,
+  onStartTimingEdit,
+  onCancelTimingEdit,
+  onConfirmTimingEdit,
   onSetCuePendingDelete,
   setTimingDraft,
   setTextDraft,
@@ -87,160 +96,107 @@ export const CueCard: React.FC<CueCardProps> = ({
     >
       <div className="editor-cue-content">
         {hasHeaderRow && (
-          <div className="editor-cue-metadata-row">
-            <div className="flex items-center gap-2.5 min-w-0">
-              {metadataVisible && <span className="text-xs font-extrabold text-[var(--ui-accent)]">#{index + 1}</span>}
-              {metadataVisible && (
-                isEditingTiming ? (
-                  <div className="editor-timing-edit" onClick={(event) => event.stopPropagation()}>
-                    <label>
-                      <span className="sr-only">{t('editor.timing.start')}</span>
-                      <input
-                        data-autofocus
-                        type="number"
-                        min="0"
-                        step="0.1"
-                        value={timingDraft?.start ?? ''}
-                        onChange={(event) => setTimingDraft((draft) => (draft ? { ...draft, start: event.target.value } : draft))}
-                        onKeyDown={(event) => {
-                          if (event.key === 'Enter') onConfirmTextEdit(item.id);
-                          if (event.key === 'Escape') onCancelTextEdit();
-                        }}
-                        className="ui-input"
-                      />
-                    </label>
-                    <span className="text-[10px] ui-soft">→</span>
-                    <label>
-                      <span className="sr-only">{t('editor.timing.end')}</span>
-                      <input
-                        type="number"
-                        min="0"
-                        step="0.1"
-                        value={timingDraft?.end ?? ''}
-                        onChange={(event) => setTimingDraft((draft) => (draft ? { ...draft, end: event.target.value } : draft))}
-                        onKeyDown={(event) => {
-                          if (event.key === 'Enter') onConfirmTextEdit(item.id);
-                          if (event.key === 'Escape') onCancelTextEdit();
-                        }}
-                        className="ui-input"
-                      />
-                    </label>
-                  </div>
-                ) : (
-                  <div className="editor-timing-static">
-                    <span className="text-[11px] font-mono ui-muted shrink-0">
-                      {formatDisplayTime(item.start)} → {formatDisplayTime(item.end)}
-                    </span>
-                  </div>
-                )
-              )}
-            </div>
-            <div className="editor-cue-header-actions" onClick={(event) => event.stopPropagation()}>
-              {showEyeInHeader && visibilityMenu}
-              {cueActionsVisible && (
-                <button
-                  type="button"
-                  onClick={() => onAddCue(item.id)}
-                  className="ui-icon-button ui-icon-button-sm"
-                  aria-label={t('editor.cue.addAfterAria', { index: index + 1 })}
-                >
-                  <Plus className="size-3.5" />
-                </button>
-              )}
-            </div>
-          </div>
+          <CueHeader
+            item={item}
+            index={index}
+            metadataVisible={metadataVisible}
+            cueActionsVisible={cueActionsVisible}
+            isEditingTiming={isEditingTiming}
+            timingDraft={timingDraft}
+            onDraftTimingChange={setTimingDraft}
+            onStartTimingEdit={(e) => {
+              e.stopPropagation();
+              onStartTimingEdit(item);
+            }}
+            onConfirmTimingEdit={() => onConfirmTimingEdit(item.id)}
+            onCancelTimingEdit={onCancelTimingEdit}
+            onAddCueAfter={(e) => {
+              e.stopPropagation();
+              onAddCue(item.id);
+            }}
+            visibilityMenu={showEyeInHeader ? visibilityMenu : undefined}
+          />
         )}
 
         {sourceVisible && (
-          <div className="editor-cue-source-row">
-            {isEditing ? (
-              <>
-                <div className="editor-source-edit" onClick={(event) => event.stopPropagation()}>
-                  <textarea
-                    value={sourceDraft ?? ''}
-                    onChange={(event) => setSourceDraft(event.target.value)}
-                    onKeyDown={(event) => {
-                      if (event.key === 'Escape') onCancelTextEdit();
-                      if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) onConfirmTextEdit(item.id);
-                    }}
-                    className="ui-input editor-target-input text-xs"
-                  />
-                </div>
-                {showEyeInSource && <div className="editor-inline-actions" onClick={(event) => event.stopPropagation()}>{visibilityMenu}</div>}
-              </>
-            ) : (
-              <>
-                <p className="editor-cue-source whitespace-pre-wrap">{sourceText || '—'}</p>
-                {showEyeInSource && <div className="editor-inline-actions" onClick={(event) => event.stopPropagation()}>{visibilityMenu}</div>}
-              </>
-            )}
-          </div>
+          <CueSourceView
+            sourceText={sourceText}
+            isEditing={isEditing}
+            sourceDraft={sourceDraft}
+            onSourceDraftChange={setSourceDraft}
+            onConfirmEdit={() => onConfirmTextEdit(item.id)}
+            onCancelEdit={onCancelTextEdit}
+            onClick={() => {
+              if (!isEditing) onSelectCard(item);
+            }}
+            extraEyeMenu={showEyeInSource ? visibilityMenu : undefined}
+          />
         )}
 
-        <div className="editor-translation-row">
-          {isEditing ? (
-            <>
-              <div className="editor-translation-edit" onClick={(event) => event.stopPropagation()}>
-                <textarea
-                  autoFocus
-                  value={textDraft ?? ''}
-                  onChange={(event) => setTextDraft(event.target.value)}
-                  onKeyDown={(event) => {
-                    if (event.key === 'Escape') onCancelTextEdit();
-                    if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) onConfirmTextEdit(item.id);
-                  }}
-                  className="ui-input editor-target-input"
-                />
-              </div>
-              <div className="editor-inline-actions" onClick={(event) => event.stopPropagation()}>
-                {showEyeInTranslation && visibilityMenu}
-                <button
-                  type="button"
-                  onClick={() => onConfirmTextEdit(item.id)}
-                  className="ui-icon-button ui-icon-button-sm"
-                  aria-label={t('editor.cue.confirmTranslation')}
-                >
-                  <Check className="size-3.5" />
-                </button>
+        <CueTranslationView
+          targetText={item.text}
+          isEditing={isEditing}
+          textDraft={textDraft}
+          onTextDraftChange={setTextDraft}
+          onConfirmEdit={() => onConfirmTextEdit(item.id)}
+          onCancelEdit={onCancelTextEdit}
+          onClick={() => {
+            if (!isEditing) onSelectCard(item);
+          }}
+          extraEyeMenu={showEyeInTranslation ? visibilityMenu : undefined}
+        />
+
+        {/* Bottom bar with prominent Edit pencil and Delete trash buttons on the bottom right */}
+        {cueActionsVisible && (
+          <div className="editor-cue-bottom-bar flex items-center justify-between mt-1 pt-0.5" onClick={(e) => e.stopPropagation()}>
+            <div />
+            {isEditing ? (
+              <div className="flex items-center gap-1.5">
                 <button
                   type="button"
                   onClick={onCancelTextEdit}
-                  className="ui-icon-button ui-icon-button-sm"
-                  aria-label={t('editor.cue.cancelTranslation')}
+                  className="ui-button ui-button-ghost !h-6.5 !px-2 !text-xs"
+                  title={t('common.cancel')}
+                  aria-label={t('common.cancel')}
                 >
-                  <X className="size-3.5" />
+                  <X className="size-3" />
+                  <span>{t('common.cancel')}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onConfirmTextEdit(item.id)}
+                  className="ui-button ui-button-primary !h-6.5 !px-2.5 !text-xs"
+                  title={t('common.save')}
+                  aria-label={t('common.save')}
+                >
+                  <Check className="size-3" />
+                  <span>{t('common.save')}</span>
                 </button>
               </div>
-            </>
-          ) : (
-            <>
-              <p className="editor-translation-static whitespace-pre-wrap">{item.text || '—'}</p>
-              <div className="editor-inline-actions" onClick={(event) => event.stopPropagation()}>
-                {showEyeInTranslation && visibilityMenu}
-                {cueActionsVisible && (
-                  <button
-                    type="button"
-                    onClick={() => onStartTextEdit(item)}
-                    className="ui-icon-button ui-icon-button-sm"
-                    aria-label={t('editor.cue.editTranslationAria', { index: index + 1 })}
-                  >
-                    <Pencil className="size-3.5" />
-                  </button>
-                )}
-                {cueActionsVisible && (
-                  <button
-                    type="button"
-                    onClick={() => onSetCuePendingDelete(item.id)}
-                    className="ui-icon-button ui-icon-button-sm ui-danger-text"
-                    aria-label={t('editor.cue.deleteAria', { index: index + 1 })}
-                  >
-                    <Trash2 className="size-3.5" />
-                  </button>
-                )}
+            ) : (
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => onStartTextEdit(item)}
+                  className="editor-card-bottom-edit-btn"
+                  title={t('common.edit')}
+                  aria-label={t('common.edit')}
+                >
+                  <Pencil className="size-3.5" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onSetCuePendingDelete(item.id)}
+                  className="editor-card-bottom-delete-btn"
+                  title={t('accessibility.deleteCue')}
+                  aria-label={t('accessibility.deleteCue')}
+                >
+                  <Trash2 className="size-3.5" />
+                </button>
               </div>
-            </>
-          )}
-        </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
