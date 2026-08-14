@@ -18,8 +18,30 @@ export const TARGET_LANGUAGES: LanguageOption[] = [
   { code: 'it', nativeName: 'Italiano', nameVi: 'Tiếng Ý', nameEn: 'Italian', flag: '🇮🇹' },
 ];
 
+export const NATIVE_LANGUAGE_NAMES: Record<string, string> = {
+  vi: 'Tiếng Việt',
+  en: 'English',
+  ja: '日本語',
+  ko: '한국어',
+  zh: '中文',
+  fr: 'Français',
+  it: 'Italiano',
+  es: 'Español',
+  de: 'Deutsch',
+  ru: 'Русский',
+  pt: 'Português',
+  th: 'ไทย',
+  id: 'Bahasa Indonesia',
+};
+
 export const getLanguageOption = (code: string): LanguageOption | undefined => {
   return TARGET_LANGUAGES.find((lang) => lang.code === code.toLowerCase().trim());
+};
+
+export const getNativeLanguageName = (code: string | null | undefined): string => {
+  if (!code) return 'English';
+  const c = code.toLowerCase().trim();
+  return NATIVE_LANGUAGE_NAMES[c] || code;
 };
 
 export const getLanguageName = (code: string | null | undefined, locale: string = 'vi'): string => {
