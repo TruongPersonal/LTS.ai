@@ -1,8 +1,9 @@
 import React from 'react';
-import { ArrowRight, ArrowDown, Edit3, HardDrive, Languages, Play, Sparkles } from 'lucide-react';
+import { ArrowRight, ArrowDown, Edit3, HardDrive, Languages } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { PublicNavbar } from '../components/common/PublicNavbar';
-import { CosmicBackground } from '../components/common/CosmicBackground';
+import { LandingShowcaseGallery } from '../components/landing/LandingShowcaseGallery';
+import { LandingHeroVideo } from '../components/landing/LandingHeroVideo';
 
 interface LandingPageProps {
   onGetStarted: () => void;
@@ -33,36 +34,30 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
 
   return (
     <div className="ui-page flex-1 landing-page">
-      <CosmicBackground />
       <PublicNavbar onNext={onGetStarted} />
 
       <main>
         <section className="landing-hero ui-container">
           <div className="landing-hero-copy">
-            <span className="landing-eyebrow"><Sparkles className="size-3.5" />{t('landing.eyebrow')}</span>
+            <span className="landing-eyebrow">
+              <span className="size-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              {t('landing.eyebrow')}
+            </span>
             <h1 className="cosmic-gradient-text">{t('landing.hero.title')}</h1>
             <p>{t('landing.hero.description')}</p>
             <div className="landing-hero-actions">
-              <button onClick={onGetStarted} className="ui-button ui-button-primary ui-button-large">{t('landing.hero.primary')}<ArrowRight className="size-4" /></button>
-              <button onClick={scrollToWorkflow} className="ui-button ui-button-secondary ui-button-large">{t('landing.hero.learnMore')}<ArrowDown className="size-4" /></button>
+              <button onClick={onGetStarted} className="ui-button ui-button-primary ui-button-large">
+                {t('landing.hero.primary')}
+                <ArrowRight className="size-4" />
+              </button>
+              <button onClick={scrollToWorkflow} className="ui-button ui-button-secondary ui-button-large">
+                {t('landing.hero.learnMore')}
+                <ArrowDown className="size-4" />
+              </button>
             </div>
           </div>
 
-          <div className="landing-product-proof" aria-label={t('landing.previewAria')}>
-            <div className="landing-proof-toolbar"><span className="size-2.5 rounded-full bg-[var(--ui-danger)]" /><span className="size-2.5 rounded-full bg-[var(--ui-warning)]" /><span className="size-2.5 rounded-full bg-[var(--ui-success)]" /><span className="ml-2 text-[11px] ui-muted font-mono font-bold">LTS.ai Editor</span></div>
-            <div className="landing-proof-video relative overflow-hidden group">
-              <img src="/landing-preview.png" alt="Video Preview" className="absolute inset-0 w-full h-full object-cover object-center opacity-85 group-hover:scale-105 transition-transform duration-500" />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-black/20" />
-              <div className="relative z-10 size-14 rounded-full bg-white/20 border border-white/30 grid place-items-center shadow-lg group-hover:bg-white/30 transition-all cursor-pointer">
-                <Play className="size-6 text-white ml-0.5" />
-              </div>
-              <span className="landing-proof-time z-10">00:14 → 00:18</span>
-            </div>
-            <div className="landing-proof-cue">
-              <div><p>{t('landing.mock.originalLabel')}</p><strong>{t('landing.mock.originalText')}</strong></div>
-              <div><p className="text-[var(--ui-accent)]">{t('landing.mock.targetLabel')}</p><strong>{t('landing.mock.translatedText')}</strong></div>
-            </div>
-          </div>
+          <LandingHeroVideo />
         </section>
 
         <section id="workflow" className="landing-workflow-section">
@@ -91,17 +86,23 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
             <div className="landing-section-heading text-center mx-auto mb-8">
               <h2>{t('landing.languagesSection.title')}</h2>
             </div>
-            <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-3 max-w-4xl mx-auto">
+            <div className="flex flex-wrap items-center justify-center gap-3 max-w-[620px] mx-auto">
               {supportedLanguages.map((lang) => (
-                <div key={lang.code} className="flex flex-col items-center justify-center p-3.5 rounded-2xl bg-[var(--ui-surface)] border border-[var(--ui-border)] hover:border-[var(--ui-accent)] transition-all text-center shadow-xs">
-                  <span className="text-2xl mb-1">{lang.flag}</span>
-                  <span className="text-xs font-bold">{t(`landing.languagesSection.${lang.code}`)}</span>
+                <div
+                  key={lang.code}
+                  className="flex flex-col items-center justify-center w-[125px] sm:w-[135px] p-3.5 sm:p-4 rounded-2xl bg-[var(--ui-surface)] border border-[var(--ui-border)] hover:border-[var(--ui-accent)] transition-all text-center shadow-xs"
+                >
+                  <span className="text-2xl mb-1.5">{lang.flag}</span>
+                  <span className="text-xs font-bold text-[var(--ui-text)]">{t(`landing.languagesSection.${lang.code}`)}</span>
                   <span className="text-[10px] ui-soft uppercase tracking-wider font-mono mt-0.5">{lang.code}</span>
                 </div>
               ))}
             </div>
           </div>
         </section>
+
+        {/* Figma-Inspired Aesthetic Showcase Gallery */}
+        <LandingShowcaseGallery />
 
         <section className="landing-cta ui-container">
           <h2>{t('landing.cta.title')}</h2>

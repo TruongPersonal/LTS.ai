@@ -2,6 +2,7 @@ import { BrowserRouter } from 'react-router-dom';
 import { ThemeProvider } from './context/ThemeContext';
 import { AuthProvider } from './context/AuthContext';
 import { ProcessingProvider } from './context/ProcessingContext';
+import { CosmicBackground } from './components/common/CosmicBackground';
 import { FloatingProcessingWidget } from './components/common/FloatingProcessingWidget';
 import { AppRoutes } from './AppRoutes';
 import './i18n';
@@ -12,6 +13,7 @@ export default function App() {
       <ThemeProvider>
         <AuthProvider>
           <ProcessingProvider>
+            <CosmicBackground />
             <AppRoutes />
             <FloatingProcessingWidget />
           </ProcessingProvider>

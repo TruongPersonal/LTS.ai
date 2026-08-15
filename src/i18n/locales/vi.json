@@ -77,6 +77,15 @@
       "fr": "Tiếng Pháp",
       "it": "Tiếng Ý"
     },
+    "showcase": {
+      "documentary": "Phim tài liệu",
+      "masterclass": "Khóa học & Tech",
+      "shorts": "Shorts & Reels",
+      "travel": "Vlogs Du lịch",
+      "podcast": "Podcasts",
+      "music": "Âm nhạc & Nghệ thuật",
+      "cinema": "Điện ảnh & Phim"
+    },
     "capabilities": {
       "driveTitle": "Bắt đầu trực tiếp từ Google Drive",
       "driveText": "Chọn tệp bạn đã có trên Drive và đưa vào dự án.",
@@ -93,7 +102,9 @@
     "loadError": "Không thể tải danh sách dự án.",
     "retryLoad": "Tải lại dự án",
     "empty": {
-      "title": "Chưa có dự án nào"
+      "title": "Chưa có dự án nào",
+      "description": "Tạo dự án phụ đề đầu tiên của bạn ngay",
+      "createAction": "Tạo dự án mới"
     },
     "noSearchResults": {
       "title": "Không tìm thấy dự án phù hợp",

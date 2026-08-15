@@ -16,6 +16,7 @@ interface ProjectGridProps {
   onSelectProject: (project: Project) => void;
   onEditProject: (project: Project) => void;
   onDeleteProject: (project: Project) => void;
+  onCreateProject?: () => void;
 }
 
 export const ProjectGrid: React.FC<ProjectGridProps> = ({
@@ -28,6 +29,7 @@ export const ProjectGrid: React.FC<ProjectGridProps> = ({
   onSelectProject,
   onEditProject,
   onDeleteProject,
+  onCreateProject,
 }) => {
   const { t } = useTranslation();
 
@@ -54,6 +56,9 @@ export const ProjectGrid: React.FC<ProjectGridProps> = ({
       <EmptyState
         icon={FolderPlus}
         title={t('dashboard.empty.title')}
+        description={t('dashboard.empty.description')}
+        actionText={t('dashboard.empty.createAction')}
+        onAction={onCreateProject}
       />
     );
   }

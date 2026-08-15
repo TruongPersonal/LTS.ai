@@ -77,6 +77,15 @@
       "fr": "フランス語",
       "it": "イタリア語"
     },
+    "showcase": {
+      "documentary": "ドキュメンタリー",
+      "masterclass": "講座・テック",
+      "shorts": "ショート・リール",
+      "travel": "旅行Vlog",
+      "podcast": "ポッドキャスト",
+      "music": "音楽・アート",
+      "cinema": "映画・シネマ"
+    },
     "capabilities": {
       "driveTitle": "Google Driveからすぐに開始",
       "driveText": "Driveに保存済みのファイルを選び、プロジェクトへ追加できます。",
@@ -93,7 +102,9 @@
     "loadError": "プロジェクトを読み込めませんでした。",
     "retryLoad": "再読み込み",
     "empty": {
-      "title": "まだプロジェクトがありません"
+      "title": "まだプロジェクトがありません",
+      "description": "最初の字幕プロジェクトを今すぐ作成しましょう",
+      "createAction": "新しいプロジェクトを作成"
     },
     "noSearchResults": {
       "title": "一致するプロジェクトがありません",

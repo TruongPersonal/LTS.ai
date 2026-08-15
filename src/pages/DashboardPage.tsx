@@ -106,6 +106,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ onSelectProject, i
         onSelectProject={onSelectProject}
         onEditProject={setEditingProject}
         onDeleteProject={setDeletingProject}
+        onCreateProject={() => setIsCreateOpen(true)}
       />
 
       <CreateProjectModal

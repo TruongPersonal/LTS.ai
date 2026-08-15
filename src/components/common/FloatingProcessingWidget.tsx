@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { AlertCircle, Check, ChevronUp, Loader2, Sparkles, X } from 'lucide-react';
+import { Activity, AlertCircle, Check, ChevronUp, Loader2, X } from 'lucide-react';
 import { useGlobalProcessing } from '../../hooks/useGlobalProcessing';
 
 export const FloatingProcessingWidget: React.FC = () => {
@@ -33,7 +33,7 @@ export const FloatingProcessingWidget: React.FC = () => {
   const getRingStroke = () => {
     if (isAllFailed) return 'var(--ui-danger)';
     if (isPartialSuccess) return 'var(--ui-warning)';
-    return 'url(#cosmic-floating-grad)';
+    return 'url(#studio-floating-grad)';
   };
 
   return (
@@ -50,7 +50,7 @@ export const FloatingProcessingWidget: React.FC = () => {
         >
           <div className="flex items-center gap-1.5">
             <span className="p-1 rounded-md bg-[var(--ui-accent)]/10 text-[var(--ui-accent)]">
-              <Sparkles className="size-3.5" />
+              <Activity className="size-3.5" />
             </span>
             <h4 className="text-xs font-bold text-[var(--ui-text)]">
               {isAllDone ? t('common.saved') : `${processedCount}/${totalCount}`}
@@ -109,7 +109,7 @@ export const FloatingProcessingWidget: React.FC = () => {
       <button
         type="button"
         onClick={() => setExpanded((prev) => !prev)}
-        className="group relative flex items-center justify-center size-14 rounded-full border border-[var(--ui-border-strong)] bg-[var(--ui-surface)]/95 backdrop-blur-xl shadow-2xl transition-all duration-300 hover:scale-105 hover:shadow-[0_0_20px_var(--ui-accent-glow)] cursor-pointer"
+        className="group relative flex items-center justify-center size-14 rounded-full border border-[var(--ui-border-strong)] bg-[var(--ui-surface)]/95 backdrop-blur-xl shadow-2xl transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer"
         title={isAllDone ? t('processing.doneTitle') : `${processedCount}/${totalCount}`}
         aria-label={t('processing.progressAria', { processed: processedCount, total: totalCount })}
       >
@@ -136,10 +136,9 @@ export const FloatingProcessingWidget: React.FC = () => {
             className="transition-all duration-300 ease-out"
           />
           <defs>
-            <linearGradient id="cosmic-floating-grad" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#7c6af5" />
-              <stop offset="50%" stopColor="#5b96f8" />
-              <stop offset="100%" stopColor="#42d8e6" />
+            <linearGradient id="studio-floating-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="#2563eb" />
+              <stop offset="100%" stopColor="#4f46e5" />
             </linearGradient>
           </defs>
         </svg>

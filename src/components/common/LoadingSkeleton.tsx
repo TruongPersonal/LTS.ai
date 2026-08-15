@@ -85,12 +85,10 @@ export const EditorSkeleton: React.FC = () => {
       </header>
 
       <main className="editor-main">
-        <section className="editor-video-shell flex items-center justify-center p-4">
-          <div className="ui-skeleton w-full h-full min-h-[260px] rounded-2xl flex flex-col items-center justify-center gap-3">
-            <div className="size-12 rounded-full border-2 border-white/20 flex items-center justify-center opacity-40">
-              <div className="size-4 bg-white/40 rounded-sm" />
-            </div>
-            <div className="ui-skeleton h-2 w-1/3 rounded-full opacity-60" />
+        <section className="editor-video-shell flex items-center justify-center">
+          <div className="relative w-full h-full flex items-center justify-center bg-[var(--ui-surface-subtle)]">
+            <div className="absolute inset-0 ui-skeleton opacity-80" />
+            <div className="relative z-10 size-12 rounded-2xl ui-skeleton shadow-sm" />
           </div>
         </section>
 

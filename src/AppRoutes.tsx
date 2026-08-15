@@ -123,8 +123,8 @@ const ProtectedLayout: React.FC = () => {
   const activeView = isEditorView
     ? 'editor'
     : location.pathname.startsWith('/projects/')
-    ? 'project'
-    : 'projects';
+      ? 'project'
+      : 'projects';
 
   return (
     <div className="authenticated-shell">

@@ -77,6 +77,15 @@
       "fr": "French",
       "it": "Italian"
     },
+    "showcase": {
+      "documentary": "Documentaries",
+      "masterclass": "Courses & Tech",
+      "shorts": "Shorts & Reels",
+      "travel": "Travel Vlogs",
+      "podcast": "Podcasts",
+      "music": "Music & Arts",
+      "cinema": "Cinema & Movies"
+    },
     "capabilities": {
       "driveTitle": "Start directly from Google Drive",
       "driveText": "Select a file you already have on Drive and bring it into your project.",
@@ -93,7 +102,9 @@
     "loadError": "Could not load your projects.",
     "retryLoad": "Reload projects",
     "empty": {
-      "title": "No projects yet"
+      "title": "No projects yet",
+      "description": "Create your first subtitle project now",
+      "createAction": "Create new project"
     },
     "noSearchResults": {
       "title": "No matching projects",
