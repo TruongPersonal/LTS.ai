@@ -139,9 +139,8 @@ export const LandingShowcaseGallery: React.FC = () => {
           onMouseLeave={onMouseLeaveOrUp}
           onMouseUp={onMouseLeaveOrUp}
           onMouseMove={onMouseMove}
-          className={`flex items-end gap-6 overflow-x-auto no-scrollbar py-4 px-6 sm:px-12 select-none ${
-            isDragging ? 'cursor-grabbing' : 'cursor-grab'
-          }`}
+          className={`flex items-end gap-6 overflow-x-auto no-scrollbar py-4 px-6 sm:px-12 select-none ${isDragging ? 'cursor-grabbing' : 'cursor-grab'
+            }`}
           style={{
             WebkitOverflowScrolling: 'touch',
             scrollbarWidth: 'none',
