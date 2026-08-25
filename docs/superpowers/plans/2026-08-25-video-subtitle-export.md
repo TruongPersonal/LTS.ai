@@ -254,9 +254,12 @@
   ~~~typescript
   type VideoExportStatus =
     | "idle"
+    | "confirm"
     | "preparing"
     | "exporting"
+    | "canceling"
     | "completed"
+    | "canceled"
     | "error";
   ~~~
 
@@ -266,17 +269,18 @@
 
 - [ ] Implement the export handler so it:
 
-  1. Opens the feature modal and sets preparing.
-  2. Uses the already available videoBlob and effective target subtitles.
-  3. Calls exportVideoWithSubtitles with a progress callback.
+  1. Opens the feature modal in confirmation state without starting FFmpeg work.
+  2. Uses the already available videoBlob and effective target subtitles after confirm.
+  3. Creates an AbortController for the local export job and calls exportVideoWithSubtitles with its signal and a progress callback.
   4. Creates the exact download name <base-name>_subtitled.mp4.
   5. Calls existing saveAs only after a successful output Blob.
   6. Sets completed only after saveAs is requested; maps typed failures to localized messages and sets error.
-  7. Never starts a second Drive fetch and never updates global processing state.
+  7. On cancel, aborts the current job, shows canceling/canceled, and does not create a download.
+  8. Never starts a second Drive fetch and never updates global processing state.
 
-- [ ] Define VideoExportModal as a feature-specific component using existing ModalWrapper. Its props must cover open state, file name, preparing/exporting/completed/error status, progress, error text, close callback, and the current localized strings. It may render only the title, status text, progress indicator, error text, and close action required for this feature. Do not create a generic modal component or generic progress abstraction.
+- [ ] Define VideoExportModal as a feature-specific component using existing ModalWrapper. Its props must cover open state, file name, confirmation/preparing/exporting/canceling/completed/canceled/error status, progress, error text, confirm/cancel/close callbacks, and the current localized strings. It may render only the title, confirmation/status text, progress indicator, error text, and feature actions required for this feature. Do not create a generic modal component or generic progress abstraction.
 
-- [ ] Keep the modal open through completion/error so the user can read the result. Allow close after completion or error; do not add cancellation unless the existing modal contract already supplies it.
+- [ ] Keep the modal open through completion/error/canceled so the user can read the result. Allow close after terminal states; expose only feature-local confirm/cancel actions and do not create a generic modal abstraction.
 
 - [ ] Add only the editor locale keys required by this feature:
 

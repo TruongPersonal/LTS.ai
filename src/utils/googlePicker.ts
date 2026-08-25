@@ -68,6 +68,7 @@ export async function openGoogleDrivePicker(): Promise<SelectedPickerFile | null
 
       const builder = new window.google.picker.PickerBuilder()
         .addView(view)
+        .addView(new window.google.picker.DocsUploadView())
         .setOAuthToken(accessToken)
         .setCallback((data: any) => {
           if (data.action === window.google.picker.Action.PICKED) {

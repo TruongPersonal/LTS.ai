@@ -42,7 +42,7 @@ Không triển khai trong milestone này:
 - Crop, watermark, audio track selector hoặc multiple audio processing.
 - YouTube, TikTok, Facebook hoặc social upload.
 - Server-side rendering, Supabase Edge Function, API endpoint hoặc media upload lại lên server.
-- Background processing, global queue, pause/resume, cancellation framework, retry queue hoặc export history.
+- Background processing, global queue, pause/resume, global cancellation framework, retry queue hoặc export history.
 - Database schema, export record, storage table hoặc IndexedDB cache.
 - Thay native video player.
 - Thay đổi behavior của audio preprocessing.
@@ -360,6 +360,12 @@ Mutex tối thiểu phải đảm bảo:
 - không có concurrent `ffmpeg.exec()`;
 - không tích hợp lock với `ProcessingContext`.
 
+Cancellation chỉ là hành vi local của một job tại `EditorPage`: job hiện tại có thể
+abort qua `AbortController`, exporter terminate worker đang sở hữu lock và runtime
+reset singleton để lần export sau load worker mới. Không tạo cancellation framework
+global hoặc queue mới. Mutex vẫn bao phủ toàn bộ lifecycle và release luôn nằm trong
+`finally`.
+
 ## 12. Video Export Pipeline
 
 Pipeline service:
@@ -504,8 +510,10 @@ Nút video export phải:
 `EditorPage` dùng local state tối thiểu:
 
 ```text
-idle → preparing → exporting → completed
-                         └──→ error
+idle → confirm → preparing → exporting → completed
+                    │             ├──→ error
+                    │             └──→ canceling → canceled
+                    └──→ idle
 ```
 
 Progress nằm trong khoảng 0–100. Không đưa state vào `ProcessingContext`, `FloatingProcessingWidget` hoặc database.
@@ -514,13 +522,17 @@ Progress nằm trong khoảng 0–100. Không đưa state vào `ProcessingContex
 
 Modal video export hiển thị:
 
+- bước xác nhận trước khi bắt đầu FFmpeg, với nút confirm/cancel;
 - tên file input;
-- trạng thái preparing/exporting/completed/error;
+- trạng thái preparing/exporting/canceling/completed/canceled/error;
 - progress khi đang chạy;
 - lỗi đã phân loại khi thất bại;
-- nút đóng sau completed/error.
+- nút hủy trong lúc preparing/exporting;
+- nút đóng sau completed/canceled/error.
 
-Trong lúc chạy không cho đóng modal và không cho khởi động job thứ hai. V1.1 không hỗ trợ cancel, pause hoặc resume.
+FFmpeg không được load, không ghi font/input/SRT và không chạy trước khi người dùng
+confirm. Trong lúc chạy không cho đóng modal và không cho khởi động job thứ hai.
+V1.1 hỗ trợ hủy local qua `FFmpeg.terminate()`, nhưng không hỗ trợ pause hoặc resume.
 
 ### Download
 
@@ -591,6 +603,8 @@ Không retry vô hạn, không telemetry mới và không ghi media lên server 
 - [ ] Audio-only input bị disabled hoặc reject rõ ràng và không tạo MP4.
 - [ ] Export lỗi hiển thị error và editor/playback vẫn hoạt động.
 - [ ] Double click không tạo concurrent export.
+- [ ] Click Export MP4 chỉ mở confirmation modal; FFmpeg/font request chỉ bắt đầu sau confirm.
+- [ ] Hủy trong lúc export terminate được job hiện tại, modal hiển thị canceled và export kế tiếp có thể load worker mới.
 
 ### Regression
 

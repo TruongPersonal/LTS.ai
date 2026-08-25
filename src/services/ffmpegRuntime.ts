@@ -25,6 +25,16 @@ export async function getFfmpeg(): Promise<FFmpeg> {
   return ffmpegPromise;
 }
 
+export function terminateFfmpeg(ffmpeg: FFmpeg): void {
+  try {
+    ffmpeg.terminate();
+  } finally {
+    // terminate() invalidates this worker. The next export must create and
+    // load a fresh shared instance before using the runtime again.
+    ffmpegPromise = null;
+  }
+}
+
 export async function acquireFfmpegLock(): Promise<() => void> {
   const previous = ffmpegLockTail;
   let release!: () => void;

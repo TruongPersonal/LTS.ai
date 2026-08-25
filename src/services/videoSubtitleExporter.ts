@@ -2,7 +2,7 @@ import { FFmpeg } from '@ffmpeg/ffmpeg';
 import { fetchFile } from '@ffmpeg/util';
 import type { SubtitleItem } from '../types/database';
 import { exportToSrt } from '../utils/subtitleParsers';
-import { acquireFfmpegLock, getFfmpeg } from './ffmpegRuntime';
+import { acquireFfmpegLock, getFfmpeg, terminateFfmpeg } from './ffmpegRuntime';
 
 const BUNDLED_FONT_URL = '/NotoSansCJKjp-Regular.otf';
 const FONT_DIRECTORY = '/fonts';
@@ -12,11 +12,13 @@ export type VideoExportErrorKind = 'load' | 'unsupported' | 'execution' | 'outpu
 
 export class VideoSubtitleExportError extends Error {
   readonly kind: VideoExportErrorKind;
+  readonly reason?: 'av1';
 
-  constructor(kind: VideoExportErrorKind, message: string) {
+  constructor(kind: VideoExportErrorKind, message: string, reason?: 'av1') {
     super(message);
     this.name = 'VideoSubtitleExportError';
     this.kind = kind;
+    this.reason = reason;
   }
 }
 
@@ -25,6 +27,7 @@ export interface VideoSubtitleExportOptions {
   subtitles: SubtitleItem[];
   fileName: string;
   onProgress?: (progress: number) => void;
+  signal?: AbortSignal;
 }
 
 function messageFromError(error: unknown): string {
@@ -50,6 +53,12 @@ function clampProgress(progress: number): number {
   return Math.min(1, Math.max(0, progress));
 }
 
+function createVideoExportCanceledError(): Error {
+  const error = new Error('Video export was canceled.');
+  error.name = 'AbortError';
+  return error;
+}
+
 async function cleanupFiles(ffmpeg: FFmpeg, fileNames: string[]): Promise<void> {
   await Promise.allSettled(fileNames.map((fileName) => ffmpeg.deleteFile(fileName)));
 }
@@ -69,7 +78,12 @@ export async function exportVideoWithSubtitles({
   subtitles,
   fileName,
   onProgress,
+  signal,
 }: VideoSubtitleExportOptions): Promise<Blob> {
+  if (signal?.aborted) {
+    throw createVideoExportCanceledError();
+  }
+
   if (
     videoBlob.size === 0 ||
     !videoBlob.type.toLowerCase().startsWith('video/') ||
@@ -96,24 +110,73 @@ export async function exportVideoWithSubtitles({
   const release = await acquireFfmpegLock();
   let ffmpeg: FFmpeg | null = null;
   let progressListenerAttached = false;
+  let logListenerAttached = false;
   let phase: VideoExportErrorKind = 'load';
+  let av1InputDetected = false;
+  let av1DecodeFailureDetected = false;
+  let canceled = Boolean(signal?.aborted);
+  let cancelListenerAttached = false;
+
+  const handleAbort = () => {
+    canceled = true;
+    if (ffmpeg) {
+      terminateFfmpeg(ffmpeg);
+    }
+  };
+
+  const throwIfCanceled = () => {
+    if (canceled || signal?.aborted) {
+      if (ffmpeg) {
+        terminateFfmpeg(ffmpeg);
+      }
+      throw createVideoExportCanceledError();
+    }
+  };
 
   const handleProgress = ({ progress }: { progress: number }) => {
     onProgress?.(clampProgress(progress));
   };
+  const handleLog = ({ message }: { message: string }) => {
+    if (/\b(?:Video: av1|av1 \(native\)|\[av1 @)/i.test(message)) {
+      av1InputDetected = true;
+    }
+    if (
+      /Failed to get pixel format|Missing Sequence Header|Error while decoding stream.*(?:Function not implemented|Invalid data found when processing input)/i.test(
+        message
+      )
+    ) {
+      av1DecodeFailureDetected = true;
+    }
+    if (import.meta.env.DEV) {
+      console.log('[FFmpeg]', message);
+    }
+  };
 
   try {
+    if (signal) {
+      signal.addEventListener('abort', handleAbort, { once: true });
+      cancelListenerAttached = true;
+    }
+    throwIfCanceled();
+
     try {
       ffmpeg = await getFfmpeg();
+      throwIfCanceled();
+      ffmpeg.on('log', handleLog);
+      logListenerAttached = true;
       await ensureFontDirectory(ffmpeg);
+      throwIfCanceled();
       await ffmpeg.writeFile(FONT_FILE, await fetchFile(BUNDLED_FONT_URL));
+      throwIfCanceled();
       phase = 'execution';
       ffmpeg.on('progress', handleProgress);
       progressListenerAttached = true;
       onProgress?.(0);
 
       await ffmpeg.writeFile(inputName, await fetchFile(videoBlob));
+      throwIfCanceled();
       await ffmpeg.writeFile(subtitleName, new TextEncoder().encode(exportToSrt(subtitles)));
+      throwIfCanceled();
 
       const exitCode = await ffmpeg.exec([
         '-y',
@@ -144,12 +207,16 @@ export async function exportVideoWithSubtitles({
 
       if (exitCode !== 0) {
         throw new VideoSubtitleExportError(
-          'execution',
-          `FFmpeg exited with code ${exitCode}.`
+          av1InputDetected && av1DecodeFailureDetected ? 'unsupported' : 'execution',
+          av1InputDetected && av1DecodeFailureDetected
+            ? 'AV1 video decoding is not supported by the current FFmpeg WASM core.'
+            : `FFmpeg exited with code ${exitCode}.`,
+          av1InputDetected && av1DecodeFailureDetected ? 'av1' : undefined
         );
       }
 
       phase = 'output';
+      throwIfCanceled();
       const outputData = await ffmpeg.readFile(outputName, 'binary');
       if (typeof outputData === 'string' || outputData.byteLength === 0) {
         throw new VideoSubtitleExportError(
@@ -158,13 +225,26 @@ export async function exportVideoWithSubtitles({
         );
       }
 
+      throwIfCanceled();
       onProgress?.(1);
       return new Blob([Uint8Array.from(outputData)], { type: 'video/mp4' });
     } catch (error) {
+      if (canceled || signal?.aborted) {
+        throw createVideoExportCanceledError();
+      }
+      if (import.meta.env.DEV) {
+        console.error('[VideoSubtitleExporter]', { phase, error });
+      }
       throw asVideoExportError(error, phase);
     }
   } finally {
+    if (signal && cancelListenerAttached) {
+      signal.removeEventListener('abort', handleAbort);
+    }
     if (ffmpeg) {
+      if (logListenerAttached) {
+        ffmpeg.off('log', handleLog);
+      }
       if (progressListenerAttached) {
         ffmpeg.off('progress', handleProgress);
       }
