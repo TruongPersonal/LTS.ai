@@ -23,6 +23,9 @@
 - The mutex covers the complete FFmpeg FS/exec lifecycle: acquire before loading or using FFmpeg, hold through all writes, exec calls, reads, yields, and cleanup, and release only from finally.
 - The capability probe runs once as a manual/development validation before the UI is exposed. It must not run on every render, Editor mount, or export, and no persistent capability service/cache is added.
 - libx264 is a required capability and the only V1.1 video encoder. Do not add a system-encoder fallback.
+- Bundle exactly one approved `NotoSansCJKjp-Regular.otf` version `2.004` asset (~16.47 MB) with its SIL OFL 1.1 license notice; use the existing `public/` static-asset convention and no asset-management layer.
+- Write the bundled font to `/fonts/NotoSansCJKjp-Regular.otf` inside the locked FFmpeg lifecycle and use `fontsdir=/fonts:force_style=FontName=Noto Sans CJK JP`.
+- Do not add font discovery, fontconfig, fallback, resolver, manager, user font selection/upload, CDN loading, subsetting, compression, lazy registry, or font cache. The known `can't find selected font provider` warning is non-fatal when libass resolves the configured font and representative glyphs render.
 - Use optional audio mapping so the same command supports audio-bearing and video-only inputs. Do not add scale/fps settings or export settings UI.
 - Use existing ModalWrapper for a feature-specific VideoExportModal. Do not create a generic modal abstraction.
 - Keep the feature local to EditorPage. Do not route it through ProcessingContext, useGlobalProcessing, FloatingProcessingWidget, ProjectDetailPage, or subtitle exporter utilities.
@@ -136,7 +139,9 @@
 
 ## Task 4: Implement the video subtitle export service and perform the one-time capability gate
 
-**File:** Add src/services/videoSubtitleExporter.ts.
+**Files:** Add src/services/videoSubtitleExporter.ts, public/NotoSansCJKjp-Regular.otf, and public/NotoSansCJKjp-Regular.LICENSE.txt.
+
+- [ ] Add the single approved font asset and its SIL OFL 1.1 license/copyright notice. Do not add any other font asset or font abstraction.
 
 - [ ] Define a focused service API:
 
@@ -167,6 +172,8 @@
 
 - [ ] Write the input with @ffmpeg/util fetchFile and write the SRT with TextEncoder over the existing exportToSrt serializer. The service must serialize target subtitles only and must not use source or bilingual export modes.
 
+- [ ] Write the bundled font into `/fonts/NotoSansCJKjp-Regular.otf` while holding the same mutex. Delete that font path in the same outer `finally`; do not keep it as a cache.
+
 - [ ] Register one progress listener for the current invocation, report a normalized 0–1 value through onProgress, and remove the listener in finally even when exec fails.
 
 - [ ] Execute exactly this V1.1 command shape, with the tokenized names:
@@ -176,7 +183,7 @@
   -i input.mp4
   -map 0:v:0
   -map 0:a?
-  -vf subtitles=subtitles.srt
+-vf subtitles=subtitles.srt:fontsdir=/fonts:force_style=FontName=Noto Sans CJK JP
   -c:v libx264
   -preset veryfast
   -crf 23
@@ -187,7 +194,7 @@
   output.mp4
   ~~~
 
-- [ ] Do not add a scale filter, frame-rate filter, encoder fallback, font-selection subsystem, settings UI, MP3 conversion path, or backend fallback.
+- [ ] Do not add a scale filter, frame-rate filter, encoder fallback, font-selection subsystem, settings UI, MP3 conversion path, or backend fallback. The fixed `FontName` is the only approved font selection behavior.
 
 - [ ] Read the output file while still holding the mutex, return a Blob with type video/mp4, and throw output when the file is missing or empty.
 
@@ -203,16 +210,16 @@
 
   1. Start the existing Vite dev server on localhost.
   2. In the browser console or a temporary dev-only evaluation, dynamically import the runtime and export service modules; do not commit probe code.
-  3. Fetch a small local video fixture or the shortest available completed Editor video, construct target cues containing Unicode text such as “Xin chào — こんにちは — 你好”, and run two exports sequentially.
+  3. Fetch a small local video fixture or the shortest available completed Editor video, write the approved font to `/fonts`, construct the seven approved representative target strings (`vi`, `en`, `zh`, `ja`, `ko`, `fr`, `it`), and run two exports sequentially.
   4. Verify both results are non-empty video/mp4 Blobs, progress callbacks are observed, and the second export succeeds after the first.
   5. Inspect the FFmpeg root directory after each run and verify no invocation-owned export files remain.
   6. Verify an audio-bearing video retains usable audio and a video-only input exports successfully without audio.
   7. Verify an audio-only Blob is rejected before an export command is run.
-  8. Verify the generated MP4 visibly contains the Unicode target subtitle during playback/fullscreen.
+  8. Verify the generated MP4 visibly contains all seven representative target strings during playback/fullscreen or frame/pixel inspection; do not rely on exit code alone.
 
 - [ ] If the available local fixture has no audio, use the shortest completed signed-in Editor video for the audio-bearing check. Do not add a production fixture solely for probing.
 
-- [ ] Treat failure of required libx264, subtitle rendering, Unicode text, video-only output, cleanup, or sequential locking as a capability gate failure. Stop before adding UI and fix only within the approved service/runtime scope; do not introduce a fallback encoder or persistent capability service.
+- [ ] Treat failure of required libx264, configured font resolution, any representative glyph rendering, video-only output, cleanup, or sequential locking as a capability gate failure. Stop before adding UI and fix only within the approved service/runtime scope; do not introduce a fallback encoder or persistent capability service.
 
 - [ ] Commit the service after the one-time probe passes:
 
@@ -357,7 +364,7 @@
   - A video with audio exports MP4 with readable audio and burned-in target captions.
   - A video without audio exports a playable video-only MP4 with burned-in target captions.
   - An audio-only input is rejected/disabled and is never converted.
-  - Unicode target subtitles render correctly.
+  - The seven approved representative target strings render correctly.
   - The downloaded filename ends with _subtitled.mp4.
 
 - [ ] Manually verify runtime safety:
