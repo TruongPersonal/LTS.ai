@@ -1,5 +1,5 @@
 import { getGoogleAccessToken, supabase } from '../lib/supabase';
-import type { FileMedia, InputSource } from '../types/database';
+import { DEFAULT_PLAN, normalizePlan, PLAN_LIMITS, type FileMedia, type InputSource, type Plan } from '../types/database';
 import type { ProcessingProgressCallback, ProcessingStage } from '../types/processing';
 import { extractFlacChunks, type AudioChunk } from './mediaAudioPreprocessor';
 import {
@@ -209,6 +209,42 @@ function getBlobDurationSeconds(blob: Blob): Promise<number> {
   });
 }
 
+async function getCurrentPlan(): Promise<Plan> {
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return DEFAULT_PLAN;
+
+    const { data: profile, error } = await supabase
+      .from('profiles')
+      .select('plan')
+      .eq('id', user.id)
+      .maybeSingle();
+
+    if (error || !profile) return DEFAULT_PLAN;
+    return normalizePlan(profile.plan);
+  } catch (err) {
+    console.warn('Could not query profile plan:', err);
+    return DEFAULT_PLAN;
+  }
+}
+
+async function assertDailyDurationAvailable(durationSeconds: number): Promise<void> {
+  if (durationSeconds <= 0) return;
+
+  const [plan, todayProcessed] = await Promise.all([
+    getCurrentPlan(),
+    fileService.getTodayProcessedDurationSeconds(),
+  ]);
+  const limits = PLAN_LIMITS[plan];
+  if (todayProcessed + durationSeconds > limits.dailyDurationSeconds) {
+    throw new Error(
+      i18n.t('media.drive.dailyDurationExceeded', {
+        dailyDurationMinutes: Math.round(limits.dailyDurationSeconds / 60),
+      })
+    );
+  }
+}
+
 async function processMediaFile(
   projectId: string,
   file: FileMedia,
@@ -223,12 +259,11 @@ async function processMediaFile(
     let effectiveDuration = file.duration_seconds || 0;
     const exactDuration = await getBlobDurationSeconds(mediaBlob);
     if (exactDuration > 0) {
-      const todayProcessed = await fileService.getTodayProcessedDurationSeconds();
-      if (todayProcessed + exactDuration > 3600) {
-        throw new Error(i18n.t('media.drive.dailyDurationExceeded'));
-      }
+      effectiveDuration = exactDuration;
+    }
+    await assertDailyDurationAvailable(effectiveDuration);
+    if (exactDuration > 0) {
       if (exactDuration !== file.duration_seconds) {
-        effectiveDuration = exactDuration;
         await supabase.from('files_media').update({ duration_seconds: exactDuration }).eq('id', file.id);
       }
     }
@@ -578,10 +613,7 @@ export const fileService = {
     }
 
     if (durationSeconds > 0) {
-      const todayDuration = await this.getTodayProcessedDurationSeconds();
-      if (todayDuration + durationSeconds > 3600) {
-        throw new Error(i18n.t('media.drive.dailyDurationExceeded'));
-      }
+      await assertDailyDurationAvailable(durationSeconds);
     }
 
     const newFile: Partial<FileMedia> = {

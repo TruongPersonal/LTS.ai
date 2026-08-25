@@ -1,9 +1,11 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Check, ChevronDown, Languages, Loader2, LogOut, Palette, Pencil, User, X } from 'lucide-react';
+import { ArrowUpCircle, Check, ChevronDown, Languages, Loader2, LogOut, Palette, Pencil, User, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../hooks/useAuth';
 import { LanguageSelector } from './LanguageSelector';
 import { ThemeSelector } from './ThemeSelector';
+import { SubscriptionModal } from '../subscription/SubscriptionModal';
+import { normalizePlan } from '../../types/database';
 
 interface UserDropdownProps {
   sidebar?: boolean;
@@ -17,9 +19,11 @@ export const UserDropdown: React.FC<UserDropdownProps> = ({ sidebar = false, com
   const [isEditingName, setIsEditingName] = useState(false);
   const [nameDraft, setNameDraft] = useState('');
   const [savingName, setSavingName] = useState(false);
+  const [isSubscriptionOpen, setIsSubscriptionOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const displayName = profile?.full_name || profile?.email?.split('@')[0] || 'User';
+  const currentPlan = normalizePlan(profile?.plan);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -154,6 +158,22 @@ export const UserDropdown: React.FC<UserDropdownProps> = ({ sidebar = false, com
             </div>
           </div>
 
+          <div className="p-3 border-b border-[var(--ui-border)] ">
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                setIsOpen(false);
+                setIsSubscriptionOpen(true);
+              }}
+              className="ui-button ui-button-ghost w-full justify-start gap-2 !pl-0"
+            >
+              <ArrowUpCircle className="size-4" />
+              <span className="flex-1 text-left">{t('subscription.manage')}</span>
+              <span className="text-[10px] font-bold uppercase tracking-wide ui-muted">{t(`subscription.plans.${currentPlan}.name`)}</span>
+            </button>
+          </div>
+
           <div className="p-2">
             <button
               type="button"
@@ -170,6 +190,8 @@ export const UserDropdown: React.FC<UserDropdownProps> = ({ sidebar = false, com
           </div>
         </div>
       )}
+
+      {isSubscriptionOpen && <SubscriptionModal isOpen onClose={() => setIsSubscriptionOpen(false)} />}
     </div>
   );
 };

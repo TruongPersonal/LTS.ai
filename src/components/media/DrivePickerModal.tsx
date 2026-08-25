@@ -5,6 +5,8 @@ import { TARGET_LANGUAGES } from '../../types/project';
 import { ModalWrapper } from '../common/ModalWrapper';
 import { openGoogleDrivePicker, type SelectedPickerFile } from '../../utils/googlePicker';
 import { formatMimeTypeLabel } from '../../utils/mediaFormat';
+import { useAuth } from '../../hooks/useAuth';
+import { getPlanLimits } from '../../types/database';
 
 interface DrivePickerModalProps {
   isOpen: boolean;
@@ -25,6 +27,9 @@ function stripFileExtension(filename: string): string {
 
 export const DrivePickerModal: React.FC<DrivePickerModalProps> = ({ isOpen, onClose, onSelectDriveFile }) => {
   const { t } = useTranslation();
+  const { profile } = useAuth();
+  const planLimits = getPlanLimits(profile?.plan);
+  const maxFileSizeMb = Math.round(planLimits.maxFileSizeBytes / (1024 * 1024));
   const [selectedFile, setSelectedFile] = useState<SelectedPickerFile | null>(null);
   const [customFileName, setCustomFileName] = useState('');
   const [includeSubtitle, setIncludeSubtitle] = useState(false);
@@ -43,8 +48,8 @@ export const DrivePickerModal: React.FC<DrivePickerModalProps> = ({ isOpen, onCl
     try {
       const result = await openGoogleDrivePicker();
       if (result) {
-        if (result.sizeBytes && result.sizeBytes > 500 * 1024 * 1024) {
-          setError(t('media.drive.exceedsSizeLimit'));
+        if (result.sizeBytes && result.sizeBytes > planLimits.maxFileSizeBytes) {
+          setError(t('media.drive.exceedsSizeLimit', { maxFileSizeMb }));
           setSelectedFile(null);
           return;
         }
@@ -76,8 +81,8 @@ export const DrivePickerModal: React.FC<DrivePickerModalProps> = ({ isOpen, onCl
       setError(t('media.drive.invalidLink'));
       return;
     }
-    if (selectedFile.sizeBytes && selectedFile.sizeBytes > 500 * 1024 * 1024) {
-      setError(t('media.drive.exceedsSizeLimit'));
+    if (selectedFile.sizeBytes && selectedFile.sizeBytes > planLimits.maxFileSizeBytes) {
+      setError(t('media.drive.exceedsSizeLimit', { maxFileSizeMb }));
       return;
     }
     if (includeSubtitle && (!subtitleFile || !subtitleContent)) {
@@ -134,7 +139,12 @@ export const DrivePickerModal: React.FC<DrivePickerModalProps> = ({ isOpen, onCl
               {selectedFile ? t('media.drive.reselectHeading') : t('media.drive.pickerHeading')}
             </h3>
           </button>
-          <p className="text-[11px] ui-muted text-center pt-0.5">{t('media.drive.quotaHint')}</p>
+          <p className="text-[11px] ui-muted text-center pt-0.5">
+            {t('media.drive.quotaHint', {
+              maxFileSizeMb,
+              dailyDurationMinutes: Math.round(planLimits.dailyDurationSeconds / 60),
+            })}
+          </p>
 
           {selectedFile && (
             <div className="space-y-1.5">

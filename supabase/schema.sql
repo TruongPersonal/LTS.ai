@@ -9,10 +9,29 @@ CREATE TABLE IF NOT EXISTS lts_ai.profiles (
     id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
     email TEXT NOT NULL,
     full_name TEXT,
+    plan TEXT NOT NULL DEFAULT 'free',
     daily_processed_seconds INT NOT NULL DEFAULT 0,
     last_processed_date DATE NOT NULL DEFAULT CURRENT_DATE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+ALTER TABLE lts_ai.profiles ADD COLUMN IF NOT EXISTS plan TEXT;
+UPDATE lts_ai.profiles SET plan = 'free' WHERE plan IS NULL;
+ALTER TABLE lts_ai.profiles ALTER COLUMN plan SET DEFAULT 'free';
+ALTER TABLE lts_ai.profiles ALTER COLUMN plan SET NOT NULL;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_constraint
+    WHERE conname = 'profiles_plan_allowed'
+      AND conrelid = 'lts_ai.profiles'::regclass
+  ) THEN
+    ALTER TABLE lts_ai.profiles
+      ADD CONSTRAINT profiles_plan_allowed CHECK (plan IN ('free', 'pro', 'max'));
+  END IF;
+END $$;
 
 CREATE TABLE IF NOT EXISTS lts_ai.projects (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),

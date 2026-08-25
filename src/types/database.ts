@@ -4,10 +4,44 @@ export type FileStatus = 'draft' | 'queued' | 'processing' | 'completed' | 'fail
 
 export type InputSource = 'media' | 'existing_subtitle';
 
+export type Plan = 'free' | 'pro' | 'max';
+
+export interface PlanLimits {
+  maxFileSizeBytes: number;
+  dailyDurationSeconds: number;
+}
+
+export const DEFAULT_PLAN: Plan = 'free';
+
+export const PLAN_LIMITS: Record<Plan, PlanLimits> = {
+  free: {
+    maxFileSizeBytes: 100 * 1024 * 1024,
+    dailyDurationSeconds: 10 * 60,
+  },
+  pro: {
+    maxFileSizeBytes: 300 * 1024 * 1024,
+    dailyDurationSeconds: 30 * 60,
+  },
+  max: {
+    maxFileSizeBytes: 500 * 1024 * 1024,
+    dailyDurationSeconds: 60 * 60,
+  },
+};
+
+export const PLAN_ORDER: readonly Plan[] = ['free', 'pro', 'max'];
+
+export const isPlan = (value: unknown): value is Plan =>
+  typeof value === 'string' && PLAN_ORDER.includes(value as Plan);
+
+export const normalizePlan = (value: unknown): Plan => (isPlan(value) ? value : DEFAULT_PLAN);
+
+export const getPlanLimits = (value: unknown): PlanLimits => PLAN_LIMITS[normalizePlan(value)];
+
 export interface Profile {
   id: string;
   email: string;
   full_name: string | null;
+  plan: Plan;
   daily_processed_seconds?: number;
   last_processed_date?: string;
   created_at: string;

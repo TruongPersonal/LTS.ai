@@ -16,6 +16,41 @@
     "theme": "Giao diện",
     "more": "Thêm tùy chọn"
   },
+  "subscription": {
+    "manage": "Gói sử dụng",
+    "title": "Các gói sử dụng",
+    "subtitle": "Xem giới hạn và nâng cấp gói sử dụng.",
+    "currentPlan": "Gói hiện tại",
+    "choosePlan": "Các gói khả dụng",
+    "fileLimitLabel": "Giới hạn tệp",
+    "dailyLimitLabel": "Giới hạn mỗi ngày",
+    "fileLimit": "{{size}} MB mỗi tệp",
+    "dailyLimit": "{{minutes}} phút mỗi ngày",
+    "dailyUsage": "Đã xử lý hôm nay",
+    "dailyUsageValue": "{{used}} / {{limit}}",
+    "upgradeAction": "Chọn gói",
+    "included": "Đã bao gồm",
+    "upgradeTitle": "Xác nhận nâng cấp",
+    "upgradeDescription": "Xác nhận để áp dụng gói mới cho tài khoản của bạn.",
+    "confirmUpgrade": "Xác nhận nâng cấp",
+    "upgradeSuccess": "Cập nhật gói thành công. Gói hiện tại của bạn là {{plan}}.",
+    "updateFailed": "Không thể cập nhật gói. Vui lòng thử lại.",
+    "usageLoadFailed": "Không thể tải hạn mức đã dùng hôm nay.",
+    "plans": {
+      "free": {
+        "name": "Free",
+        "description": "Dành cho nhu cầu phụ đề không thường xuyên."
+      },
+      "pro": {
+        "name": "Pro",
+        "description": "Nhiều không gian hơn cho dự án thường xuyên."
+      },
+      "max": {
+        "name": "Max",
+        "description": "Gói có giới hạn cao nhất."
+      }
+    }
+  },
   "navigation": {
     "dashboard": "Dự án",
     "logout": "Đăng xuất",
@@ -173,9 +208,9 @@
       "subtitle": "Chọn video/audio để tạo phụ đề.",
       "pickerHeading": "Chọn tệp Google Drive",
       "reselectHeading": "Chọn lại tệp Google Drive",
-      "quotaHint": "Hạn mức: Tối đa 500MB/tệp • Tổng 60 phút/ngày.",
-      "exceedsSizeLimit": "Dung lượng tệp vượt quá giới hạn 500MB/tệp.",
-      "dailyDurationExceeded": "Bạn đã đạt hạn mức 60 phút/ngày. Vui lòng quay lại vào ngày mai.",
+      "quotaHint": "Hạn mức: Tối đa {{maxFileSizeMb}}MB/tệp • Tổng {{dailyDurationMinutes}} phút/ngày.",
+      "exceedsSizeLimit": "Dung lượng tệp vượt quá giới hạn {{maxFileSizeMb}}MB/tệp.",
+      "dailyDurationExceeded": "Bạn đã đạt hạn mức {{dailyDurationMinutes}} phút/ngày. Vui lòng quay lại vào ngày mai.",
       "fileType": "Loại tệp",
       "fileName": "Tên tệp",
       "hasSubtitle": "Có sẵn phụ đề?",
