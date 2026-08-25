@@ -16,6 +16,41 @@
     "theme": "表示",
     "more": "その他の操作"
   },
+  "subscription": {
+    "manage": "プラン",
+    "title": "利用プラン",
+    "subtitle": "制限を確認して、利用プランをアップグレードできます。",
+    "currentPlan": "現在のプラン",
+    "choosePlan": "利用可能なプラン",
+    "fileLimitLabel": "ファイル上限",
+    "dailyLimitLabel": "1日の上限",
+    "fileLimit": "1ファイル {{size}} MB",
+    "dailyLimit": "1日 {{minutes}} 分",
+    "dailyUsage": "本日の処理量",
+    "dailyUsageValue": "{{used}} / {{limit}}",
+    "upgradeAction": "プランを選択",
+    "included": "利用中",
+    "upgradeTitle": "アップグレードの確認",
+    "upgradeDescription": "確認すると、このプランがアカウントに適用されます。",
+    "confirmUpgrade": "アップグレードを確認",
+    "upgradeSuccess": "プランを更新しました。現在のプランは{{plan}}です。",
+    "updateFailed": "プランを更新できませんでした。もう一度お試しください。",
+    "usageLoadFailed": "本日の使用量を読み込めませんでした。",
+    "plans": {
+      "free": {
+        "name": "Free",
+        "description": "時々字幕を作成する方向け。"
+      },
+      "pro": {
+        "name": "Pro",
+        "description": "通常のプロジェクトに余裕を。"
+      },
+      "max": {
+        "name": "Max",
+        "description": "利用できる上限が最も高いプラン。"
+      }
+    }
+  },
   "navigation": {
     "dashboard": "プロジェクト",
     "logout": "ログアウト",
@@ -173,9 +208,9 @@
       "subtitle": "動画/音声を選択して字幕を生成。",
       "pickerHeading": "Google Driveファイルを選択",
       "reselectHeading": "Google Driveファイルを再選択",
-      "quotaHint": "制限: 最大500MB/ファイル • 1日合計60分まで。",
-      "exceedsSizeLimit": "ファイルサイズが制限（500MB/ファイル）を超えています。",
-      "dailyDurationExceeded": "1日の制限（60分）に達しました。明日再度お試しください。",
+      "quotaHint": "制限: 最大{{maxFileSizeMb}}MB/ファイル • 1日合計{{dailyDurationMinutes}}分まで。",
+      "exceedsSizeLimit": "ファイルサイズが制限（{{maxFileSizeMb}}MB/ファイル）を超えています。",
+      "dailyDurationExceeded": "1日の制限（{{dailyDurationMinutes}}分）に達しました。明日再度お試しください。",
       "fileType": "ファイル形式",
       "fileName": "ファイル名",
       "hasSubtitle": "既存の字幕がありますか？",

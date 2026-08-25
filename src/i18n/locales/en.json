@@ -16,6 +16,41 @@
     "theme": "Theme",
     "more": "More options"
   },
+  "subscription": {
+    "manage": "Subscription",
+    "title": "Subscription plans",
+    "subtitle": "Review your limits and upgrade your plan.",
+    "currentPlan": "Current plan",
+    "choosePlan": "Available plans",
+    "fileLimitLabel": "File limit",
+    "dailyLimitLabel": "Daily limit",
+    "fileLimit": "{{size}} MB per file",
+    "dailyLimit": "{{minutes}} minutes per day",
+    "dailyUsage": "Today's processing",
+    "dailyUsageValue": "{{used}} / {{limit}}",
+    "upgradeAction": "Choose plan",
+    "included": "Included",
+    "upgradeTitle": "Confirm upgrade",
+    "upgradeDescription": "Confirm to apply this plan to your account.",
+    "confirmUpgrade": "Confirm upgrade",
+    "upgradeSuccess": "Plan updated successfully. Your current plan is {{plan}}.",
+    "updateFailed": "Could not update your plan. Please try again.",
+    "usageLoadFailed": "Could not load today's usage.",
+    "plans": {
+      "free": {
+        "name": "Free",
+        "description": "For occasional subtitle work."
+      },
+      "pro": {
+        "name": "Pro",
+        "description": "More room for regular projects."
+      },
+      "max": {
+        "name": "Max",
+        "description": "The highest available limit."
+      }
+    }
+  },
   "navigation": {
     "dashboard": "Projects",
     "logout": "Log out",
@@ -173,9 +208,9 @@
       "subtitle": "Select a video/audio file to generate subtitles.",
       "pickerHeading": "Select Google Drive file",
       "reselectHeading": "Reselect Google Drive file",
-      "quotaHint": "Quota: Max 500MB/file • Total 60 mins/day.",
-      "exceedsSizeLimit": "File size exceeds the 500MB/file limit.",
-      "dailyDurationExceeded": "Daily 60-minute quota reached. Please try again tomorrow.",
+      "quotaHint": "Quota: Max {{maxFileSizeMb}}MB/file • Total {{dailyDurationMinutes}} mins/day.",
+      "exceedsSizeLimit": "File size exceeds the {{maxFileSizeMb}}MB/file limit.",
+      "dailyDurationExceeded": "Daily {{dailyDurationMinutes}}-minute quota reached. Please try again tomorrow.",
       "fileType": "Type",
       "fileName": "File name",
       "hasSubtitle": "Has existing subtitles?",

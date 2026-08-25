@@ -8,7 +8,7 @@ import {
   persistGoogleProviderToken,
   supabase,
 } from '../lib/supabase';
-import type { Profile } from '../types/database';
+import { normalizePlan, type Profile } from '../types/database';
 import { AuthContext } from './auth-context';
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -29,7 +29,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       if (data) {
-        setProfile(data);
+        setProfile({ ...data, plan: normalizePlan(data.plan) });
       } else {
         const name =
           authUser.user_metadata?.full_name ||
@@ -40,6 +40,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           id: authUser.id,
           email: authUser.email || '',
           full_name: name,
+          plan: 'free' as const,
         };
         const { data: createdData } = await supabase
           .from('profiles')
@@ -48,10 +49,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           .single();
 
         setProfile(
-          createdData || {
-            ...profilePayload,
-            created_at: new Date().toISOString(),
-          }
+          createdData
+            ? { ...createdData, plan: normalizePlan(createdData.plan) }
+            : {
+                ...profilePayload,
+                created_at: new Date().toISOString(),
+              }
         );
       }
     } catch (err) {
