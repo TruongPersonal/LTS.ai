@@ -23,7 +23,7 @@ V1.1 chỉ xử lý:
 - Download output MP4 bằng `file-saver` hiện có.
 - Local progress, completed state và error state trong editor.
 
-Nếu input hiện tại là audio-only hoặc Blob không có MIME type video, action phải disabled hoặc reject rõ ràng. Không chuyển MP3/audio thành MP4 video.
+Video có hình nhưng không có audio vẫn được hỗ trợ và phải tạo video-only MP4. Audio-only input không được hỗ trợ: action phải disabled hoặc reject rõ ràng. Không chuyển MP3/audio thành MP4 video.
 
 ## 5. Out of Scope
 
@@ -177,7 +177,7 @@ Không thêm fetch function riêng cho export.
 
 ### 8.2. Tạo shared FFmpeg runtime tối thiểu
 
-Chỉ khi capability probe xác nhận cần dùng chung, tạo:
+Tạo module dùng chung:
 
 ```text
 src/services/ffmpegRuntime.ts
@@ -190,9 +190,9 @@ getFfmpeg(): Promise<FFmpeg>
 acquireFfmpegLock(): Promise<() => void>
 ```
 
-`acquireFfmpegLock()` là mutex tối thiểu để đảm bảo không có hai `ffmpeg.exec()` concurrent trên cùng instance. Không tạo worker pool, queue framework hoặc generic job manager.
+`acquireFfmpegLock()` là mutex tối thiểu để đảm bảo không có hai `ffmpeg.exec()` concurrent trên cùng instance. Lock bao phủ toàn bộ FFmpeg filesystem/`exec()` lifecycle của một operation: acquire trước `getFfmpeg()` và mọi `writeFile`/`readFile`/`exec`, giữ qua output read, và release sau cleanup. Mọi release phải nằm trong `finally`. Không tạo worker pool, queue framework hoặc generic job manager.
 
-`extractFlacChunks()` phải giữ lock trong toàn bộ lifecycle async generator, từ trước khi lấy instance tới `finally` cleanup, để video export không chạy cùng lúc với audio preprocessing. Việc này chỉ serialize FFmpeg execution và không đổi kết quả audio.
+`extractFlacChunks()` phải giữ lock trong toàn bộ lifecycle async generator, từ trước khi lấy instance tới `finally` cleanup; video exporter cũng phải giữ lock theo cùng quy tắc. Như vậy audio preprocessing và video export không chạy cùng lúc trên FFmpeg FS/worker. Việc này chỉ serialize execution và không đổi kết quả audio.
 
 ### 8.3. Tạo video export service tối thiểu
 
@@ -352,13 +352,13 @@ Service không tự gọi `saveAs()` để giữ UI/download boundary tại `Edi
 
 ## 13. FFmpeg Capability Probe
 
-Trước khi expose UI, phải chạy một probe thực tế trên đúng core URL hiện tại với một video ngắn có audio nếu có thể. Probe không được chỉ kiểm tra string/config.
+Trước khi expose UI, phải chạy một probe thực tế một lần trên đúng core URL hiện tại với một video ngắn có audio nếu có thể. Đây là bước validation thủ công/development trước implementation, không phải runtime capability service. Không chạy probe trong mỗi render, mỗi `EditorPage` mount hoặc mỗi lần export; không thêm `useEffect` probe, cache persistent hoặc API probe vào production flow. Probe không được chỉ kiểm tra string/config.
 
 Probe phải xác nhận:
 
 1. FFmpeg load thành công.
 2. `subtitles` filter execute thành công.
-3. H.264 encoder dùng cho output execute thành công.
+3. Encoder `libx264` bắt buộc dùng cho output và execute thành công.
 4. AAC encoder hoạt động khi input có audio.
 5. MP4 muxer tạo output đọc được.
 6. Output có bytes và MIME `video/mp4`.
@@ -377,7 +377,7 @@ Nếu Unicode không render đúng vì font capability của core, ghi nhận ca
 Output policy cố định, không có settings panel:
 
 - container: MP4;
-- video: H.264 bằng encoder đã probe, ưu tiên `libx264`;
+- video: `libx264` là capability bắt buộc và là encoder duy nhất được phép dùng trong V1.1;
 - audio: AAC nếu input có audio;
 - subtitle: `subtitles` filter burn-in vào video frames;
 - không có audio input: output video-only MP4, không tạo audio giả;
@@ -407,7 +407,7 @@ Command structure phải tương đương:
 <output.mp4>
 ```
 
-Nếu capability probe cho thấy encoder ưu tiên không có, không tự đổi policy âm thầm; ghi nhận capability gap trước khi tiếp tục.
+Nếu capability probe không có hoặc không chạy được `libx264`, ghi nhận capability gap và dừng milestone trước khi expose UI. Không tạo encoder fallback, không tự đổi sang encoder H.264 khác và không thêm conversion policy mới.
 
 ## 15. Temporary File and Cleanup Policy
 
@@ -515,7 +515,8 @@ Không retry vô hạn, không telemetry mới và không ghi media lên server 
 
 - [ ] Probe trên core `0.12.10` load thành công.
 - [ ] `subtitles` filter chạy thành công.
-- [ ] H.264, AAC và MP4 muxer chạy thành công.
+- [ ] `libx264` bắt buộc chạy thành công; không có encoder fallback.
+- [ ] AAC và MP4 muxer chạy thành công.
 - [ ] Unicode Việt/Nhật/Trung render đúng hoặc capability gap được ghi nhận trước UI.
 - [ ] Progress event hoạt động và listener được gỡ.
 - [ ] Job thứ hai chạy được trên cùng instance sau job đầu.
@@ -536,6 +537,7 @@ Không retry vô hạn, không telemetry mới và không ghi media lên server 
 - [ ] Mở output bằng player không có WebVTT track vẫn thấy chữ trong hình.
 - [ ] Video có audio giữ được audio.
 - [ ] Video không có audio vẫn tạo được video-only MP4.
+- [ ] Audio-only input bị disabled hoặc reject rõ ràng và không tạo MP4.
 - [ ] Export lỗi hiển thị error và editor/playback vẫn hoạt động.
 - [ ] Double click không tạo concurrent export.
 
@@ -563,7 +565,7 @@ Mọi capability ngoài target-only MP4 burn-in phải là milestone riêng sau 
 
 - `src/services/ffmpegRuntime.ts` — shared loader và mutex tối thiểu để audio preprocessing và video export reuse/serialize cùng instance.
 - `src/services/videoSubtitleExporter.ts` — service client-side nhận Blob + effective target subtitles và trả MP4 Blob.
-- `src/components/editor/VideoExportModal.tsx` — modal progress/error riêng cho editor, dựa trên `ModalWrapper` hiện có.
+- `src/components/editor/VideoExportModal.tsx` — component UI riêng cho feature, hiển thị progress/error và dùng `ModalWrapper` hiện có; không tạo generic modal abstraction.
 
 ### Sửa
 
