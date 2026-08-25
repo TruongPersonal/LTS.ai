@@ -4,6 +4,8 @@
 
 Implementation-ready design specification, revised against the current LTS.ai codebase.
 
+Spec revision: V1.1 with the approved single bundled-font capability outcome.
+
 ## 2. Milestone
 
 V1.1 — Client-side MP4 export with burned-in target subtitles.
@@ -20,6 +22,7 @@ V1.1 chỉ xử lý:
 - `effective target subtitles` của editor, gồm cả draft target text và timing hợp lệ chưa confirm.
 - Một action riêng trong editor: export video có phụ đề.
 - Burn-in target/translation subtitles bằng FFmpeg WASM hiện có.
+- Bundle exactly one approved font asset, `NotoSansCJKjp-Regular.otf` version `2.004`, solely to make libass subtitle burn-in work for the approved representative validation strings.
 - Download output MP4 bằng `file-saver` hiện có.
 - Local progress, completed state và error state trong editor.
 
@@ -31,8 +34,10 @@ Không triển khai trong milestone này:
 
 - Burn-in source/original subtitles.
 - Burn-in bilingual subtitles.
-- Font, màu, kích thước, vị trí, animation hoặc ASS styling.
-- Font manager, font upload hoặc font embedding system.
+- Font customization, màu, kích thước, vị trí, animation hoặc ASS styling.
+- Font discovery, fontconfig, font fallback, font resolver, font manager, user font selection, font upload hoặc CDN font loading.
+- Font subsetting, compression, lazy font registry, font cache hoặc multi-font optimization.
+- Mọi font asset khác ngoài đúng một `NotoSansCJKjp-Regular.otf` được phê duyệt cho V1.1.
 - Resolution, FPS, bitrate, CRF hoặc preset selector.
 - Crop, watermark, audio track selector hoặc multiple audio processing.
 - YouTube, TikTok, Facebook hoặc social upload.
@@ -54,6 +59,29 @@ Không triển khai trong milestone này:
 - `file-saver` và `@types/file-saver`.
 
 Không thêm dependency và không thay version trong milestone này.
+
+### Approved bundled font capability
+
+V1.1 được phép bundle đúng một font asset:
+
+- file: `NotoSansCJKjp-Regular.otf`;
+- family/`FontName`: `Noto Sans CJK JP`;
+- face: Regular (`NotoSansCJKjp-Regular`);
+- version: `2.004`;
+- license: SIL Open Font License 1.1;
+- approximate size: `16.47 MB`.
+
+Font này đã được probe thực tế với `@ffmpeg/core@0.12.10` và render đúng các representative subtitle strings cho `vi`, `en`, `zh`, `ja`, `ko`, `fr` và `it`. Kết quả này không đảm bảo mọi Unicode character của mọi ngôn ngữ; acceptance chỉ yêu cầu các representative validation strings được liệt kê tại Section 13.
+
+Đây là trade-off có chủ đích của V1.1. Không thêm font subsetting pipeline, compression framework, lazy font registry, font cache hoặc multi-font optimization. Các tối ưu đó là future milestone nếu thực sự cần.
+
+Export phải ghi font vào FFmpeg virtual filesystem tại:
+
+```text
+/fonts/NotoSansCJKjp-Regular.otf
+```
+
+`subtitles` filter phải dùng `fontsdir=/fonts` và `force_style=FontName=Noto Sans CJK JP`. Không cần và không được thêm fontconfig, font discovery hoặc fallback system. Không đổi `@ffmpeg/core` version và không thêm npm dependency.
 
 `src/services/mediaAudioPreprocessor.ts` hiện là nơi duy nhất dùng FFmpeg. File này có:
 
@@ -341,12 +369,13 @@ Pipeline service:
 3. Tạo invocation id đơn giản để tránh collision filename.
 4. `fetchFile(videoBlob)` và `ffmpeg.writeFile(inputName, ...)`.
 5. Encode `exportToSrt(subtitles)` thành UTF-8 bytes và ghi `subtitleName`.
-6. Attach `ffmpeg.on('progress', handler)`.
-7. Chạy một `ffmpeg.exec()` với args policy cố định.
-8. Nếu exit code khác 0, throw execution error.
-9. Đọc output file thành `Uint8Array`.
-10. Tạo `new Blob([data], { type: 'video/mp4' })`.
-11. Detach progress listener và cleanup trong `finally`.
+6. Load the one approved bundled font from the repository static asset and write it to `/fonts/NotoSansCJKjp-Regular.otf` in FFmpeg virtual filesystem. This write is part of the existing locked FFmpeg lifecycle; do not create a font loader/registry/service.
+7. Attach `ffmpeg.on('progress', handler)`.
+8. Chạy một `ffmpeg.exec()` với args policy cố định.
+9. Nếu exit code khác 0, throw execution error.
+10. Đọc output file thành `Uint8Array`.
+11. Tạo `new Blob([data], { type: 'video/mp4' })`.
+12. Detach progress listener và cleanup trong `finally`.
 
 Service không tự gọi `saveAs()` để giữ UI/download boundary tại `EditorPage`.
 
@@ -365,12 +394,27 @@ Probe phải xác nhận:
 7. Progress event phát ra và listener có thể gỡ.
 8. Input/SRT/output đều delete được.
 9. Cùng FFmpeg instance chạy được job export thứ hai tuần tự.
-10. Unicode subtitle rendering hoạt động với tối thiểu tiếng Việt, tiếng Nhật và tiếng Trung.
-11. Input không có audio vẫn tạo được video-only MP4 theo Section 14.
+10. Bundled font được ghi vào `/fonts/NotoSansCJKjp-Regular.otf` và libass resolve được fixed `FontName=Noto Sans CJK JP` qua `fontsdir=/fonts`.
+11. Actual rendered output/pixel verification xác nhận đúng toàn bộ representative strings cho bảy target languages trong bảng dưới đây; không chỉ kiểm tra FFmpeg exit code.
+12. Input không có audio vẫn tạo được video-only MP4 theo Section 14.
+
+Representative validation strings:
+
+| Language | Code | String |
+|---|---|---|
+| Vietnamese | `vi` | `Xin chào thế giới! Tiếng Việt có dấu: ă â ê ô ơ ư đ.` |
+| English | `en` | `Hello world!` |
+| Chinese | `zh` | `你好，世界。` |
+| Japanese | `ja` | `こんにちは、世界。` |
+| Korean | `ko` | `안녕하세요, 세계!` |
+| French | `fr` | `Bonjour le monde ! Élève français. Ça va ?` |
+| Italian | `it` | `Ciao mondo! Perché è così?` |
 
 Có thể dùng fixture video ngắn hiện có trong `public/landing-video.mp4` nếu codec/audio phù hợp; nếu fixture không đủ để kiểm tra audio, probe phải dùng một video media ngắn có audio trong môi trường test, không thêm fixture production chỉ cho probe.
 
-Nếu Unicode không render đúng vì font capability của core, ghi nhận capability gap và dừng trước UI. Không thêm font system, dependency hoặc backend workaround trong milestone này.
+Nếu một representative string không render đúng, ghi nhận capability gap và dừng trước UI. Không thêm font system, font fallback, dependency, CDN font hoặc backend workaround trong milestone này.
+
+FFmpeg có thể vẫn ghi warning `can't find selected font provider`. Warning này không tự động làm export fail nếu font đã được libass resolve, command thành công, output MP4 được tạo và representative glyph được render đúng. Không thêm workaround chỉ để loại bỏ warning này.
 
 ## 14. Output/Codec Policy
 
@@ -380,6 +424,7 @@ Output policy cố định, không có settings panel:
 - video: `libx264` là capability bắt buộc và là encoder duy nhất được phép dùng trong V1.1;
 - audio: AAC nếu input có audio;
 - subtitle: `subtitles` filter burn-in vào video frames;
+- font: đúng một `NotoSansCJKjp-Regular.otf` bundled asset, ghi vào `/fonts/NotoSansCJKjp-Regular.otf`; không có font discovery hoặc fallback;
 - không có audio input: output video-only MP4, không tạo audio giả;
 - giữ resolution input bằng cách không thêm scale filter;
 - giữ frame rate input bằng cách không thêm FPS filter;
@@ -396,7 +441,7 @@ Command structure phải tương đương:
 -i <input>
 -map 0:v:0
 -map 0:a?
--vf subtitles=<srt-file>
+-vf subtitles=<srt-file>:fontsdir=/fonts:force_style=FontName=Noto Sans CJK JP
 -c:v libx264
 -preset veryfast
 -crf 23
@@ -425,7 +470,10 @@ Cleanup nằm trong `finally` và phải thử xóa:
 
 - input;
 - subtitle file;
-- output file.
+- output file;
+- `/fonts/NotoSansCJKjp-Regular.otf`.
+
+Font file là file cố định duy nhất được phép không có invocation id. Vì mọi FFmpeg FS activity đều nằm trong mutex, font được ghi và xóa trong cùng invocation lifecycle; không giữ font trong virtual FS như một cache.
 
 Cleanup success/error dùng `Promise.allSettled()` để một file thiếu không ngăn cleanup các file còn lại. Nếu output đã đọc thành công nhưng cleanup một file thất bại, ghi log và vẫn trả output Blob; nếu output read thất bại, export là error và không download.
 
@@ -515,9 +563,12 @@ Không retry vô hạn, không telemetry mới và không ghi media lên server 
 
 - [ ] Probe trên core `0.12.10` load thành công.
 - [ ] `subtitles` filter chạy thành công.
+- [ ] Đúng một bundled `NotoSansCJKjp-Regular.otf` version `2.004` (~16.47 MB) được ghi vào FFmpeg FS tại `/fonts/NotoSansCJKjp-Regular.otf`.
+- [ ] `fontsdir=/fonts` và `force_style=FontName=Noto Sans CJK JP` resolve được font trong libass.
 - [ ] `libx264` bắt buộc chạy thành công; không có encoder fallback.
 - [ ] AAC và MP4 muxer chạy thành công.
-- [ ] Unicode Việt/Nhật/Trung render đúng hoặc capability gap được ghi nhận trước UI.
+- [ ] Bảy representative validation strings của `vi`, `en`, `zh`, `ja`, `ko`, `fr`, `it` render đúng trong output MP4 bằng actual rendered output/pixel verification.
+- [ ] Warning `can't find selected font provider`, nếu xuất hiện nhưng các điều kiện render ở trên đều đạt, không bị coi là failure.
 - [ ] Progress event hoạt động và listener được gỡ.
 - [ ] Job thứ hai chạy được trên cùng instance sau job đầu.
 - [ ] Input/SRT/output được cleanup khi success và error.
@@ -566,6 +617,10 @@ Mọi capability ngoài target-only MP4 burn-in phải là milestone riêng sau 
 - `src/services/ffmpegRuntime.ts` — shared loader và mutex tối thiểu để audio preprocessing và video export reuse/serialize cùng instance.
 - `src/services/videoSubtitleExporter.ts` — service client-side nhận Blob + effective target subtitles và trả MP4 Blob.
 - `src/components/editor/VideoExportModal.tsx` — component UI riêng cho feature, hiển thị progress/error và dùng `ModalWrapper` hiện có; không tạo generic modal abstraction.
+- `public/NotoSansCJKjp-Regular.otf` — đúng một bundled font asset được phê duyệt cho V1.1.
+- `public/NotoSansCJKjp-Regular.LICENSE.txt` — SIL OFL 1.1 license/copyright notice đi kèm font.
+
+Repository hiện không có convention riêng cho `assets/fonts`; static assets hiện nằm trực tiếp dưới `public/`. Vì vậy dùng hai file static ở trên, không tạo asset management architecture mới. License notice không được tính là font asset thứ hai.
 
 ### Sửa
 
