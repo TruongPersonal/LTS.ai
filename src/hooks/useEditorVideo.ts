@@ -16,12 +16,14 @@ export const useEditorVideo = ({
   mimeType: inputMime,
 }: UseEditorVideoParams) => {
   const [videoUrl, setVideoUrl] = useState('');
+  const [videoBlob, setVideoBlob] = useState<Blob | null>(null);
   const [videoLoading, setVideoLoading] = useState(true);
   const [videoError, setVideoError] = useState<string | null>(null);
   const [currentTime, setCurrentTime] = useState(0);
 
   const loadVideo = useCallback(async () => {
     if (!driveFileId) {
+      setVideoBlob(null);
       setVideoError(i18n.t('editor.video.empty'));
       setVideoLoading(false);
       return;
@@ -29,6 +31,7 @@ export const useEditorVideo = ({
 
     setVideoLoading(true);
     setVideoError(null);
+    setVideoBlob(null);
 
     try {
       if (inputSource === 'media' || inputSource === 'existing_subtitle') {
@@ -83,6 +86,7 @@ export const useEditorVideo = ({
 
         const resolvedBlob = new Blob([rawBlob], { type: finalType });
         const objectUrl = URL.createObjectURL(resolvedBlob);
+        setVideoBlob(resolvedBlob);
         setVideoUrl((prev) => {
           if (prev && prev.startsWith('blob:')) {
             URL.revokeObjectURL(prev);
@@ -90,6 +94,7 @@ export const useEditorVideo = ({
           return objectUrl;
         });
       } else {
+        setVideoBlob(null);
         setVideoUrl(driveFileId);
       }
     } catch (error) {
@@ -114,6 +119,7 @@ export const useEditorVideo = ({
 
   return {
     videoUrl,
+    videoBlob,
     videoLoading,
     videoError,
     currentTime,
