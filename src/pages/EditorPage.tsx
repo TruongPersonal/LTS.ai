@@ -4,6 +4,7 @@ import type { FileMedia, Project } from '../types/database';
 import { getNativeLanguageName } from '../types/project';
 import { VideoPlayer } from '../components/editor/VideoPlayer';
 import { ExportModal } from '../components/editor/ExportModal';
+import { VideoExportModal, type VideoExportStatus } from '../components/editor/VideoExportModal';
 import { EditorToolbar } from '../components/editor/EditorToolbar';
 import { EditorCueList } from '../components/editor/EditorCueList';
 import { CueListSkeleton, EditorSkeleton } from '../components/common/LoadingSkeleton';
@@ -11,9 +12,12 @@ import { useEditorSubtitles } from '../hooks/useEditorSubtitles';
 import { useEditorVideo } from '../hooks/useEditorVideo';
 import { useEditorDraft } from '../hooks/useEditorDraft';
 import { useCueVisibility } from '../hooks/useCueVisibility';
+import { useSubtitleTrack } from '../hooks/useSubtitleTrack';
 import { findActiveCueId, getSourceTextById } from '../utils/subtitleEditor';
 import { getEditorCueDensity } from '../utils/editorDensity';
 import { downloadSubtitleFile, type SubtitleExportFormat, type SubtitleExportTrack } from '../utils/exporter';
+import { saveAs } from 'file-saver';
+import { exportVideoWithSubtitles, VideoSubtitleExportError } from '../services/videoSubtitleExporter';
 
 interface EditorPageProps {
   file: FileMedia;
@@ -33,9 +37,14 @@ export const EditorPage: React.FC<EditorPageProps> = ({
   const { t } = useTranslation();
   const cueRefs = useRef<Map<number, HTMLDivElement>>(new Map());
   const cueViewportRef = useRef<HTMLDivElement>(null);
+  const videoExportControllerRef = useRef<AbortController | null>(null);
 
   const [isExportOpen, setIsExportOpen] = useState(false);
   const [cuePendingDelete, setCuePendingDelete] = useState<number | null>(null);
+  const [videoExportOpen, setVideoExportOpen] = useState(false);
+  const [videoExportStatus, setVideoExportStatus] = useState<VideoExportStatus>('idle');
+  const [videoExportProgress, setVideoExportProgress] = useState(0);
+  const [videoExportError, setVideoExportError] = useState<string | null>(null);
 
   const {
     subtitles,
@@ -62,6 +71,7 @@ export const EditorPage: React.FC<EditorPageProps> = ({
 
   const {
     videoUrl,
+    videoBlob,
     videoLoading,
     videoError,
     currentTime,
@@ -72,6 +82,8 @@ export const EditorPage: React.FC<EditorPageProps> = ({
     fileName: file.file_name,
     mimeType: file.mime_type,
   });
+
+  const subtitleTrackUrl = useSubtitleTrack(subtitles);
 
   const {
     editingTimingCueId,
@@ -106,6 +118,33 @@ export const EditorPage: React.FC<EditorPageProps> = ({
       ? null
       : subtitles.find((s) => s.id === editingTextCueId) ?? null;
 
+  const hasInvalidTimingDraft =
+    editingTimingCueId !== null &&
+    (timingDraft === null ||
+      timingDraft.start.trim() === '' ||
+      timingDraft.end.trim() === '' ||
+      !Number.isFinite(Number(timingDraft.start)) ||
+      !Number.isFinite(Number(timingDraft.end)) ||
+      Number(timingDraft.start) < 0 ||
+      Number(timingDraft.end) <= Number(timingDraft.start));
+  const validTimingDraft =
+    !hasInvalidTimingDraft && timingDraft !== null
+      ? {
+          start: Number(timingDraft.start),
+          end: Number(timingDraft.end),
+        }
+      : null;
+  const effectiveTargetSubtitles = subtitles.map((subtitle) => {
+    const effectiveText =
+      editingTextCueId === subtitle.id && textDraft !== null
+        ? { ...subtitle, text: textDraft }
+        : subtitle;
+    if (editingTimingCueId !== subtitle.id || validTimingDraft === null) {
+      return effectiveText;
+    }
+    return { ...effectiveText, ...validTimingDraft };
+  });
+
   const hasPendingTextChange = Boolean(
     (editingTextCue && textDraft !== null && editingTextCue.text !== textDraft) ||
       (editingTextCueId !== null &&
@@ -114,6 +153,28 @@ export const EditorPage: React.FC<EditorPageProps> = ({
   );
 
   const hasUnsavedChanges = isDirty || hasPendingTextChange;
+  const videoExportBusy =
+    videoExportStatus === 'preparing' ||
+    videoExportStatus === 'exporting' ||
+    videoExportStatus === 'canceling';
+  const videoMimeType = videoBlob?.type.toLowerCase() ?? '';
+  const isVideoBlobReady = Boolean(
+    videoBlob &&
+      videoBlob.size > 0 &&
+      videoMimeType.startsWith('video/') &&
+      !videoMimeType.startsWith('audio/')
+  );
+  const canExportVideo = Boolean(
+    !routeLoading &&
+      !videoLoading &&
+      !videoError &&
+      !subtitlesLoading &&
+      !subtitlesError &&
+      !videoExportBusy &&
+      isVideoBlobReady &&
+      effectiveTargetSubtitles.length > 0 &&
+      !hasInvalidTimingDraft
+  );
 
   const cueDensity = getEditorCueDensity(
     globalVisibility.metadata,
@@ -145,6 +206,12 @@ export const EditorPage: React.FC<EditorPageProps> = ({
     return () => window.removeEventListener('keydown', handleKeyboardSave);
   }, [hasUnsavedChanges, saveSubtitles, saving]);
 
+  useEffect(() => {
+    return () => {
+      videoExportControllerRef.current?.abort();
+    };
+  }, []);
+
   const handleBack = () => {
     onBack();
   };
@@ -174,6 +241,99 @@ export const EditorPage: React.FC<EditorPageProps> = ({
     downloadSubtitleFile(subtitles, sourceSubtitles, file.file_name, format, track);
   };
 
+  const resetVideoExportModal = () => {
+    setVideoExportOpen(false);
+    setVideoExportStatus('idle');
+    setVideoExportProgress(0);
+    setVideoExportError(null);
+  };
+
+  const handleOpenVideoExport = () => {
+    if (!canExportVideo || videoExportOpen) return;
+    setVideoExportOpen(true);
+    setVideoExportStatus('confirm');
+    setVideoExportProgress(0);
+    setVideoExportError(null);
+  };
+
+  const handleConfirmVideoExport = async () => {
+    if (!canExportVideo || videoBlob === null || videoExportStatus !== 'confirm') return;
+
+    const controller = new AbortController();
+    videoExportControllerRef.current = controller;
+    const exportBlob = videoBlob;
+    const exportSubtitles = effectiveTargetSubtitles;
+
+    try {
+      setVideoExportStatus('preparing');
+      await Promise.resolve();
+      if (controller.signal.aborted) {
+        setVideoExportStatus('canceled');
+        return;
+      }
+      setVideoExportStatus('exporting');
+
+      const output = await exportVideoWithSubtitles({
+        videoBlob: exportBlob,
+        subtitles: exportSubtitles,
+        fileName: file.file_name,
+        onProgress: setVideoExportProgress,
+        signal: controller.signal,
+      });
+      if (controller.signal.aborted) {
+        setVideoExportStatus('canceled');
+        return;
+      }
+      const baseName = file.file_name.replace(/\.[^/.]+$/, '') || file.file_name;
+      saveAs(output, baseName + '_subtitled.mp4');
+      setVideoExportProgress(1);
+      setVideoExportStatus('completed');
+    } catch (error) {
+      const isCanceled =
+        controller.signal.aborted || (error instanceof Error && error.name === 'AbortError');
+      if (isCanceled) {
+        setVideoExportError(null);
+        setVideoExportStatus('canceled');
+        return;
+      }
+      const message =
+        error instanceof VideoSubtitleExportError
+          ? error.reason === 'av1'
+            ? t('editor.videoExport.av1UnsupportedError')
+            : error.kind === 'load'
+              ? t('editor.videoExport.loadError')
+              : error.kind === 'unsupported'
+                ? t('editor.videoExport.unsupportedError')
+                : error.kind === 'output'
+                  ? t('editor.videoExport.outputError')
+                  : t('editor.videoExport.executionError')
+          : t('editor.videoExport.executionError');
+      setVideoExportError(message);
+      setVideoExportStatus('error');
+    } finally {
+      if (videoExportControllerRef.current === controller) {
+        videoExportControllerRef.current = null;
+      }
+    }
+  };
+
+  const handleCancelVideoExport = () => {
+    if (videoExportStatus === 'confirm') {
+      resetVideoExportModal();
+      return;
+    }
+    if (!videoExportBusy) return;
+    const controller = videoExportControllerRef.current;
+    if (!controller) return;
+    setVideoExportStatus('canceling');
+    controller.abort();
+  };
+
+  const handleCloseVideoExport = () => {
+    if (videoExportBusy) return;
+    resetVideoExportModal();
+  };
+
   if (routeLoading) {
     return <EditorSkeleton />;
   }
@@ -195,6 +355,8 @@ export const EditorPage: React.FC<EditorPageProps> = ({
         onToggleCueActionsVisible={() => setCueActionsVisible(!cueActionsVisible)}
         onSave={saveSubtitles}
         onExport={() => setIsExportOpen(true)}
+        onExportVideo={handleOpenVideoExport}
+        exportVideoDisabled={!canExportVideo || videoExportOpen}
       />
 
       <main className="editor-main">
@@ -205,6 +367,8 @@ export const EditorPage: React.FC<EditorPageProps> = ({
             error={videoError}
             currentTime={currentTime}
             onTimeUpdate={setCurrentTime}
+            subtitleTrackUrl={subtitleTrackUrl}
+            subtitleLanguage={project.target_language}
           />
         </section>
 
@@ -271,6 +435,17 @@ export const EditorPage: React.FC<EditorPageProps> = ({
         title={file.file_name}
         onClose={() => setIsExportOpen(false)}
         onConfirmExport={handleConfirmExport}
+      />
+
+      <VideoExportModal
+        isOpen={videoExportOpen}
+        fileName={file.file_name}
+        status={videoExportStatus}
+        progress={videoExportProgress}
+        error={videoExportError}
+        onClose={handleCloseVideoExport}
+        onConfirm={() => void handleConfirmVideoExport()}
+        onCancel={handleCancelVideoExport}
       />
     </div>
   );

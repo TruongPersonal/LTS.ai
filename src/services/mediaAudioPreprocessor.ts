@@ -1,9 +1,8 @@
 import { FFmpeg } from '@ffmpeg/ffmpeg';
-import { fetchFile, toBlobURL } from '@ffmpeg/util';
+import { fetchFile } from '@ffmpeg/util';
 import { inspectFlacMetadata } from './flacMetadata';
+import { acquireFfmpegLock, getFfmpeg } from './ffmpegRuntime';
 
-const CORE_VERSION = '0.12.10';
-const CORE_BASE_URL = `https://cdn.jsdelivr.net/npm/@ffmpeg/core@${CORE_VERSION}/dist/esm`;
 export const CHUNK_DURATION_SECONDS = 420;
 export const MAX_SAFE_CHUNK_BYTES = 19_500_000;
 const MAX_SEGMENT_SCAN = 100;
@@ -15,25 +14,6 @@ export interface AudioChunk {
   startSeconds: number;
   durationSeconds: number;
   chunkCount: number;
-}
-
-let ffmpegPromise: Promise<FFmpeg> | null = null;
-
-async function getFfmpeg(): Promise<FFmpeg> {
-  if (!ffmpegPromise) {
-    ffmpegPromise = (async () => {
-      const ffmpeg = new FFmpeg();
-      await ffmpeg.load({
-        coreURL: await toBlobURL(`${CORE_BASE_URL}/ffmpeg-core.js`, 'text/javascript'),
-        wasmURL: await toBlobURL(`${CORE_BASE_URL}/ffmpeg-core.wasm`, 'application/wasm'),
-      });
-      return ffmpeg;
-    })().catch((error) => {
-      ffmpegPromise = null;
-      throw error;
-    });
-  }
-  return ffmpegPromise;
 }
 
 function extensionForMimeType(mimeType: string): string {
@@ -107,13 +87,15 @@ export async function* extractFlacChunks(
   mimeType: string,
   fileId: string
 ): AsyncGenerator<AudioChunk, void, void> {
-  const ffmpeg = await getFfmpeg();
   const token = safeToken(fileId);
   const inputName = `input-${token}.${extensionForMimeType(mimeType)}`;
   const outputPattern = `audio-${token}-%03d.flac`;
   const remainingSegmentFiles = new Set<string>();
+  const release = await acquireFfmpegLock();
+  let ffmpeg: FFmpeg | null = null;
 
   try {
+    ffmpeg = await getFfmpeg();
     await ffmpeg.writeFile(inputName, await fetchFile(mediaBlob));
 
     const segmentExit = await ffmpeg.exec([
@@ -208,10 +190,13 @@ export async function* extractFlacChunks(
       }
     }
   } finally {
-    const cleanup: Promise<unknown>[] = [ffmpeg.deleteFile(inputName)];
-    for (const outputName of remainingSegmentFiles) {
-      cleanup.push(ffmpeg.deleteFile(outputName));
+    if (ffmpeg) {
+      const cleanup: Promise<unknown>[] = [ffmpeg.deleteFile(inputName)];
+      for (const outputName of remainingSegmentFiles) {
+        cleanup.push(ffmpeg.deleteFile(outputName));
+      }
+      await Promise.allSettled(cleanup);
     }
-    await Promise.allSettled(cleanup);
+    release();
   }
 }

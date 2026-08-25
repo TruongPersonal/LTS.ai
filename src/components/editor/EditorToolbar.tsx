@@ -1,6 +1,6 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, Check, Download, Loader2, Wrench } from 'lucide-react';
+import { ArrowLeft, Check, Download, FileVideo, Loader2, Wrench } from 'lucide-react';
 import { CueVisibilityMenu } from './CueVisibilityMenu';
 import type { CueVisibility, CueVisibilityKey } from '../../utils/cueVisibility';
 
@@ -19,6 +19,8 @@ interface EditorToolbarProps {
   onToggleCueActionsVisible: () => void;
   onSave: () => void;
   onExport: () => void;
+  onExportVideo: () => void;
+  exportVideoDisabled: boolean;
 }
 
 const ToolOffIcon: React.FC<{ className?: string }> = ({ className = 'size-4' }) => (
@@ -52,6 +54,8 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
   onToggleCueActionsVisible,
   onSave,
   onExport,
+  onExportVideo,
+  exportVideoDisabled,
 }) => {
   const { t } = useTranslation();
 
@@ -140,6 +144,16 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
           >
             <Download className="size-4" />
             <span>{t('editor.export')}</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={onExportVideo}
+            disabled={exportVideoDisabled}
+            className="ui-button ui-button-secondary"
+          >
+            <FileVideo className="size-4" />
+            <span>{t('editor.exportVideo')}</span>
           </button>
         </div>
       </div>
