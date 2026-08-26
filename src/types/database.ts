@@ -6,6 +6,8 @@ export type InputSource = 'media' | 'existing_subtitle';
 
 export type Plan = 'free' | 'pro' | 'max';
 
+export type UserRole = 'user' | 'admin';
+
 export interface PlanLimits {
   maxFileSizeBytes: number;
   dailyDurationSeconds: number;
@@ -35,12 +37,19 @@ export const isPlan = (value: unknown): value is Plan =>
 
 export const normalizePlan = (value: unknown): Plan => (isPlan(value) ? value : DEFAULT_PLAN);
 
+export const isUserRole = (value: unknown): value is UserRole =>
+  value === 'user' || value === 'admin';
+
+export const normalizeUserRole = (value: unknown): UserRole =>
+  isUserRole(value) ? value : 'user';
+
 export const getPlanLimits = (value: unknown): PlanLimits => PLAN_LIMITS[normalizePlan(value)];
 
 export interface Profile {
   id: string;
   email: string;
   full_name: string | null;
+  role: UserRole;
   plan: Plan;
   daily_processed_seconds?: number;
   last_processed_date?: string;
@@ -69,6 +78,8 @@ export interface FileMedia {
   status: FileStatus;
   input_source: InputSource;
   error_message: string | null;
+  processing_attempt_id?: string | null;
+  processing_last_activity_at?: string | null;
   created_at: string;
 }
 

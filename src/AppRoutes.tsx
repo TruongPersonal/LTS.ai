@@ -18,6 +18,7 @@ import { LoginPage } from './pages/LoginPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { ProjectDetailPage } from './pages/ProjectDetailPage';
 import { EditorPage } from './pages/EditorPage';
+import { AdminPage } from './pages/AdminPage';
 import { EditorSkeleton } from './components/common/LoadingSkeleton';
 import { projectService } from './services/projectService';
 import { fileService } from './services/fileService';
@@ -121,11 +122,14 @@ const ProtectedLayout: React.FC = () => {
   if (!profile) return <Navigate to="/" replace />;
 
   const isEditorView = location.pathname.includes('/editor');
-  const activeView = isEditorView
-    ? 'editor'
-    : location.pathname.startsWith('/projects/')
-      ? 'project'
-      : 'projects';
+  const isAdminView = location.pathname.startsWith('/admin');
+  const activeView = isAdminView
+    ? 'admin'
+    : isEditorView
+      ? 'editor'
+      : location.pathname.startsWith('/projects/')
+        ? 'project'
+        : 'projects';
 
   return (
     <div className="authenticated-shell">
@@ -133,6 +137,7 @@ const ProtectedLayout: React.FC = () => {
         onHome={() => navigate('/projects')}
         onCreateProject={() => navigate('/projects?intent=create')}
         onSearchProjects={() => navigate('/projects?intent=search')}
+        onAdmin={() => navigate('/admin')}
         editorActive={isEditorView}
         activeView={activeView}
       />
@@ -379,6 +384,12 @@ const EditorRoute: React.FC = () => {
   );
 };
 
+const AdminRoute: React.FC = () => {
+  const { profile } = useAuth();
+  if (profile?.role !== 'admin') return <Navigate to="/projects" replace />;
+  return <AdminPage />;
+};
+
 export const AppRoutes: React.FC = () => {
   return (
     <Routes>
@@ -389,6 +400,7 @@ export const AppRoutes: React.FC = () => {
         <Route path="/projects" element={<DashboardRoute />} />
         <Route path="/projects/:projectId" element={<ProjectDetailRoute />} />
         <Route path="/projects/:projectId/editor/:fileId" element={<EditorRoute />} />
+        <Route path="/admin" element={<AdminRoute />} />
       </Route>
 
       <Route path="*" element={<Navigate to="/" replace />} />
