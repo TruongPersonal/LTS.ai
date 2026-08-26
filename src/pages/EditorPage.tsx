@@ -1,6 +1,6 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { FileMedia, Project } from '../types/database';
+import type { FileMedia, Project, SubtitleItem } from '../types/database';
 import { getNativeLanguageName } from '../types/project';
 import { VideoPlayer } from '../components/editor/VideoPlayer';
 import { ExportModal } from '../components/editor/ExportModal';
@@ -126,23 +126,30 @@ export const EditorPage: React.FC<EditorPageProps> = ({
       !Number.isFinite(Number(timingDraft.end)) ||
       Number(timingDraft.start) < 0 ||
       Number(timingDraft.end) <= Number(timingDraft.start));
-  const validTimingDraft =
-    !hasInvalidTimingDraft && timingDraft !== null
-      ? {
-          start: Number(timingDraft.start),
-          end: Number(timingDraft.end),
+  const validTimingDraft = useMemo(
+    () =>
+      !hasInvalidTimingDraft && timingDraft !== null
+        ? {
+            start: Number(timingDraft.start),
+            end: Number(timingDraft.end),
+          }
+        : null,
+    [hasInvalidTimingDraft, timingDraft]
+  );
+  const effectiveTargetSubtitles = useMemo(
+    () =>
+      subtitles.map((subtitle) => {
+        const effectiveText =
+          editingTextCueId === subtitle.id && textDraft !== null
+            ? { ...subtitle, text: textDraft }
+            : subtitle;
+        if (editingTimingCueId !== subtitle.id || validTimingDraft === null) {
+          return effectiveText;
         }
-      : null;
-  const effectiveTargetSubtitles = subtitles.map((subtitle) => {
-    const effectiveText =
-      editingTextCueId === subtitle.id && textDraft !== null
-        ? { ...subtitle, text: textDraft }
-        : subtitle;
-    if (editingTimingCueId !== subtitle.id || validTimingDraft === null) {
-      return effectiveText;
-    }
-    return { ...effectiveText, ...validTimingDraft };
-  });
+        return { ...effectiveText, ...validTimingDraft };
+      }),
+    [editingTextCueId, editingTimingCueId, subtitles, textDraft, validTimingDraft]
+  );
 
   const hasPendingTextChange = Boolean(
     (editingTextCue && textDraft !== null && editingTextCue.text !== textDraft) ||
@@ -215,7 +222,18 @@ export const EditorPage: React.FC<EditorPageProps> = ({
     onBack();
   };
 
-  const handleConfirmTimingEdit = (id: number) => {
+  const handleSelectCue = useCallback(
+    (item: SubtitleItem) => setCurrentTime(item.start),
+    [setCurrentTime]
+  );
+
+  const handleStartTextEdit = useCallback(
+    (item: SubtitleItem) =>
+      startEditingText(item, getSourceTextById(sourceSubtitles, item.id)),
+    [sourceSubtitles, startEditingText]
+  );
+
+  const handleConfirmTimingEdit = useCallback((id: number) => {
     if (timingDraft) {
       const s = Number(timingDraft.start);
       const e = Number(timingDraft.end);
@@ -224,14 +242,14 @@ export const EditorPage: React.FC<EditorPageProps> = ({
       }
     }
     cancelEditingTiming();
-  };
+  }, [cancelEditingTiming, timingDraft, updateCueTiming]);
 
-  const handleConfirmTextEdit = (id: number) => {
+  const handleConfirmTextEdit = useCallback((id: number) => {
     if (textDraft !== null || sourceDraft !== null) {
       updateCueText(id, textDraft ?? undefined, sourceDraft ?? undefined);
     }
     cancelEditingText();
-  };
+  }, [cancelEditingText, sourceDraft, textDraft, updateCueText]);
 
   const handleConfirmExport = (
     format: SubtitleExportFormat,
@@ -408,13 +426,11 @@ export const EditorPage: React.FC<EditorPageProps> = ({
               cuePendingDelete={cuePendingDelete}
               cueViewportRef={cueViewportRef}
               cueRefs={cueRefs}
-              onSelectCue={(item) => setCurrentTime(item.start)}
+              onSelectCue={handleSelectCue}
               onCueVisibilityToggle={toggleCueOverride}
               getResolvedVisibility={getResolvedVisibility}
               onAddCue={addCue}
-              onStartTextEdit={(item) =>
-                startEditingText(item, getSourceTextById(sourceSubtitles, item.id))
-              }
+              onStartTextEdit={handleStartTextEdit}
               onCancelTextEdit={cancelEditingText}
               onConfirmTextEdit={handleConfirmTextEdit}
               onStartTimingEdit={startEditingTiming}

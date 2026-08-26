@@ -22,7 +22,7 @@ interface CueCardProps {
   timingDraft: TimingDraft | null;
   textDraft: string | null;
   sourceDraft: string | null;
-  cardRef: (node: HTMLDivElement | null) => void;
+  cueRefs: React.MutableRefObject<Map<number, HTMLDivElement>>;
   onSelectCard: (item: SubtitleItem) => void;
   onCueVisibilityToggle: (cueId: number, key: CueVisibilityKey, currentResolvedValue: boolean) => void;
   onAddCue: (afterId?: number) => void;
@@ -38,7 +38,7 @@ interface CueCardProps {
   setSourceDraft: (text: string) => void;
 }
 
-export const CueCard: React.FC<CueCardProps> = ({
+const CueCardComponent: React.FC<CueCardProps> = ({
   item,
   index,
   isActive,
@@ -51,7 +51,7 @@ export const CueCard: React.FC<CueCardProps> = ({
   timingDraft,
   textDraft,
   sourceDraft,
-  cardRef,
+  cueRefs,
   onSelectCard,
   onCueVisibilityToggle,
   onAddCue,
@@ -87,7 +87,10 @@ export const CueCard: React.FC<CueCardProps> = ({
 
   return (
     <div
-      ref={cardRef}
+      ref={(node) => {
+        if (node) cueRefs.current.set(item.id, node);
+        else cueRefs.current.delete(item.id);
+      }}
       onClick={() => onSelectCard(item)}
       data-metadata-visible={String(metadataVisible)}
       data-source-visible={String(sourceVisible)}
@@ -201,3 +204,5 @@ export const CueCard: React.FC<CueCardProps> = ({
     </div>
   );
 };
+
+export const CueCard = React.memo(CueCardComponent);

@@ -20,6 +20,8 @@ type EdgeResult = {
   subtitles?: Array<{ id: number; start: number; end: number; text: string }>;
 };
 
+const FILE_PROCESSING_CONCURRENCY = 2;
+
 class EdgeInvocationError extends Error {
   readonly code?: string;
   readonly retryable?: boolean;
@@ -285,35 +287,65 @@ async function processMediaFile(
     const chunkResults: TranscriptionChunkResult[] = [];
     let sawChunk = false;
 
-    for await (const chunk of extractFlacChunks(
+    const chunkIterator = extractFlacChunks(
       mediaBlob,
       file.mime_type || mediaBlob.type,
       file.id
-    )) {
-      if (!sawChunk) {
+    );
+    const requestNextChunk = () => {
+      const promise = chunkIterator.next();
+      // Attach a rejection handler immediately because this promise may settle
+      // while the current chunk is still waiting on the network.
+      void promise.catch(() => undefined);
+      return promise;
+    };
+    let nextChunkPromise: Promise<IteratorResult<AudioChunk, void>> | null = requestNextChunk();
+
+    try {
+      while (nextChunkPromise) {
+        const nextChunk = await nextChunkPromise;
+        if (nextChunk.done) {
+          nextChunkPromise = null;
+          break;
+        }
+
+        const chunk = nextChunk.value;
+        // Start encoding the next chunk before uploading the current one. FFmpeg
+        // runs in its worker while the transcription request waits on network.
+        nextChunkPromise = requestNextChunk();
+
+        if (!sawChunk) {
+          emitProgress(
+            onProgress,
+            file.id,
+            'preprocessing',
+            45,
+            i18n.t('processing.preprocessing'),
+            0,
+            chunk.chunkCount
+          );
+          sawChunk = true;
+        }
+
+        const transcriptionPercent = getTranscriptionProgressPercent(chunk.index, chunk.chunkCount);
         emitProgress(
           onProgress,
           file.id,
-          'preprocessing',
-          45,
-          i18n.t('processing.preprocessing'),
-          0,
+          'transcribing',
+          transcriptionPercent,
+          i18n.t('processing.transcribingChunk', { index: chunk.index + 1, count: chunk.chunkCount }),
+          chunk.index + 1,
           chunk.chunkCount
         );
-        sawChunk = true;
+        chunkResults.push(await transcribeChunk(projectId, file.id, attemptId, chunk));
       }
-
-      const transcriptionPercent = getTranscriptionProgressPercent(chunk.index, chunk.chunkCount);
-      emitProgress(
-        onProgress,
-        file.id,
-        'transcribing',
-        transcriptionPercent,
-        i18n.t('processing.transcribingChunk', { index: chunk.index + 1, count: chunk.chunkCount }),
-        chunk.index + 1,
-        chunk.chunkCount
-      );
-      chunkResults.push(await transcribeChunk(projectId, file.id, attemptId, chunk));
+    } finally {
+      // If transcription fails while the next chunk is encoding, wait for that
+      // single in-flight encode and then close the generator so MEMFS is cleaned.
+      if (nextChunkPromise) {
+        await nextChunkPromise.catch(() => undefined);
+      }
+      await chunkIterator.return().catch(() => undefined);
     }
 
     emitProgress(onProgress, file.id, 'finalizing', 86, i18n.t('processing.saving'));
@@ -653,15 +685,29 @@ export const fileService = {
       throw error;
     }
 
+    const files = processableFiles as FileMedia[];
     const failures: string[] = [];
-    for (const file of processableFiles as FileMedia[]) {
-      try {
-        await processSingleFile(projectId, file, accessToken, onProgress);
-      } catch (error) {
-        const message = error instanceof Error ? error.message : 'Unknown processing error';
-        failures.push(`${file.file_name}: ${message}`);
+    let nextFileIndex = 0;
+
+    const processNextFile = async (): Promise<void> => {
+      while (nextFileIndex < files.length) {
+        const file = files[nextFileIndex];
+        nextFileIndex += 1;
+        try {
+          await processSingleFile(projectId, file, accessToken, onProgress);
+        } catch (error) {
+          const message = error instanceof Error ? error.message : 'Unknown processing error';
+          failures.push(`${file.file_name}: ${message}`);
+        }
       }
-    }
+    };
+
+    await Promise.all(
+      Array.from(
+        { length: Math.min(FILE_PROCESSING_CONCURRENCY, files.length) },
+        () => processNextFile()
+      )
+    );
 
     if (failures.length) {
       throw new Error(failures.join('\n'));

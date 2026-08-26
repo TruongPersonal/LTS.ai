@@ -1,13 +1,14 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Plus } from 'lucide-react';
 import type { SubtitleItem } from '../../types/database';
 import { CueCard } from './CueCard';
 import { ConfirmDialog } from '../common/ConfirmDialog';
 import { formatDisplayTime } from '../../utils/time';
-import { getSourceTextById } from '../../utils/subtitleEditor';
 import type { CueVisibility, CueVisibilityKey } from '../../utils/cueVisibility';
 import type { TimingDraft } from '../../hooks/useEditorDraft';
+
+const noopCueAction = (_id: number): void => undefined;
 
 interface EditorCueListProps {
   subtitles: SubtitleItem[];
@@ -41,7 +42,7 @@ interface EditorCueListProps {
   onConfirmDeleteCue: (id: number) => void;
 }
 
-export const EditorCueList: React.FC<EditorCueListProps> = ({
+const EditorCueListComponent: React.FC<EditorCueListProps> = ({
   subtitles,
   sourceSubtitles,
   activeCueId,
@@ -73,6 +74,10 @@ export const EditorCueList: React.FC<EditorCueListProps> = ({
   onConfirmDeleteCue,
 }) => {
   const { t } = useTranslation();
+  const sourceTextById = useMemo(
+    () => new Map(sourceSubtitles.map((item) => [item.id, item.text])),
+    [sourceSubtitles]
+  );
 
   const pendingDeleteCue =
     cuePendingDelete !== null
@@ -102,7 +107,8 @@ export const EditorCueList: React.FC<EditorCueListProps> = ({
         <div className="editor-cue-stack">
           {subtitles.map((item, index) => {
             const visibility = getResolvedVisibility(item.id);
-            const sourceText = getSourceTextById(sourceSubtitles, item.id);
+            const isEditingTiming = editingTimingCueId === item.id;
+            const isEditingText = editingTextCueId === item.id;
 
             return (
               <CueCard
@@ -110,28 +116,25 @@ export const EditorCueList: React.FC<EditorCueListProps> = ({
                 item={item}
                 index={index}
                 isActive={item.id === activeCueId}
-                sourceText={sourceText}
+                sourceText={sourceTextById.get(item.id) ?? ''}
                 metadataVisible={visibility.metadata}
                 sourceVisible={visibility.source}
                 cueActionsVisible={cueActionsVisible}
-                editingTimingCueId={editingTimingCueId}
-                editingTextCueId={editingTextCueId}
-                timingDraft={timingDraft}
-                textDraft={textDraft}
-                sourceDraft={sourceDraft}
-                cardRef={(node) => {
-                  if (node) cueRefs.current.set(item.id, node);
-                  else cueRefs.current.delete(item.id);
-                }}
+                editingTimingCueId={isEditingTiming ? item.id : null}
+                editingTextCueId={isEditingText ? item.id : null}
+                timingDraft={isEditingTiming ? timingDraft : null}
+                textDraft={isEditingText ? textDraft : null}
+                sourceDraft={isEditingText ? sourceDraft : null}
+                cueRefs={cueRefs}
                 onSelectCard={onSelectCue}
                 onCueVisibilityToggle={onCueVisibilityToggle}
                 onAddCue={onAddCue}
                 onStartTextEdit={onStartTextEdit}
                 onCancelTextEdit={onCancelTextEdit}
-                onConfirmTextEdit={onConfirmTextEdit}
+                onConfirmTextEdit={isEditingText ? onConfirmTextEdit : noopCueAction}
                 onStartTimingEdit={onStartTimingEdit}
                 onCancelTimingEdit={onCancelTimingEdit}
-                onConfirmTimingEdit={onConfirmTimingEdit}
+                onConfirmTimingEdit={isEditingTiming ? onConfirmTimingEdit : noopCueAction}
                 onSetCuePendingDelete={onSetCuePendingDelete}
                 setTimingDraft={setTimingDraft}
                 setTextDraft={setTextDraft}
@@ -164,3 +167,5 @@ export const EditorCueList: React.FC<EditorCueListProps> = ({
     </div>
   );
 };
+
+export const EditorCueList = React.memo(EditorCueListComponent);
