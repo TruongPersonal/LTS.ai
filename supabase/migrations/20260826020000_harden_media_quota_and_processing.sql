@@ -7,7 +7,7 @@ ALTER TABLE lts_ai.files_media
   ADD COLUMN IF NOT EXISTS processing_last_activity_at TIMESTAMPTZ;
 
 CREATE TABLE IF NOT EXISTS lts_ai.processing_chunk_claims (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT pg_catalog.gen_random_uuid(),
     file_id UUID NOT NULL REFERENCES lts_ai.files_media(id) ON DELETE CASCADE,
     user_id UUID NOT NULL REFERENCES lts_ai.profiles(id) ON DELETE CASCADE,
     attempt_id UUID NOT NULL,
@@ -41,7 +41,7 @@ AS $$
 DECLARE
     file_status TEXT;
     file_input_source TEXT;
-    attempt_id UUID := uuid_generate_v4();
+    attempt_id UUID := pg_catalog.gen_random_uuid();
 BEGIN
     IF p_user_id IS NULL THEN
         RAISE EXCEPTION 'User identity is required.'
