@@ -72,13 +72,17 @@ async function normalizeFlacSegment(
     's16',
     '-af',
     'asetpts=N/SR/TB',
+    '-t',
+    String(CHUNK_DURATION_SECONDS),
     '-c:a',
     'flac',
     normalizedName,
   ]);
 
   if (normalizeExit !== 0) {
-    throw new Error(`FFmpeg không thể chuẩn hoá timestamp FLAC (mã ${normalizeExit}).`);
+    throw new Error(
+      `FFmpeg không thể chuẩn hoá timestamp FLAC (mã ${normalizeExit}).`
+    );
   }
 }
 
