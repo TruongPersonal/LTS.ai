@@ -8,7 +8,7 @@ import {
   persistGoogleProviderToken,
   supabase,
 } from '../lib/supabase';
-import { normalizePlan, type Profile } from '../types/database';
+import { normalizePlan, normalizeUserRole, type Profile } from '../types/database';
 import { AuthContext } from './auth-context';
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -29,7 +29,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       if (data) {
-        setProfile({ ...data, plan: normalizePlan(data.plan) });
+        setProfile({
+          ...data,
+          plan: normalizePlan(data.plan),
+          role: normalizeUserRole(data.role),
+        });
       } else {
         const name =
           authUser.user_metadata?.full_name ||
@@ -40,7 +44,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           id: authUser.id,
           email: authUser.email || '',
           full_name: name,
-          plan: 'free' as const,
         };
         const { data: createdData } = await supabase
           .from('profiles')
@@ -50,9 +53,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         setProfile(
           createdData
-            ? { ...createdData, plan: normalizePlan(createdData.plan) }
+            ? {
+                ...createdData,
+                plan: normalizePlan(createdData.plan),
+                role: normalizeUserRole(createdData.role),
+              }
             : {
                 ...profilePayload,
+                plan: 'free' as const,
+                role: 'user' as const,
                 created_at: new Date().toISOString(),
               }
         );
@@ -162,7 +171,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const updateProfile = async (data: Partial<Profile>) => {
+  const updateProfile = async (data: Pick<Profile, 'full_name'>) => {
     if (!user) return;
     const { error } = await supabase.from('profiles').update(data).eq('id', user.id);
 

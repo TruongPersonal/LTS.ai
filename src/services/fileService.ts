@@ -14,6 +14,8 @@ type EdgeResult = {
   code?: string;
   retryable?: boolean;
   provider_status?: number;
+  attempt_id?: string;
+  file?: FileMedia;
   source_language?: string;
   subtitles?: Array<{ id: number; start: number; end: number; text: string }>;
 };
@@ -97,12 +99,15 @@ async function invokeJson(body: Record<string, unknown>): Promise<EdgeResult> {
 async function transcribeChunk(
   projectId: string,
   fileId: string,
+  attemptId: string,
   chunk: AudioChunk
 ): Promise<TranscriptionChunkResult> {
   const formData = new FormData();
   formData.append('action', 'transcribe_chunk');
   formData.append('project_id', projectId);
   formData.append('file_id', fileId);
+  formData.append('attempt_id', attemptId);
+  formData.append('chunk_index', String(chunk.index));
   formData.append('chunk_start_seconds', String(chunk.startSeconds));
   formData.append('audio', chunk.blob, chunk.fileName);
 
@@ -123,6 +128,9 @@ async function transcribeChunk(
 
 function sanitizeErrorMessage(rawError: unknown): string {
   if (rawError instanceof EdgeInvocationError) {
+    if (rawError.code === 'DAILY_QUOTA_EXCEEDED') {
+      return i18n.t('processing.dailyQuotaExceeded');
+    }
     if (rawError.code === 'TRANSCRIPTION_PROVIDER_UNAVAILABLE') {
       return i18n.t('media.systemQuotaExceeded');
     }
@@ -174,13 +182,14 @@ function sanitizeErrorMessage(rawError: unknown): string {
   return rawMessage;
 }
 
-async function markFailed(projectId: string, fileId: string, error: unknown): Promise<void> {
+async function markFailed(projectId: string, fileId: string, attemptId: string | null, error: unknown): Promise<void> {
   const message = sanitizeErrorMessage(error);
   try {
     await invokeJson({
       action: 'mark_failed',
       project_id: projectId,
       file_id: fileId,
+      ...(attemptId ? { attempt_id: attemptId } : {}),
       error_message: message.slice(0, 1000),
     });
   } catch (markError) {
@@ -251,8 +260,16 @@ async function processMediaFile(
   accessToken: string,
   onProgress?: ProcessingProgressCallback
 ): Promise<void> {
+  let attemptId = '';
   try {
-    await supabase.from('files_media').update({ status: 'processing', error_message: null }).eq('id', file.id);
+    const started = await invokeJson({
+      action: 'start_processing',
+      project_id: projectId,
+      file_id: file.id,
+    });
+    attemptId = String(started.attempt_id || '');
+    if (!attemptId) throw new Error('Processing attempt was not created.');
+
     emitProgress(onProgress, file.id, 'downloading', 10, i18n.t('processing.downloading'));
     const mediaBlob = await downloadDriveMedia(file, accessToken);
 
@@ -262,11 +279,6 @@ async function processMediaFile(
       effectiveDuration = exactDuration;
     }
     await assertDailyDurationAvailable(effectiveDuration);
-    if (exactDuration > 0) {
-      if (exactDuration !== file.duration_seconds) {
-        await supabase.from('files_media').update({ duration_seconds: exactDuration }).eq('id', file.id);
-      }
-    }
 
     emitProgress(onProgress, file.id, 'preprocessing', 25, i18n.t('processing.preprocessing'));
 
@@ -301,7 +313,7 @@ async function processMediaFile(
         chunk.index + 1,
         chunk.chunkCount
       );
-      chunkResults.push(await transcribeChunk(projectId, file.id, chunk));
+      chunkResults.push(await transcribeChunk(projectId, file.id, attemptId, chunk));
     }
 
     emitProgress(onProgress, file.id, 'finalizing', 86, i18n.t('processing.saving'));
@@ -349,18 +361,17 @@ async function processMediaFile(
       { onConflict: 'file_id,language' }
     );
 
-    // 5. Update file status to completed
-    await supabase.from('files_media').update({
-      status: 'completed',
-      detected_source_lang: merged.sourceLanguage,
-      error_message: null,
-    }).eq('id', file.id);
-
-    await fileService.recordProcessedDurationSeconds(effectiveDuration);
+    await invokeJson({
+      action: 'complete_processing',
+      project_id: projectId,
+      file_id: file.id,
+      attempt_id: attemptId,
+      source_language: merged.sourceLanguage,
+    });
     emitProgress(onProgress, file.id, 'completed', 100, 'Hoàn thành xử lý video.');
   } catch (error) {
     const message = sanitizeErrorMessage(error);
-    await markFailed(projectId, file.id, message);
+    await markFailed(projectId, file.id, attemptId || null, message);
     emitProgress(onProgress, file.id, 'failed', 100, message);
     throw new Error(message);
   }
@@ -428,6 +439,11 @@ async function processExistingSubtitleFile(
   onProgress?: ProcessingProgressCallback
 ): Promise<void> {
   try {
+    await invokeJson({
+      action: 'start_existing_subtitle',
+      project_id: projectId,
+      file_id: file.id,
+    });
     emitProgress(onProgress, file.id, 'preparing', 20, 'Đang chuẩn bị phụ đề đã nhập...');
     
     const sourceLanguage = file.detected_source_lang || 'en';
@@ -470,11 +486,15 @@ async function processExistingSubtitleFile(
       { onConflict: 'file_id,language' }
     );
 
-    await supabase.from('files_media').update({ status: 'completed', error_message: null }).eq('id', file.id);
+    await invokeJson({
+      action: 'complete_existing_subtitle',
+      project_id: projectId,
+      file_id: file.id,
+    });
     emitProgress(onProgress, file.id, 'completed', 100, 'Hoàn thành xử lý phụ đề.');
   } catch (error) {
     const message = sanitizeErrorMessage(error);
-    await markFailed(projectId, file.id, message);
+    await markFailed(projectId, file.id, null, message);
     emitProgress(onProgress, file.id, 'failed', 100, message);
     throw new Error(message);
   }
@@ -519,39 +539,11 @@ export const fileService = {
     }
   },
 
-  async recordProcessedDurationSeconds(durationSeconds: number): Promise<void> {
-    if (durationSeconds <= 0) return;
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const todayStr = new Date().toISOString().split('T')[0];
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('daily_processed_seconds, last_processed_date')
-        .eq('id', user.id)
-        .maybeSingle();
-
-      let nextSeconds = durationSeconds;
-      if (profile && profile.last_processed_date === todayStr) {
-        nextSeconds = (profile.daily_processed_seconds || 0) + durationSeconds;
-      }
-
-      await supabase.from('profiles').update({
-        daily_processed_seconds: nextSeconds,
-        last_processed_date: todayStr,
-      }).eq('id', user.id);
-    } catch (err) {
-      console.warn('Could not record processed duration to profile:', err);
-    }
-  },
-
   async getFilesByProject(projectId: string): Promise<FileMedia[]> {
-    await supabase
-      .from('files_media')
-      .update({ status: 'draft' })
-      .eq('project_id', projectId)
-      .in('status', ['queued', 'processing']);
+    await invokeJson({
+      action: 'recover_stale_files',
+      project_id: projectId,
+    });
 
     const { data, error } = await supabase
       .from('files_media')
@@ -592,22 +584,17 @@ export const fileService = {
 
     if (existing) {
       if (existing.status === 'failed') {
-        const { data: resetData, error: resetError } = await supabase
-          .from('files_media')
-          .update({
-            status: 'draft',
-            file_name: fileName,
-            mime_type: mimeType,
-            duration_seconds: durationSeconds,
-            input_source: inputSource,
-            detected_source_lang: detectedSourceLang,
-            error_message: null,
-          })
-          .eq('id', existing.id)
-          .select()
-          .single();
-        if (resetError) throw resetError;
-        return resetData;
+        const resetResult = await invokeJson({
+          action: 'reset_failed_file',
+          project_id: projectId,
+          file_id: existing.id,
+          file_name: fileName,
+          mime_type: mimeType,
+          input_source: inputSource,
+          detected_source_lang: detectedSourceLang,
+        });
+        if (!resetResult.file) throw new Error('Failed file could not be reset.');
+        return resetResult.file as FileMedia;
       }
       throw new Error(i18n.t('media.drive.duplicateFile'));
     }
@@ -616,16 +603,13 @@ export const fileService = {
       await assertDailyDurationAvailable(durationSeconds);
     }
 
-    const newFile: Partial<FileMedia> = {
+    const newFile = {
       project_id: projectId,
       drive_file_id: driveFileId,
       file_name: fileName,
       mime_type: mimeType,
-      duration_seconds: durationSeconds,
-      status: 'draft',
       input_source: inputSource,
       detected_source_lang: detectedSourceLang,
-      error_message: null,
     };
 
     const { data, error } = await supabase
@@ -652,9 +636,6 @@ export const fileService = {
     if (filesError) throw filesError;
     if (!processableFiles?.length) return;
 
-    const draftIds = processableFiles.map((f) => f.id);
-    await supabase.from('files_media').update({ status: 'queued' }).in('id', draftIds);
-
     for (const file of processableFiles as FileMedia[]) {
       emitProgress(onProgress, file.id, 'queued', 0, 'Đang chờ xử lý...');
     }
@@ -665,7 +646,7 @@ export const fileService = {
       const error = new Error('Không thể tải tệp. Phiên Google Drive đã hết hạn.');
       for (const file of processableFiles as FileMedia[]) {
         if (file.input_source === 'media') {
-          await supabase.from('files_media').update({ status: 'failed', error_message: error.message }).eq('id', file.id);
+          await markFailed(projectId, file.id, null, error);
           emitProgress(onProgress, file.id, 'failed', 100, error.message);
         }
       }
@@ -723,7 +704,7 @@ export const fileService = {
     const accessToken = file.input_source === 'media' ? await getGoogleAccessToken() : '';
     if (file.input_source === 'media' && !accessToken) {
       const error = new Error('Không thể tải tệp. Phiên Google Drive đã hết hạn.');
-      await supabase.from('files_media').update({ status: 'failed', error_message: error.message }).eq('id', file.id);
+      await markFailed(projectId, file.id, null, error);
       emitProgress(onProgress, file.id, 'failed', 100, error.message);
       throw error;
     }

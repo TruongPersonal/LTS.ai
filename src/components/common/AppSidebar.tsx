@@ -1,20 +1,23 @@
 import React, { useEffect, useState } from 'react';
-import { ChevronLeft, ChevronRight, FolderOpen, Menu, Plus, Search } from 'lucide-react';
+import { ChevronLeft, ChevronRight, FolderOpen, Menu, Plus, Search, ShieldCheck } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { UserDropdown } from './UserDropdown';
+import { useAuth } from '../../hooks/useAuth';
 
 interface AppSidebarProps {
   onHome: () => void;
   onCreateProject: () => void;
   onSearchProjects: () => void;
+  onAdmin: () => void;
   editorActive?: boolean;
-  activeView?: 'projects' | 'project' | 'editor';
+  activeView?: 'projects' | 'project' | 'editor' | 'admin';
 }
 
 const STORAGE_KEY = 'lts_sidebar_collapsed';
 
-export const AppSidebar: React.FC<AppSidebarProps> = ({ onHome, onCreateProject, onSearchProjects, editorActive = false, activeView = 'projects' }) => {
+export const AppSidebar: React.FC<AppSidebarProps> = ({ onHome, onCreateProject, onSearchProjects, onAdmin, editorActive = false, activeView = 'projects' }) => {
   const { t } = useTranslation();
+  const { profile } = useAuth();
   const [collapsed, setCollapsed] = useState(() => localStorage.getItem(STORAGE_KEY) !== 'false');
   const [mobileOpen, setMobileOpen] = useState(false);
   const effectiveCollapsed = editorActive || collapsed;
@@ -50,6 +53,12 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({ onHome, onCreateProject,
             <Search className="size-[18px]" />
             {showLabels && <span className="sidebar-label">{t('navigation.searchProjects')}</span>}
           </button>
+          {profile?.role === 'admin' && (
+            <button type="button" onClick={() => run(onAdmin)} className={`sidebar-nav-item ${activeView === 'admin' ? 'sidebar-nav-item-active' : ''}`} title={t('navigation.admin')} aria-label={t('navigation.admin')}>
+              <ShieldCheck className="size-[18px]" />
+              {showLabels && <span className="sidebar-label">{t('navigation.admin')}</span>}
+            </button>
+          )}
         </nav>
       </div>
 
