@@ -30,11 +30,13 @@
     "dailyUsageValue": "{{used}} / {{limit}}",
     "upgradeAction": "Chọn gói",
     "included": "Đã bao gồm",
-    "upgradeTitle": "Xác nhận nâng cấp",
-    "upgradeDescription": "Xác nhận để áp dụng gói mới cho tài khoản của bạn.",
-    "confirmUpgrade": "Xác nhận nâng cấp",
-    "upgradeSuccess": "Cập nhật gói thành công. Gói hiện tại của bạn là {{plan}}.",
-    "updateFailed": "Không thể cập nhật gói. Vui lòng thử lại.",
+    "checkoutTitle": "Tiếp tục thanh toán",
+    "checkoutDescription": "Bạn sẽ được chuyển tới Stripe để hoàn tất việc đổi gói.",
+    "checkoutAction": "Tiếp tục thanh toán",
+    "checkoutProcessing": "Đang xác nhận thanh toán...",
+    "checkoutSuccess": "Gói hiện tại của bạn là {{plan}}.",
+    "checkoutCancelled": "Bạn đã hủy thao tác thanh toán.",
+    "checkoutFailed": "Không thể hoàn tất thanh toán. Vui lòng thử lại.",
     "usageLoadFailed": "Không thể tải hạn mức đã dùng hôm nay.",
     "plans": {
       "free": {

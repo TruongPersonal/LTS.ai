@@ -30,11 +30,13 @@
     "dailyUsageValue": "{{used}} / {{limit}}",
     "upgradeAction": "プランを選択",
     "included": "利用中",
-    "upgradeTitle": "アップグレードの確認",
-    "upgradeDescription": "確認すると、このプランがアカウントに適用されます。",
-    "confirmUpgrade": "アップグレードを確認",
-    "upgradeSuccess": "プランを更新しました。現在のプランは{{plan}}です。",
-    "updateFailed": "プランを更新できませんでした。もう一度お試しください。",
+    "checkoutTitle": "決済に進む",
+    "checkoutDescription": "Stripeに移動して、プランの変更を完了します。",
+    "checkoutAction": "決済に進む",
+    "checkoutProcessing": "決済を確認しています...",
+    "checkoutSuccess": "現在のプランは{{plan}}です。",
+    "checkoutCancelled": "決済をキャンセルしました。",
+    "checkoutFailed": "決済を完了できませんでした。もう一度お試しください。",
     "usageLoadFailed": "本日の使用量を読み込めませんでした。",
     "plans": {
       "free": {

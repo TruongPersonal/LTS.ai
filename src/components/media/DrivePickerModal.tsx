@@ -45,6 +45,10 @@ export const DrivePickerModal: React.FC<DrivePickerModalProps> = ({ isOpen, onCl
   const handleOpenPicker = async () => {
     setError(null);
     setOpeningPicker(true);
+    const root = document.documentElement;
+    const previousCursorMode = root.dataset.cursorMode;
+    root.dataset.cursorMode = 'native';
+
     try {
       const result = await openGoogleDrivePicker();
       if (result) {
@@ -60,6 +64,11 @@ export const DrivePickerModal: React.FC<DrivePickerModalProps> = ({ isOpen, onCl
       console.error('Error opening Google Drive Picker:', err);
       setError(err instanceof Error ? err.message : t('media.drive.loadFailed'));
     } finally {
+      if (previousCursorMode) {
+        root.dataset.cursorMode = previousCursorMode;
+      } else {
+        delete root.dataset.cursorMode;
+      }
       setOpeningPicker(false);
     }
   };

@@ -30,11 +30,13 @@
     "dailyUsageValue": "{{used}} / {{limit}}",
     "upgradeAction": "Choose plan",
     "included": "Included",
-    "upgradeTitle": "Confirm upgrade",
-    "upgradeDescription": "Confirm to apply this plan to your account.",
-    "confirmUpgrade": "Confirm upgrade",
-    "upgradeSuccess": "Plan updated successfully. Your current plan is {{plan}}.",
-    "updateFailed": "Could not update your plan. Please try again.",
+    "checkoutTitle": "Continue to checkout",
+    "checkoutDescription": "You will be redirected to Stripe to complete the plan change.",
+    "checkoutAction": "Continue to checkout",
+    "checkoutProcessing": "Confirming your checkout...",
+    "checkoutSuccess": "Your plan is now {{plan}}.",
+    "checkoutCancelled": "Checkout was cancelled.",
+    "checkoutFailed": "Checkout could not be completed. Please try again.",
     "usageLoadFailed": "Could not load today's usage.",
     "plans": {
       "free": {
