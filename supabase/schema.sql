@@ -20,7 +20,7 @@ CREATE TABLE IF NOT EXISTS lts_ai.profiles (
 );
 
 CREATE TABLE IF NOT EXISTS lts_ai.admin_audit_log (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT pg_catalog.gen_random_uuid(),
     actor_user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE RESTRICT,
     target_user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE RESTRICT,
     action TEXT NOT NULL,
@@ -66,7 +66,7 @@ BEGIN
 END $$;
 
 CREATE TABLE IF NOT EXISTS lts_ai.projects (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT pg_catalog.gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES lts_ai.profiles(id) ON DELETE CASCADE,
     title TEXT NOT NULL,
     description TEXT,
@@ -76,7 +76,7 @@ CREATE TABLE IF NOT EXISTS lts_ai.projects (
 );
 
 CREATE TABLE IF NOT EXISTS lts_ai.files_media (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT pg_catalog.gen_random_uuid(),
     project_id UUID NOT NULL REFERENCES lts_ai.projects(id) ON DELETE CASCADE,
     drive_file_id TEXT NOT NULL,
     file_name TEXT NOT NULL,
@@ -90,7 +90,7 @@ CREATE TABLE IF NOT EXISTS lts_ai.files_media (
 );
 
 CREATE TABLE IF NOT EXISTS lts_ai.subtitles (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT pg_catalog.gen_random_uuid(),
     file_id UUID NOT NULL REFERENCES lts_ai.files_media(id) ON DELETE CASCADE,
     language TEXT NOT NULL,
     content JSONB NOT NULL DEFAULT '[]'::jsonb,
@@ -404,7 +404,7 @@ ALTER TABLE lts_ai.files_media
   ADD COLUMN IF NOT EXISTS processing_last_activity_at TIMESTAMPTZ;
 
 CREATE TABLE IF NOT EXISTS lts_ai.processing_chunk_claims (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT pg_catalog.gen_random_uuid(),
     file_id UUID NOT NULL REFERENCES lts_ai.files_media(id) ON DELETE CASCADE,
     user_id UUID NOT NULL REFERENCES lts_ai.profiles(id) ON DELETE CASCADE,
     attempt_id UUID NOT NULL,
@@ -459,7 +459,7 @@ AS $$
 DECLARE
     file_status TEXT;
     file_input_source TEXT;
-    attempt_id UUID := uuid_generate_v4();
+    attempt_id UUID := pg_catalog.gen_random_uuid();
 BEGIN
     IF p_user_id IS NULL THEN
         RAISE EXCEPTION 'User identity is required.'

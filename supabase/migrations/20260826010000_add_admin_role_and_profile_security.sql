@@ -23,7 +23,7 @@ ALTER TABLE lts_ai.profiles
   CHECK (role IN ('user', 'admin'));
 
 CREATE TABLE IF NOT EXISTS lts_ai.admin_audit_log (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT pg_catalog.gen_random_uuid(),
     actor_user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE RESTRICT,
     target_user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE RESTRICT,
     action TEXT NOT NULL,
