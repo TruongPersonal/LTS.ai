@@ -59,22 +59,59 @@ function errorResponse(error: { code?: string; message?: string }) {
 function getFlacDurationSeconds(audio: File): Promise<number> {
   return audio.arrayBuffer().then((buffer) => {
     const bytes = new Uint8Array(buffer);
-    if (bytes.length < 8 || String.fromCharCode(...bytes.subarray(0, 4)) !== 'fLaC') {
+
+    // FLAC signature: "fLaC"
+    if (
+      bytes.length < 8 ||
+      String.fromCharCode(...bytes.subarray(0, 4)) !== 'fLaC'
+    ) {
       throw new Error('Audio chunk is not a valid FLAC file.');
     }
 
     let offset = 4;
+    let foundStreamInfo = false;
+
     while (offset + 4 <= bytes.length) {
       const blockHeader = bytes[offset];
+
+      // Bit 7 = last metadata block flag
+      const isLastBlock = (blockHeader & 0x80) !== 0;
+
+      // Bits 0-6 = metadata block type
       const blockType = blockHeader & 0x7f;
-      const blockLength = (bytes[offset + 1] << 16) | (bytes[offset + 2] << 8) | bytes[offset + 3];
+
+      // 24-bit big-endian block length
+      const blockLength =
+        (bytes[offset + 1] << 16) |
+        (bytes[offset + 2] << 8) |
+        bytes[offset + 3];
+
       const dataStart = offset + 4;
       const dataEnd = dataStart + blockLength;
-      if (dataEnd > bytes.length) break;
 
-      if (blockType === 0 && blockLength >= 34) {
+      if (dataEnd > bytes.length) {
+        throw new Error('FLAC metadata block is truncated.');
+      }
+
+      // STREAMINFO block
+      if (blockType === 0) {
+        foundStreamInfo = true;
+
+        // STREAMINFO must be exactly 34 bytes
+        if (blockLength < 34) {
+          throw new Error('Invalid FLAC STREAMINFO block.');
+        }
+
         const streamInfo = bytes.subarray(dataStart, dataEnd);
-        const sampleRate = (streamInfo[10] << 12) | (streamInfo[11] << 4) | (streamInfo[12] >> 4);
+
+        // Sample rate: 20 bits
+        const sampleRate =
+          (streamInfo[10] << 12) |
+          (streamInfo[11] << 4) |
+          (streamInfo[12] >> 4);
+
+        // Total samples: 36 bits
+        // 4 low bits of byte 13 + bytes 14..17
         const totalSamples =
           (streamInfo[13] & 0x0f) * 0x100000000 +
           streamInfo[14] * 0x1000000 +
@@ -82,17 +119,45 @@ function getFlacDurationSeconds(audio: File): Promise<number> {
           streamInfo[16] * 0x100 +
           streamInfo[17];
 
-        if (sampleRate > 0 && totalSamples > 0) {
-          const duration = Math.ceil(totalSamples / sampleRate);
-          if (duration > 0 && duration <= CHUNK_DURATION_SECONDS) return duration;
+        if (!Number.isFinite(sampleRate) || sampleRate <= 0) {
+          throw new Error('FLAC STREAMINFO contains an invalid sample rate.');
         }
+
+        if (!Number.isFinite(totalSamples) || totalSamples <= 0) {
+          throw new Error(
+            'FLAC STREAMINFO does not contain a valid total sample count.'
+          );
+        }
+
+        const duration = Math.ceil(totalSamples / sampleRate);
+
+        if (!Number.isFinite(duration) || duration <= 0) {
+          throw new Error('FLAC chunk duration is invalid.');
+        }
+
+        if (duration > CHUNK_DURATION_SECONDS) {
+          throw new Error(
+            `FLAC chunk duration (${duration}s) exceeds the maximum allowed chunk duration (${CHUNK_DURATION_SECONDS}s).`
+          );
+        }
+
+        return duration;
       }
 
       offset = dataEnd;
-      if ((blockHeader & 0x80) !== 0) break;
+
+      if (isLastBlock) {
+        break;
+      }
     }
 
-    throw new Error('Could not determine the FLAC chunk duration.');
+    if (!foundStreamInfo) {
+      throw new Error('FLAC STREAMINFO block was not found.');
+    }
+
+    throw new Error(
+      'Could not determine the FLAC chunk duration from STREAMINFO.'
+    );
   });
 }
 
