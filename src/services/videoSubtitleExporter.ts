@@ -200,7 +200,8 @@ export async function exportVideoWithSubtitles({
       onProgress?.(0);
 
       await ffmpeg.createDir(mountDirectory);
-      await ffmpeg.mount('WORKERFS', { blobs: [{ name: inputName, data: videoBlob }] }, mountDirectory);
+      const workerFsType = 'WORKERFS' as Parameters<FFmpeg['mount']>[0];
+      await ffmpeg.mount(workerFsType, { blobs: [{ name: inputName, data: videoBlob }] }, mountDirectory);
       inputMounted = true;
       throwIfCanceled();
       await ffmpeg.writeFile(subtitleName, new TextEncoder().encode(exportToSrt(subtitles)));

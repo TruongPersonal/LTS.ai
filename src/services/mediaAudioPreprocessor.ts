@@ -91,7 +91,8 @@ export async function* extractFlacChunks(
   try {
     ffmpeg = await getFfmpeg();
     await ffmpeg.createDir(mountDirectory);
-    await ffmpeg.mount('WORKERFS', { blobs: [{ name: inputName, data: mediaBlob }] }, mountDirectory);
+    const workerFsType = 'WORKERFS' as Parameters<FFmpeg['mount']>[0];
+    await ffmpeg.mount(workerFsType, { blobs: [{ name: inputName, data: mediaBlob }] }, mountDirectory);
     inputMounted = true;
     remainingOutputFiles.add(durationOutputName);
     const mediaDurationSeconds = await probeDurationSeconds(ffmpeg, inputPath, durationOutputName);
@@ -167,8 +168,9 @@ export async function* extractFlacChunks(
     }
   } finally {
     if (ffmpeg) {
+      const activeFfmpeg = ffmpeg;
       await Promise.allSettled(
-        Array.from(remainingOutputFiles, (outputName) => ffmpeg.deleteFile(outputName))
+        Array.from(remainingOutputFiles, (outputName) => activeFfmpeg.deleteFile(outputName))
       );
       if (inputMounted) {
         await ffmpeg.unmount(mountDirectory).catch(() => undefined);

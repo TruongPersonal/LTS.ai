@@ -48,6 +48,7 @@ async function fetchDriveMediaBlob(
   driveFileId: string,
   inputMime?: string,
   fileName?: string,
+  signal?: AbortSignal,
 ): Promise<Blob> {
   const existing = pendingDriveMediaFetches.get(driveFileId);
 
@@ -68,6 +69,7 @@ async function fetchDriveMediaBlob(
         headers: {
           Authorization: `Bearer ${accessToken}`,
         },
+        signal,
       },
     );
 
@@ -93,7 +95,6 @@ async function fetchDriveMediaBlob(
       fileName,
     );
 
-    // Không tạo new Blob([rawBlob]); tránh thêm một bước copy.
     return rawBlob.type === resolvedMime
       ? rawBlob
       : rawBlob.slice(0, rawBlob.size, resolvedMime);
@@ -135,7 +136,7 @@ export const useEditorVideo = ({
   }, []);
 
   const loadVideoBlob = useCallback(
-    async (): Promise<Blob | null> => {
+    async (signal?: AbortSignal): Promise<Blob | null> => {
       if (!isDriveMedia) {
         return null;
       }
@@ -148,6 +149,7 @@ export const useEditorVideo = ({
         driveFileId,
         inputMime,
         fileName,
+        signal,
       );
 
       setVideoBlob(blob);
