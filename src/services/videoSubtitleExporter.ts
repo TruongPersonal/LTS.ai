@@ -63,13 +63,38 @@ async function cleanupFiles(ffmpeg: FFmpeg, fileNames: string[]): Promise<void> 
   await Promise.allSettled(fileNames.map((fileName) => ffmpeg.deleteFile(fileName)));
 }
 
-async function ensureFontDirectory(ffmpeg: FFmpeg): Promise<void> {
+// The bundled CJK font (~5 MB) is fetched once per app session and kept in the
+// FFmpeg filesystem across exports, so repeated exports skip both the network
+// fetch and the filesystem write.
+let fontDataPromise: Promise<Uint8Array> | null = null;
+
+function loadBundledFontData(): Promise<Uint8Array> {
+  if (!fontDataPromise) {
+    fontDataPromise = fetchFile(BUNDLED_FONT_URL).catch((error) => {
+      fontDataPromise = null;
+      throw error;
+    });
+  }
+  return fontDataPromise;
+}
+
+async function ensureBundledFont(ffmpeg: FFmpeg): Promise<void> {
   const rootEntries = await ffmpeg.listDir('/');
   const fontDirectoryExists = rootEntries.some(
     (entry) => entry.name === FONT_DIRECTORY.slice(1) && entry.isDir
   );
   if (!fontDirectoryExists) {
     await ffmpeg.createDir(FONT_DIRECTORY);
+  }
+
+  const fontFileName = FONT_FILE.slice(FONT_DIRECTORY.length + 1);
+  const fontExists = fontDirectoryExists
+    ? (await ffmpeg.listDir(FONT_DIRECTORY)).some(
+        (entry) => entry.name === fontFileName && !entry.isDir
+      )
+    : false;
+  if (!fontExists) {
+    await ffmpeg.writeFile(FONT_FILE, await loadBundledFontData());
   }
 }
 
@@ -106,7 +131,7 @@ export async function exportVideoWithSubtitles({
   const inputName = `export-${token}-input.mp4`;
   const subtitleName = `export-${token}-subtitles.srt`;
   const outputName = `export-${token}-output.mp4`;
-  const ownedFiles = [inputName, subtitleName, outputName, FONT_FILE];
+  const ownedFiles = [inputName, subtitleName, outputName];
   const release = await acquireFfmpegLock();
   let ffmpeg: FFmpeg | null = null;
   let progressListenerAttached = false;
@@ -164,9 +189,7 @@ export async function exportVideoWithSubtitles({
       throwIfCanceled();
       ffmpeg.on('log', handleLog);
       logListenerAttached = true;
-      await ensureFontDirectory(ffmpeg);
-      throwIfCanceled();
-      await ffmpeg.writeFile(FONT_FILE, await fetchFile(BUNDLED_FONT_URL));
+      await ensureBundledFont(ffmpeg);
       throwIfCanceled();
       phase = 'execution';
       ffmpeg.on('progress', handleProgress);
@@ -190,8 +213,11 @@ export async function exportVideoWithSubtitles({
         `subtitles=${subtitleName}:fontsdir=${FONT_DIRECTORY}:force_style=FontName=Noto Sans CJK JP`,
         '-c:v',
         'libx264',
+        // ultrafast is the fastest x264 preset; on the single-thread WASM core
+        // it cuts encode time roughly 2-3x vs veryfast at the cost of a larger
+        // output file. Encoding speed is the dominant UX cost of this export.
         '-preset',
-        'veryfast',
+        'ultrafast',
         '-crf',
         '23',
         '-pix_fmt',
@@ -227,7 +253,9 @@ export async function exportVideoWithSubtitles({
 
       throwIfCanceled();
       onProgress?.(1);
-      return new Blob([Uint8Array.from(outputData)], { type: 'video/mp4' });
+      // readFile already returns a copy transferred from the FFmpeg worker, so
+      // wrap it directly instead of duplicating hundreds of MB synchronously.
+      return new Blob([outputData as unknown as BlobPart], { type: 'video/mp4' });
     } catch (error) {
       if (canceled || signal?.aborted) {
         throw createVideoExportCanceledError();
