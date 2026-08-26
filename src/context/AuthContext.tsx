@@ -1,10 +1,10 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
 import {
   clearGoogleAccessToken,
   getGoogleAccessToken,
   getStoredGoogleAccessToken,
-  isOneHourSessionExpired,
+  isGoogleTokenExpired,
   persistGoogleProviderToken,
   supabase,
 } from '../lib/supabase';
@@ -16,7 +16,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
 
-  const fetchProfile = async (authUser: SupabaseUser) => {
+  const signOut = useCallback(async () => {
+    try {
+      clearGoogleAccessToken();
+      await supabase.auth.signOut();
+      setUser(null);
+      setProfile(null);
+      if (typeof window !== 'undefined') {
+        window.location.href = '/';
+      }
+    } catch (err) {
+      console.error('Error signing out:', err);
+      if (typeof window !== 'undefined') {
+        window.location.href = '/';
+      }
+    }
+  }, []);
+
+  const fetchProfile = useCallback(async (authUser: SupabaseUser) => {
     try {
       const { data, error } = await supabase
         .from('profiles')
@@ -71,10 +88,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const acceptGoogleSession = async (authUser: SupabaseUser, accessToken?: string) => {
-    if (isOneHourSessionExpired()) {
+  const acceptGoogleSession = useCallback(async (authUser: SupabaseUser, accessToken?: string) => {
+    if (isGoogleTokenExpired()) {
       void signOut();
       return;
     }
@@ -95,16 +112,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         window.history.replaceState(null, '', cleanUrl || '/');
       }
     }
-  };
+  }, [fetchProfile, signOut]);
 
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       const providerToken = persistGoogleProviderToken(session);
-      if (session?.user && !isOneHourSessionExpired()) {
+      if (session?.user && !isGoogleTokenExpired()) {
         const accessToken = providerToken || (await getGoogleAccessToken());
         void acceptGoogleSession(session.user, accessToken);
       } else {
-        if (isOneHourSessionExpired()) void signOut();
+        if (isGoogleTokenExpired()) void signOut();
         setUser(null);
         setProfile(null);
         setLoading(false);
@@ -115,10 +132,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
       const providerToken = persistGoogleProviderToken(session);
-      if (session?.user && !isOneHourSessionExpired()) {
+      if (session?.user && !isGoogleTokenExpired()) {
         void acceptGoogleSession(session.user, providerToken || getStoredGoogleAccessToken());
       } else {
-        if (isOneHourSessionExpired()) void signOut();
+        if (isGoogleTokenExpired()) void signOut();
         setUser(null);
         setProfile(null);
         setLoading(false);
@@ -126,17 +143,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
 
     return () => subscription.unsubscribe();
-  }, []);
+  }, [acceptGoogleSession, signOut]);
 
   useEffect(() => {
     if (!user) return;
     const interval = window.setInterval(() => {
-      if (isOneHourSessionExpired()) {
+      if (isGoogleTokenExpired()) {
         void signOut();
       }
     }, 10000);
     return () => window.clearInterval(interval);
-  }, [user]);
+  }, [signOut, user]);
 
   const signInWithGoogle = async () => {
     const { error } = await supabase.auth.signInWithOAuth({
@@ -152,23 +169,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       },
     });
     if (error) throw error;
-  };
-
-  const signOut = async () => {
-    try {
-      clearGoogleAccessToken();
-      await supabase.auth.signOut();
-      setUser(null);
-      setProfile(null);
-      if (typeof window !== 'undefined') {
-        window.location.href = '/';
-      }
-    } catch (err) {
-      console.error('Error signing out:', err);
-      if (typeof window !== 'undefined') {
-        window.location.href = '/';
-      }
-    }
   };
 
   const updateProfile = async (data: Pick<Profile, 'full_name'>) => {

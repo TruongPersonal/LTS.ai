@@ -1,5 +1,4 @@
 import { FFmpeg } from '@ffmpeg/ffmpeg';
-import { fetchFile } from '@ffmpeg/util';
 import { inspectFlacMetadata } from './flacMetadata';
 import { acquireFfmpegLock, getFfmpeg } from './ffmpegRuntime';
 
@@ -46,44 +45,32 @@ async function readBinary(ffmpeg: FFmpeg, fileName: string): Promise<Uint8Array>
   if (typeof data === 'string') {
     throw new Error('FFmpeg trả về audio không hợp lệ.');
   }
-  return Uint8Array.from(data);
+  return data;
 }
 
-// FFmpeg's segment muxer can keep absolute packet timestamps in FLAC outputs even
-// with -reset_timestamps 1. Re-encode each segment with sample-count timestamps
-// so every chunk presented to the transcription provider starts at local time zero.
-async function normalizeFlacSegment(
-  ffmpeg: FFmpeg,
-  inputName: string,
-  normalizedName: string
-): Promise<void> {
-  const normalizeExit = await ffmpeg.exec([
-    '-y',
-    '-i',
+async function probeDurationSeconds(ffmpeg: FFmpeg, inputName: string, outputName: string): Promise<number> {
+  const probeExit = await ffmpeg.ffprobe([
+    '-v',
+    'error',
+    '-show_entries',
+    'format=duration',
+    '-of',
+    'default=noprint_wrappers=1:nokey=1',
     inputName,
-    '-map',
-    '0:a:0',
-    '-vn',
-    '-ac',
-    '1',
-    '-ar',
-    '16000',
-    '-sample_fmt',
-    's16',
-    '-af',
-    'asetpts=N/SR/TB',
-    '-t',
-    String(CHUNK_DURATION_SECONDS),
-    '-c:a',
-    'flac',
-    normalizedName,
+    '-o',
+    outputName,
   ]);
 
-  if (normalizeExit !== 0) {
-    throw new Error(
-      `FFmpeg không thể chuẩn hoá timestamp FLAC (mã ${normalizeExit}).`
-    );
+  if (probeExit !== 0) {
+    throw new Error(`FFmpeg không thể xác định thời lượng media (mã ${probeExit}).`);
   }
+
+  const durationData = await ffmpeg.readFile(outputName, 'utf8');
+  const durationSeconds = Number(String(durationData).trim());
+  if (!Number.isFinite(durationSeconds) || durationSeconds <= 0) {
+    throw new Error('FFmpeg trả về thời lượng media không hợp lệ.');
+  }
+  return durationSeconds;
 }
 
 export async function* extractFlacChunks(
@@ -93,80 +80,68 @@ export async function* extractFlacChunks(
 ): AsyncGenerator<AudioChunk, void, void> {
   const token = safeToken(fileId);
   const inputName = `input-${token}.${extensionForMimeType(mimeType)}`;
-  const outputPattern = `audio-${token}-%03d.flac`;
-  const remainingSegmentFiles = new Set<string>();
+  const durationOutputName = `duration-${token}.txt`;
+  const mountDirectory = `/workerfs-${token}`;
+  const inputPath = `${mountDirectory}/${inputName}`;
+  const remainingOutputFiles = new Set<string>();
+  let inputMounted = false;
   const release = await acquireFfmpegLock();
   let ffmpeg: FFmpeg | null = null;
 
   try {
     ffmpeg = await getFfmpeg();
-    await ffmpeg.writeFile(inputName, await fetchFile(mediaBlob));
+    await ffmpeg.createDir(mountDirectory);
+    await ffmpeg.mount('WORKERFS', { blobs: [{ name: inputName, data: mediaBlob }] }, mountDirectory);
+    inputMounted = true;
+    remainingOutputFiles.add(durationOutputName);
+    const mediaDurationSeconds = await probeDurationSeconds(ffmpeg, inputPath, durationOutputName);
+    const durationDeleted = await ffmpeg.deleteFile(durationOutputName).catch(() => false);
+    if (durationDeleted) remainingOutputFiles.delete(durationOutputName);
+    const chunkCount = Math.ceil(mediaDurationSeconds / CHUNK_DURATION_SECONDS);
 
-    const segmentExit = await ffmpeg.exec([
-      '-i',
-      inputName,
-      '-map',
-      '0:a:0',
-      '-vn',
-      '-ac',
-      '1',
-      '-ar',
-      '16000',
-      '-sample_fmt',
-      's16',
-      '-c:a',
-      'flac',
-      '-f',
-      'segment',
-      '-segment_time',
-      '420',
-      '-reset_timestamps',
-      '1',
-      outputPattern,
-    ]);
-
-    if (segmentExit !== 0) {
-      throw new Error(`FFmpeg không thể tách audio thành FLAC (mã ${segmentExit}).`);
-    }
-
-    const segmentFiles = (await ffmpeg.listDir('/'))
-      .map((entry) => entry.name)
-      .filter((name) => name.startsWith(`audio-${token}-`) && name.endsWith('.flac'))
-      .sort();
-
-    if (segmentFiles.length === 0) {
-      throw new Error('FFmpeg không tạo được FLAC chunk từ media đã chọn.');
-    }
-    if (segmentFiles.length > MAX_SEGMENT_SCAN) {
+    if (chunkCount > MAX_SEGMENT_SCAN) {
       throw new Error('Media tạo ra quá nhiều FLAC chunk cho bản submission.');
     }
 
-    segmentFiles.forEach((name) => remainingSegmentFiles.add(name));
-
-    const usableSegmentFiles: string[] = [];
-    for (const segmentFile of segmentFiles) {
-      const segmentData = await readBinary(ffmpeg, segmentFile);
-      const segmentMetadata = inspectFlacMetadata(segmentData);
-      if (!segmentMetadata.hasAudioFrames) {
-        const deleted = await ffmpeg.deleteFile(segmentFile).catch(() => false);
-        if (deleted) remainingSegmentFiles.delete(segmentFile);
-        continue;
-      }
-      usableSegmentFiles.push(segmentFile);
-    }
-
-    if (usableSegmentFiles.length === 0) {
-      throw new Error('FFmpeg không tạo được FLAC chunk có dữ liệu audio.');
-    }
-
-    const chunkCount = usableSegmentFiles.length;
     for (let index = 0; index < chunkCount; index += 1) {
-      const outputName = usableSegmentFiles[index];
-      const normalizedName = `normalized-${outputName}`;
-      remainingSegmentFiles.add(normalizedName);
+      const startSeconds = index * CHUNK_DURATION_SECONDS;
+      const durationSeconds = Math.min(
+        CHUNK_DURATION_SECONDS,
+        mediaDurationSeconds - startSeconds
+      );
+      const outputName = `audio-${token}-${String(index).padStart(3, '0')}.flac`;
+      remainingOutputFiles.add(outputName);
 
-      await normalizeFlacSegment(ffmpeg, outputName, normalizedName);
-      const data = await readBinary(ffmpeg, normalizedName);
+      // Encode each time range directly from the source into its final FLAC.
+      // This avoids the previous segment-FLAC -> normalized-FLAC second encode.
+      const chunkExit = await ffmpeg.exec([
+        '-ss',
+        String(startSeconds),
+        '-i',
+        inputPath,
+        '-map',
+        '0:a:0',
+        '-vn',
+        '-ac',
+        '1',
+        '-ar',
+        '16000',
+        '-sample_fmt',
+        's16',
+        '-af',
+        'asetpts=N/SR/TB',
+        '-t',
+        String(durationSeconds),
+        '-c:a',
+        'flac',
+        outputName,
+      ]);
+
+      if (chunkExit !== 0) {
+        throw new Error(`FFmpeg không thể tạo FLAC chunk ${index + 1} (mã ${chunkExit}).`);
+      }
+
+      const data = await readBinary(ffmpeg, outputName);
       const metadata = inspectFlacMetadata(data);
 
       if (!metadata.hasAudioFrames || metadata.totalSamples <= 0) {
@@ -176,30 +151,29 @@ export async function* extractFlacChunks(
         throw new Error(`FLAC chunk ${index + 1} vượt giới hạn 19.5 MB.`);
       }
 
-      const sourceDeleted = await ffmpeg.deleteFile(outputName).catch(() => false);
-      if (sourceDeleted) remainingSegmentFiles.delete(outputName);
-
       try {
         yield {
           index,
           fileName: outputName,
           blob: new Blob([data.buffer as unknown as BlobPart], { type: 'audio/flac' }),
-          startSeconds: index * CHUNK_DURATION_SECONDS,
+          startSeconds,
           durationSeconds: metadata.totalSamples / 16000,
           chunkCount,
         };
       } finally {
-        const normalizedDeleted = await ffmpeg.deleteFile(normalizedName).catch(() => false);
-        if (normalizedDeleted) remainingSegmentFiles.delete(normalizedName);
+        const deleted = await ffmpeg.deleteFile(outputName).catch(() => false);
+        if (deleted) remainingOutputFiles.delete(outputName);
       }
     }
   } finally {
     if (ffmpeg) {
-      const cleanup: Promise<unknown>[] = [ffmpeg.deleteFile(inputName)];
-      for (const outputName of remainingSegmentFiles) {
-        cleanup.push(ffmpeg.deleteFile(outputName));
+      await Promise.allSettled(
+        Array.from(remainingOutputFiles, (outputName) => ffmpeg.deleteFile(outputName))
+      );
+      if (inputMounted) {
+        await ffmpeg.unmount(mountDirectory).catch(() => undefined);
       }
-      await Promise.allSettled(cleanup);
+      await ffmpeg.deleteDir(mountDirectory).catch(() => undefined);
     }
     release();
   }

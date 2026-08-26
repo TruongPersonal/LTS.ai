@@ -4,6 +4,8 @@ import type { ProcessingProgress } from '../types/processing';
 import { fileService } from '../services/fileService';
 import { ProcessingContext, type ProcessingQueueItem } from './processing-context';
 
+const FILE_PROCESSING_CONCURRENCY = 2;
+
 export const ProcessingProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [queuedItems, setQueuedItems] = useState<ProcessingQueueItem[]>([]);
@@ -28,7 +30,7 @@ export const ProcessingProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     setIsWidgetVisible(false);
   }, []);
 
-  const runQueue = useCallback(async () => {
+  const runQueue = useCallback(async function runProcessingQueue() {
     if (isProcessingRef.current) return;
     if (queueRef.current.length === 0) return;
 
@@ -41,35 +43,56 @@ export const ProcessingProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       dismissTimerRef.current = null;
     }
 
-    while (queueRef.current.length > 0) {
-      const current = queueRef.current.shift()!;
-      setActiveItem(current);
-      setQueuedItems([...queueRef.current]);
-      setActivePercent(0);
-      setActiveMessage('Đang chuẩn bị...');
+    const runWorker = async (): Promise<void> => {
+      while (queueRef.current.length > 0) {
+        const current = queueRef.current.shift();
+        if (!current) return;
 
-      try {
-        await fileService.processSingleDraftFile(
-          current.projectId,
-          current.file,
-          (progress) => {
-            setProgressByFile((prev) => ({ ...prev, [progress.fileId]: progress }));
-            setActivePercent(Math.min(100, Math.max(0, Math.round(progress.percent))));
-            if (progress.message) setActiveMessage(progress.message);
-          }
-        );
-        setCompletedCount((prev) => prev + 1);
-      } catch (err) {
-        console.error('Error processing background file:', current.file.file_name, err);
-        setFailedCount((prev) => prev + 1);
+        setActiveItem(current);
+        setQueuedItems([...queueRef.current]);
+        setActivePercent(0);
+        setActiveMessage('Đang chuẩn bị...');
+
+        try {
+          await fileService.processSingleDraftFile(
+            current.projectId,
+            current.file,
+            (progress) => {
+              setProgressByFile((prev) => ({ ...prev, [progress.fileId]: progress }));
+              // The compact widget follows whichever active file emitted the
+              // latest progress; per-file progress remains available in the map.
+              setActiveItem(current);
+              setActivePercent(Math.min(100, Math.max(0, Math.round(progress.percent))));
+              if (progress.message) setActiveMessage(progress.message);
+            }
+          );
+          setCompletedCount((prev) => prev + 1);
+        } catch (err) {
+          console.error('Error processing background file:', current.file.file_name, err);
+          setFailedCount((prev) => prev + 1);
+        }
       }
-    }
+    };
+
+    await Promise.all(
+      Array.from(
+        { length: Math.min(FILE_PROCESSING_CONCURRENCY, queueRef.current.length) },
+        () => runWorker()
+      )
+    );
 
     setActiveItem(null);
     setActivePercent(100);
     setActiveMessage('Hoàn thành');
     isProcessingRef.current = false;
     setIsProcessing(false);
+
+    // An item may be appended just as the last worker exits. Start a new batch
+    // instead of leaving that item queued until another user action occurs.
+    if (queueRef.current.length > 0) {
+      void runProcessingQueue();
+      return;
+    }
 
     // Auto-dismiss widget after 6 seconds of completion
     dismissTimerRef.current = window.setTimeout(() => {

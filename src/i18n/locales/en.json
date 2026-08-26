@@ -265,6 +265,11 @@
       "loadFailed": "Failed to upload file. Please try again!"
     }
   },
+  "errorBoundary": {
+    "title": "An unexpected error occurred.",
+    "description": "The app ran into a problem while rendering this page. Please reload the page to continue.",
+    "reload": "Reload page"
+  },
   "routes": {
     "projectNotFound": "Project not found.",
     "projectLoadError": "Failed to load project details.",

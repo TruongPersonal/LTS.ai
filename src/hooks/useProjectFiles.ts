@@ -138,7 +138,7 @@ export const useProjectFiles = (projectId: string, targetLanguage: string) => {
       const targetSub = await subtitleService.getSubtitleByFile(file.id, targetLanguage);
       const sourceLang = file.detected_source_lang;
       const sourceSub = sourceLang ? await subtitleService.getSubtitleByFile(file.id, sourceLang) : null;
-      downloadSubtitleFile(
+      await downloadSubtitleFile(
         targetSub?.content || [],
         sourceSub?.content || [],
         file.file_name,

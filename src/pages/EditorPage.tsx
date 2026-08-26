@@ -1,6 +1,6 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { FileMedia, Project } from '../types/database';
+import type { FileMedia, Project, SubtitleItem } from '../types/database';
 import { getNativeLanguageName } from '../types/project';
 import { VideoPlayer } from '../components/editor/VideoPlayer';
 import { ExportModal } from '../components/editor/ExportModal';
@@ -16,7 +16,6 @@ import { useSubtitleTrack } from '../hooks/useSubtitleTrack';
 import { findActiveCueId, getSourceTextById } from '../utils/subtitleEditor';
 import { getEditorCueDensity } from '../utils/editorDensity';
 import { downloadSubtitleFile, type SubtitleExportFormat, type SubtitleExportTrack } from '../utils/exporter';
-import { saveAs } from 'file-saver';
 import { exportVideoWithSubtitles, VideoSubtitleExportError } from '../services/videoSubtitleExporter';
 
 interface EditorPageProps {
@@ -71,11 +70,11 @@ export const EditorPage: React.FC<EditorPageProps> = ({
 
   const {
     videoUrl,
-    videoBlob,
     videoLoading,
     videoError,
     currentTime,
     setCurrentTime,
+    loadVideoBlob,
   } = useEditorVideo({
     driveFileId: file.drive_file_id,
     inputSource: file.input_source,
@@ -127,23 +126,30 @@ export const EditorPage: React.FC<EditorPageProps> = ({
       !Number.isFinite(Number(timingDraft.end)) ||
       Number(timingDraft.start) < 0 ||
       Number(timingDraft.end) <= Number(timingDraft.start));
-  const validTimingDraft =
-    !hasInvalidTimingDraft && timingDraft !== null
-      ? {
-          start: Number(timingDraft.start),
-          end: Number(timingDraft.end),
+  const validTimingDraft = useMemo(
+    () =>
+      !hasInvalidTimingDraft && timingDraft !== null
+        ? {
+            start: Number(timingDraft.start),
+            end: Number(timingDraft.end),
+          }
+        : null,
+    [hasInvalidTimingDraft, timingDraft]
+  );
+  const effectiveTargetSubtitles = useMemo(
+    () =>
+      subtitles.map((subtitle) => {
+        const effectiveText =
+          editingTextCueId === subtitle.id && textDraft !== null
+            ? { ...subtitle, text: textDraft }
+            : subtitle;
+        if (editingTimingCueId !== subtitle.id || validTimingDraft === null) {
+          return effectiveText;
         }
-      : null;
-  const effectiveTargetSubtitles = subtitles.map((subtitle) => {
-    const effectiveText =
-      editingTextCueId === subtitle.id && textDraft !== null
-        ? { ...subtitle, text: textDraft }
-        : subtitle;
-    if (editingTimingCueId !== subtitle.id || validTimingDraft === null) {
-      return effectiveText;
-    }
-    return { ...effectiveText, ...validTimingDraft };
-  });
+        return { ...effectiveText, ...validTimingDraft };
+      }),
+    [editingTextCueId, editingTimingCueId, subtitles, textDraft, validTimingDraft]
+  );
 
   const hasPendingTextChange = Boolean(
     (editingTextCue && textDraft !== null && editingTextCue.text !== textDraft) ||
@@ -157,13 +163,12 @@ export const EditorPage: React.FC<EditorPageProps> = ({
     videoExportStatus === 'preparing' ||
     videoExportStatus === 'exporting' ||
     videoExportStatus === 'canceling';
-  const videoMimeType = videoBlob?.type.toLowerCase() ?? '';
-  const isVideoBlobReady = Boolean(
-    videoBlob &&
-      videoBlob.size > 0 &&
-      videoMimeType.startsWith('video/') &&
-      !videoMimeType.startsWith('audio/')
-  );
+  const mediaExtension = file.file_name.split('.').pop()?.toLowerCase() ?? '';
+  const isVideoSource =
+    file.mime_type.toLowerCase().startsWith('video/') ||
+    ['mp4', 'webm', 'mov', 'mkv', 'avi'].includes(mediaExtension);
+  const supportsVideoExport =
+    file.input_source === 'media' || file.input_source === 'existing_subtitle';
   const canExportVideo = Boolean(
     !routeLoading &&
       !videoLoading &&
@@ -171,7 +176,8 @@ export const EditorPage: React.FC<EditorPageProps> = ({
       !subtitlesLoading &&
       !subtitlesError &&
       !videoExportBusy &&
-      isVideoBlobReady &&
+      isVideoSource &&
+      supportsVideoExport &&
       effectiveTargetSubtitles.length > 0 &&
       !hasInvalidTimingDraft
   );
@@ -216,7 +222,18 @@ export const EditorPage: React.FC<EditorPageProps> = ({
     onBack();
   };
 
-  const handleConfirmTimingEdit = (id: number) => {
+  const handleSelectCue = useCallback(
+    (item: SubtitleItem) => setCurrentTime(item.start),
+    [setCurrentTime]
+  );
+
+  const handleStartTextEdit = useCallback(
+    (item: SubtitleItem) =>
+      startEditingText(item, getSourceTextById(sourceSubtitles, item.id)),
+    [sourceSubtitles, startEditingText]
+  );
+
+  const handleConfirmTimingEdit = useCallback((id: number) => {
     if (timingDraft) {
       const s = Number(timingDraft.start);
       const e = Number(timingDraft.end);
@@ -225,20 +242,20 @@ export const EditorPage: React.FC<EditorPageProps> = ({
       }
     }
     cancelEditingTiming();
-  };
+  }, [cancelEditingTiming, timingDraft, updateCueTiming]);
 
-  const handleConfirmTextEdit = (id: number) => {
+  const handleConfirmTextEdit = useCallback((id: number) => {
     if (textDraft !== null || sourceDraft !== null) {
       updateCueText(id, textDraft ?? undefined, sourceDraft ?? undefined);
     }
     cancelEditingText();
-  };
+  }, [cancelEditingText, sourceDraft, textDraft, updateCueText]);
 
   const handleConfirmExport = (
     format: SubtitleExportFormat,
     track: SubtitleExportTrack = 'target'
   ) => {
-    downloadSubtitleFile(subtitles, sourceSubtitles, file.file_name, format, track);
+    void downloadSubtitleFile(subtitles, sourceSubtitles, file.file_name, format, track);
   };
 
   const resetVideoExportModal = () => {
@@ -257,16 +274,27 @@ export const EditorPage: React.FC<EditorPageProps> = ({
   };
 
   const handleConfirmVideoExport = async () => {
-    if (!canExportVideo || videoBlob === null || videoExportStatus !== 'confirm') return;
+    if (!canExportVideo || videoExportStatus !== 'confirm') return;
 
     const controller = new AbortController();
     videoExportControllerRef.current = controller;
-    const exportBlob = videoBlob;
     const exportSubtitles = effectiveTargetSubtitles;
 
     try {
       setVideoExportStatus('preparing');
-      await Promise.resolve();
+      let exportBlob: Blob | null;
+      try {
+        exportBlob = await loadVideoBlob(controller.signal);
+      } catch (error) {
+        if (controller.signal.aborted) throw error;
+        throw new VideoSubtitleExportError(
+          'load',
+          error instanceof Error ? error.message : 'Unable to download source video.'
+        );
+      }
+      if (!exportBlob) {
+        throw new VideoSubtitleExportError('load', 'Source video is unavailable.');
+      }
       if (controller.signal.aborted) {
         setVideoExportStatus('canceled');
         return;
@@ -285,6 +313,7 @@ export const EditorPage: React.FC<EditorPageProps> = ({
         return;
       }
       const baseName = file.file_name.replace(/\.[^/.]+$/, '') || file.file_name;
+      const { saveAs } = await import('file-saver');
       saveAs(output, baseName + '_subtitled.mp4');
       setVideoExportProgress(1);
       setVideoExportStatus('completed');
@@ -408,13 +437,11 @@ export const EditorPage: React.FC<EditorPageProps> = ({
               cuePendingDelete={cuePendingDelete}
               cueViewportRef={cueViewportRef}
               cueRefs={cueRefs}
-              onSelectCue={(item) => setCurrentTime(item.start)}
+              onSelectCue={handleSelectCue}
               onCueVisibilityToggle={toggleCueOverride}
               getResolvedVisibility={getResolvedVisibility}
               onAddCue={addCue}
-              onStartTextEdit={(item) =>
-                startEditingText(item, getSourceTextById(sourceSubtitles, item.id))
-              }
+              onStartTextEdit={handleStartTextEdit}
               onCancelTextEdit={cancelEditingText}
               onConfirmTextEdit={handleConfirmTextEdit}
               onStartTimingEdit={startEditingTiming}

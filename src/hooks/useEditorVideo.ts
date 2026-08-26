@@ -1,12 +1,111 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import i18n from '../i18n';
 import { getGoogleAccessToken } from '../lib/supabase';
+
+const pendingDriveMediaFetches = new Map<string, Promise<Blob>>();
+
+class GoogleDriveSessionError extends Error {}
 
 interface UseEditorVideoParams {
   driveFileId: string;
   inputSource: string;
   fileName?: string;
   mimeType?: string;
+}
+
+function resolveMediaMime(
+  response: Response,
+  inputMime?: string,
+  fileName?: string,
+): string {
+  const headerType = response.headers.get('content-type');
+
+  if (headerType && !headerType.includes('octet-stream')) {
+    return headerType;
+  }
+
+  if (inputMime && !inputMime.includes('octet-stream')) {
+    return inputMime;
+  }
+
+  const extension = fileName?.split('.').pop()?.toLowerCase();
+
+  const extensionTypes: Record<string, string> = {
+    mp3: 'audio/mpeg',
+    wav: 'audio/wav',
+    m4a: 'audio/mp4',
+    aac: 'audio/aac',
+    flac: 'audio/flac',
+    ogg: 'audio/ogg',
+    webm: 'video/webm',
+    mov: 'video/quicktime',
+  };
+
+  return (extension && extensionTypes[extension]) || 'video/mp4';
+}
+
+async function fetchDriveMediaBlob(
+  driveFileId: string,
+  inputMime?: string,
+  fileName?: string,
+): Promise<Blob> {
+  const existing = pendingDriveMediaFetches.get(driveFileId);
+
+  if (existing) {
+    return existing;
+  }
+
+  const fetchPromise = (async () => {
+    const accessToken = await getGoogleAccessToken();
+
+    if (!accessToken) {
+      throw new GoogleDriveSessionError();
+    }
+
+    const response = await fetch(
+      `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(driveFileId)}?alt=media`,
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      },
+    );
+
+    if (!response.ok) {
+      if (response.status === 401 || response.status === 403) {
+        throw new GoogleDriveSessionError();
+      }
+
+      throw new Error(
+        `Google Drive fetch failed with status: ${response.status}`,
+      );
+    }
+
+    const rawBlob = await response.blob();
+
+    if (rawBlob.size === 0) {
+      throw new Error('Google Drive returned an empty media file.');
+    }
+
+    const resolvedMime = resolveMediaMime(
+      response,
+      inputMime,
+      fileName,
+    );
+
+    // Không tạo new Blob([rawBlob]); tránh thêm một bước copy.
+    return rawBlob.type === resolvedMime
+      ? rawBlob
+      : rawBlob.slice(0, rawBlob.size, resolvedMime);
+  })();
+
+  pendingDriveMediaFetches.set(driveFileId, fetchPromise);
+
+  try {
+    return await fetchPromise;
+  } finally {
+    pendingDriveMediaFetches.delete(driveFileId);
+  }
 }
 
 export const useEditorVideo = ({
@@ -21,9 +120,54 @@ export const useEditorVideo = ({
   const [videoError, setVideoError] = useState<string | null>(null);
   const [currentTime, setCurrentTime] = useState(0);
 
+  const objectUrlRef = useRef<string | null>(null);
+
+  const isDriveMedia =
+    inputSource === 'media' || inputSource === 'existing_subtitle';
+
+  const releaseObjectUrl = useCallback(() => {
+    if (!objectUrlRef.current) {
+      return;
+    }
+
+    URL.revokeObjectURL(objectUrlRef.current);
+    objectUrlRef.current = null;
+  }, []);
+
+  const loadVideoBlob = useCallback(
+    async (): Promise<Blob | null> => {
+      if (!isDriveMedia) {
+        return null;
+      }
+
+      if (videoBlob) {
+        return videoBlob;
+      }
+
+      const blob = await fetchDriveMediaBlob(
+        driveFileId,
+        inputMime,
+        fileName,
+      );
+
+      setVideoBlob(blob);
+
+      return blob;
+    },
+    [
+      driveFileId,
+      fileName,
+      inputMime,
+      isDriveMedia,
+      videoBlob,
+    ],
+  );
+
   const loadVideo = useCallback(async () => {
     if (!driveFileId) {
+      releaseObjectUrl();
       setVideoBlob(null);
+      setVideoUrl('');
       setVideoError(i18n.t('editor.video.empty'));
       setVideoLoading(false);
       return;
@@ -31,91 +175,50 @@ export const useEditorVideo = ({
 
     setVideoLoading(true);
     setVideoError(null);
+    setVideoUrl('');
     setVideoBlob(null);
+    releaseObjectUrl();
 
     try {
-      if (inputSource === 'media' || inputSource === 'existing_subtitle') {
-        const accessToken = await getGoogleAccessToken();
-        if (!accessToken) {
-          setVideoError(i18n.t('editor.video.sessionExpired'));
-          return;
-        }
-
-        const response = await fetch(
-          `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(driveFileId)}?alt=media`,
-          {
-            headers: {
-              Authorization: `Bearer ${accessToken}`,
-            },
-          }
+      if (isDriveMedia) {
+        const blob = await fetchDriveMediaBlob(
+          driveFileId,
+          inputMime,
+          fileName,
         );
 
-        if (!response.ok) {
-          if (response.status === 401 || response.status === 403) {
-            setVideoError(i18n.t('editor.video.sessionExpired'));
-            return;
-          }
-          throw new Error(`Google Drive fetch failed with status: ${response.status}`);
-        }
+        setVideoBlob(blob);
 
-        const rawBlob = await response.blob();
-        if (rawBlob.size === 0) {
-          setVideoError(i18n.t('processing.emptyMediaFile'));
-          return;
-        }
-
-        // Determine correct media MIME type (video or audio)
-        const headerType = response.headers.get('content-type');
-        let finalType = 'video/mp4';
-        if (headerType && !headerType.includes('octet-stream')) {
-          finalType = headerType;
-        } else if (inputMime && !inputMime.includes('octet-stream')) {
-          finalType = inputMime;
-        } else if (fileName) {
-          const ext = fileName.split('.').pop()?.toLowerCase();
-          if (ext === 'mp3') finalType = 'audio/mpeg';
-          else if (ext === 'wav') finalType = 'audio/wav';
-          else if (ext === 'm4a') finalType = 'audio/mp4';
-          else if (ext === 'aac') finalType = 'audio/aac';
-          else if (ext === 'flac') finalType = 'audio/flac';
-          else if (ext === 'ogg') finalType = 'audio/ogg';
-          else if (ext === 'webm') finalType = 'video/webm';
-          else if (ext === 'mov') finalType = 'video/quicktime';
-          else finalType = 'video/mp4';
-        }
-
-        const resolvedBlob = new Blob([rawBlob], { type: finalType });
-        const objectUrl = URL.createObjectURL(resolvedBlob);
-        setVideoBlob(resolvedBlob);
-        setVideoUrl((prev) => {
-          if (prev && prev.startsWith('blob:')) {
-            URL.revokeObjectURL(prev);
-          }
-          return objectUrl;
-        });
+        const objectUrl = URL.createObjectURL(blob);
+        objectUrlRef.current = objectUrl;
+        setVideoUrl(objectUrl);
       } else {
-        setVideoBlob(null);
         setVideoUrl(driveFileId);
       }
     } catch (error) {
       console.error('Error preparing video source:', error);
-      setVideoError(i18n.t('editor.video.cannotOpen'));
+
+      setVideoError(
+        error instanceof GoogleDriveSessionError
+          ? i18n.t('editor.video.sessionExpired')
+          : i18n.t('editor.video.cannotOpen'),
+      );
     } finally {
       setVideoLoading(false);
     }
-  }, [driveFileId, inputSource, fileName, inputMime]);
+  }, [
+    driveFileId,
+    fileName,
+    inputMime,
+    isDriveMedia,
+    releaseObjectUrl,
+  ]);
 
   useEffect(() => {
     void loadVideo();
-    return () => {
-      setVideoUrl((prev) => {
-        if (prev && prev.startsWith('blob:')) {
-          URL.revokeObjectURL(prev);
-        }
-        return '';
-      });
-    };
-  }, [loadVideo]);
+
+    return releaseObjectUrl;
+  }, [loadVideo, releaseObjectUrl]);
 
   return {
     videoUrl,
@@ -124,6 +227,7 @@ export const useEditorVideo = ({
     videoError,
     currentTime,
     setCurrentTime,
+    loadVideoBlob,
     reloadVideo: loadVideo,
   };
 };

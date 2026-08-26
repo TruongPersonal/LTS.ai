@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { Suspense, lazy, useEffect, useRef, useState } from 'react';
 import {
   Routes,
   Route,
@@ -15,15 +15,26 @@ import { AppSidebar } from './components/common/AppSidebar';
 import { Footer } from './components/common/Footer';
 import { LandingPage } from './pages/LandingPage';
 import { LoginPage } from './pages/LoginPage';
-import { DashboardPage } from './pages/DashboardPage';
-import { ProjectDetailPage } from './pages/ProjectDetailPage';
-import { EditorPage } from './pages/EditorPage';
-import { AdminPage } from './pages/AdminPage';
 import { EditorSkeleton } from './components/common/LoadingSkeleton';
 import { projectService } from './services/projectService';
 import { fileService } from './services/fileService';
 import { stripeCheckoutService } from './services/stripeCheckoutService';
 import type { Project, FileMedia } from './types/database';
+
+// Heavy authenticated pages are lazy-loaded so the public landing/login
+// bundle stays small (code-splitting per route).
+const DashboardPage = lazy(() =>
+  import('./pages/DashboardPage').then((m) => ({ default: m.DashboardPage }))
+);
+const ProjectDetailPage = lazy(() =>
+  import('./pages/ProjectDetailPage').then((m) => ({ default: m.ProjectDetailPage }))
+);
+const EditorPage = lazy(() =>
+  import('./pages/EditorPage').then((m) => ({ default: m.EditorPage }))
+);
+const AdminPage = lazy(() =>
+  import('./pages/AdminPage').then((m) => ({ default: m.AdminPage }))
+);
 
 const PulseLoadingScreen: React.FC = () => (
   <div className="app-shell flex items-center justify-center min-h-screen">
@@ -391,7 +402,9 @@ const AdminRoute: React.FC = () => {
 };
 
 export const AppRoutes: React.FC = () => {
+  // Suspense shows the shared pulse loader while a lazy route chunk downloads.
   return (
+    <Suspense fallback={<PulseLoadingScreen />}>
     <Routes>
       <Route path="/" element={<PublicLandingRoute />} />
       <Route path="/login" element={<PublicLoginRoute />} />
@@ -405,5 +418,6 @@ export const AppRoutes: React.FC = () => {
 
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
+    </Suspense>
   );
 };

@@ -262,8 +262,8 @@ async function injectAuthAndTheme(page, { theme = 'light', lang = 'vi' } = {}) {
   await page.addInitScript(({ theme, lang, mockProfile }) => {
     window.localStorage.setItem('lts_theme', theme);
     window.localStorage.setItem('lts_language', lang);
-    window.localStorage.setItem('google_access_token', 'mock-google-drive-access-token');
-    window.localStorage.setItem('lts_session_start_time', String(Date.now()));
+    window.sessionStorage.setItem('google_access_token', 'mock-google-drive-access-token');
+    window.sessionStorage.setItem('lts_google_token_expires_at', String(Date.now() + 60 * 60 * 1000));
 
     const sessionData = {
       access_token: 'mock-jwt-token',
