@@ -156,7 +156,7 @@
   }
 
   /* Hide native OS cursor on fine-pointer desktop devices to reveal the custom Studio fluid cursor */
-  @media (pointer: fine) {
+  @media (pointer: fine) and (prefers-reduced-motion: no-preference) {
 
     *,
     *::before,
@@ -172,6 +172,20 @@
     [role="button"],
     label {
       cursor: none !important;
+    }
+  }
+
+  @media (pointer: fine) {
+
+    :root[data-cursor-mode='native'],
+    :root[data-cursor-mode='native'] *,
+    :root[data-cursor-mode='native'] *::before,
+    :root[data-cursor-mode='native'] *::after,
+    .editor-player:fullscreen,
+    .editor-player:fullscreen *,
+    .editor-player:fullscreen *::before,
+    .editor-player:fullscreen *::after {
+      cursor: auto !important;
     }
   }
 
@@ -1017,6 +1031,16 @@ a:focus-visible {
 
 .editor-video-tooltip--end:hover .editor-video-tooltip__content,
 .editor-video-tooltip--end:focus-visible .editor-video-tooltip__content {
+  transform: translateY(0);
+}
+
+.editor-video-tooltip--start .editor-video-tooltip__content {
+  left: 0;
+  transform: translateY(4px);
+}
+
+.editor-video-tooltip--start:hover .editor-video-tooltip__content,
+.editor-video-tooltip--start:focus-visible .editor-video-tooltip__content {
   transform: translateY(0);
 }
 

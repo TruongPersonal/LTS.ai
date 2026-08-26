@@ -3,6 +3,7 @@ import { ArrowUpCircle, Check, Clock3, FileUp, Loader2, Sparkles } from 'lucide-
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../hooks/useAuth';
 import { fileService } from '../../services/fileService';
+import { stripeCheckoutService, type PaidPlan } from '../../services/stripeCheckoutService';
 import {
   getPlanLimits,
   normalizePlan,
@@ -19,16 +20,16 @@ interface SubscriptionModalProps {
 
 export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, onClose }) => {
   const { t } = useTranslation();
-  const { profile, updateProfile } = useAuth();
+  const { profile } = useAuth();
   const currentPlan = normalizePlan(profile?.plan);
   const currentLimits = getPlanLimits(currentPlan);
   const currentPlanIndex = PLAN_ORDER.indexOf(currentPlan);
   const [todayDuration, setTodayDuration] = useState(0);
-  const [pendingPlan, setPendingPlan] = useState<Plan | null>(null);
+  const [pendingPlan, setPendingPlan] = useState<PaidPlan | null>(null);
+  const [checkoutConfirmOpen, setCheckoutConfirmOpen] = useState(false);
   const [loadingUsage, setLoadingUsage] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -60,10 +61,9 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, on
   const pendingDailyMinutes = pendingLimits ? Math.round(pendingLimits.dailyDurationSeconds / 60) : 0;
 
   const handleSelectPlan = (plan: Plan) => {
-    if (plan === currentPlan || PLAN_ORDER.indexOf(plan) <= currentPlanIndex) return;
-    setPendingPlan(plan);
+    if (plan === 'free' || plan === currentPlan || PLAN_ORDER.indexOf(plan) <= currentPlanIndex) return;
+    setPendingPlan(plan as PaidPlan);
     setError(null);
-    setSuccess(null);
   };
 
   const handleConfirmUpgrade = async () => {
@@ -72,19 +72,20 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, on
     setSaving(true);
     setError(null);
     try {
-      await updateProfile({ plan: pendingPlan });
-      setSuccess(
-        t('subscription.upgradeSuccess', {
-          plan: t(`subscription.plans.${pendingPlan}.name`),
-        })
-      );
-      setPendingPlan(null);
+      const checkoutUrl = await stripeCheckoutService.createSession(pendingPlan);
+      window.location.assign(checkoutUrl);
     } catch (upgradeError) {
-      console.error('Could not update subscription plan:', upgradeError);
-      setError(t('subscription.updateFailed'));
+      console.error('Could not start Stripe Checkout:', upgradeError);
+      setError(t('subscription.checkoutFailed'));
     } finally {
       setSaving(false);
     }
+  };
+
+  const handleOpenCheckoutConfirm = () => {
+    if (!pendingPlan || saving) return;
+    setError(null);
+    setCheckoutConfirmOpen(true);
   };
 
   return (
@@ -98,7 +99,6 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, on
     >
       <div className="space-y-6">
         {error && <div className="ui-status-error p-3 text-xs" role="alert">{error}</div>}
-        {success && <div className="ui-status-success p-3 text-xs" role="status">{success}</div>}
 
         <section className="rounded-2xl border border-[var(--ui-accent)] bg-[var(--ui-accent-soft)] p-4 sm:p-5 space-y-4">
           <div className="flex items-start justify-between gap-4">
@@ -207,9 +207,9 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, on
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
                   <ArrowUpCircle className="size-4 text-[var(--ui-accent)] shrink-0" />
-                  <p className="text-sm font-extrabold">{t('subscription.upgradeTitle')}</p>
+                  <p className="text-sm font-extrabold">{t('subscription.checkoutTitle')}</p>
                 </div>
-                <p className="text-xs ui-muted mt-1">{t('subscription.upgradeDescription')}</p>
+                <p className="text-xs ui-muted mt-1">{t('subscription.checkoutDescription')}</p>
               </div>
               <div className="flex flex-wrap gap-2 text-[11px]">
                 <span className="ui-badge ui-badge-accent">{t(`subscription.plans.${pendingPlan}.name`)}</span>
@@ -221,12 +221,55 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, on
               <button type="button" className="ui-button ui-button-secondary w-full sm:w-auto" onClick={() => setPendingPlan(null)} disabled={saving}>
                 {t('common.cancel')}
               </button>
-              <button type="button" className="ui-button ui-button-primary w-full sm:w-auto" onClick={() => void handleConfirmUpgrade()} disabled={saving}>
-                {saving && <Loader2 className="size-4 animate-spin" />}
-                {t('subscription.confirmUpgrade')}
+              <button type="button" className="ui-button ui-button-primary w-full sm:w-auto" onClick={handleOpenCheckoutConfirm} disabled={saving}>
+                {t('subscription.checkoutAction')}
               </button>
             </div>
           </section>
+        )}
+
+        {pendingPlan && pendingLimits && (
+          <ModalWrapper
+            isOpen={checkoutConfirmOpen}
+            onClose={() => {
+              if (!saving) setCheckoutConfirmOpen(false);
+            }}
+            title={t('subscription.checkoutTitle')}
+            icon={<ArrowUpCircle className="size-4" />}
+            maxWidth="sm"
+          >
+            <div className="space-y-5">
+              <div>
+                <p className="text-sm ui-muted leading-relaxed">{t('subscription.checkoutDescription')}</p>
+              </div>
+              {error && <div className="ui-status-error p-3 text-xs" role="alert">{error}</div>}
+              <div className="flex flex-wrap gap-2">
+                <span className="ui-badge ui-badge-accent">{t(`subscription.plans.${pendingPlan}.name`)}</span>
+                <span className="ui-badge">{t('subscription.fileLimit', { size: pendingMaxFileSizeMb })}</span>
+                <span className="ui-badge">{t('subscription.dailyLimit', { minutes: pendingDailyMinutes })}</span>
+              </div>
+              <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2.5 pt-4 border-t border-[var(--ui-border)]">
+                <button
+                  type="button"
+                  className="ui-button ui-button-secondary w-full sm:w-auto"
+                  onClick={() => setCheckoutConfirmOpen(false)}
+                  disabled={saving}
+                >
+                  {t('common.cancel')}
+                </button>
+                <button
+                  data-autofocus
+                  type="button"
+                  className="ui-button ui-button-primary w-full sm:w-auto"
+                  onClick={() => void handleConfirmUpgrade()}
+                  disabled={saving}
+                >
+                  {saving && <Loader2 className="size-4 animate-spin" />}
+                  {t('subscription.checkoutAction')}
+                </button>
+              </div>
+            </div>
+          </ModalWrapper>
         )}
       </div>
     </ModalWrapper>

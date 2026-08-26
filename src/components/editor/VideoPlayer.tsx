@@ -65,6 +65,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
   const pendingEditorSeekRef = useRef<number | null>(null);
   const lastAudibleVolumeRef = useRef(1);
   const wasSettingsOpenRef = useRef(false);
+  const restoreSettingsFocusRef = useRef(true);
 
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
@@ -102,12 +103,14 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
 
   useEffect(() => {
     if (!settingsOpen) {
-      if (wasSettingsOpenRef.current) settingsButtonRef.current?.focus();
+      if (wasSettingsOpenRef.current && restoreSettingsFocusRef.current) settingsButtonRef.current?.focus();
+      restoreSettingsFocusRef.current = true;
       wasSettingsOpenRef.current = false;
       return;
     }
 
     wasSettingsOpenRef.current = true;
+    restoreSettingsFocusRef.current = true;
 
     const firstSetting = settingsMenuRef.current?.querySelector<HTMLButtonElement>('button:not(:disabled)');
     firstSetting?.focus();
@@ -119,8 +122,21 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
       settingsButtonRef.current?.focus();
     };
 
+    const handleSettingsPointerDown = (event: PointerEvent) => {
+      const target = event.target;
+      if (!(target instanceof Node)) return;
+      if (settingsMenuRef.current?.contains(target)) return;
+      if (settingsButtonRef.current?.contains(target)) return;
+      restoreSettingsFocusRef.current = false;
+      setSettingsOpen(false);
+    };
+
     document.addEventListener('keydown', handleSettingsKeyDown);
-    return () => document.removeEventListener('keydown', handleSettingsKeyDown);
+    document.addEventListener('pointerdown', handleSettingsPointerDown);
+    return () => {
+      document.removeEventListener('keydown', handleSettingsKeyDown);
+      document.removeEventListener('pointerdown', handleSettingsPointerDown);
+    };
   }, [settingsOpen]);
 
   useEffect(() => {
@@ -586,7 +602,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
               <div className="editor-video-controls__group editor-video-controls__group--primary">
                 <button
                   type="button"
-                  className="editor-video-control-button editor-video-tooltip"
+                  className="editor-video-control-button editor-video-tooltip editor-video-tooltip--start"
                   onClick={togglePlay}
                   aria-label={isPlaying ? 'Pause video' : 'Play video'}
                   aria-keyshortcuts="Space"

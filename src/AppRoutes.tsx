@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   Routes,
   Route,
@@ -21,6 +21,7 @@ import { EditorPage } from './pages/EditorPage';
 import { EditorSkeleton } from './components/common/LoadingSkeleton';
 import { projectService } from './services/projectService';
 import { fileService } from './services/fileService';
+import { stripeCheckoutService } from './services/stripeCheckoutService';
 import type { Project, FileMedia } from './types/database';
 
 const PulseLoadingScreen: React.FC = () => (
@@ -145,14 +146,61 @@ const ProtectedLayout: React.FC = () => {
 };
 
 const DashboardRoute: React.FC = () => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const { refreshProfile } = useAuth();
   const intentType = searchParams.get('intent');
+  const checkoutStatus = searchParams.get('checkout');
+  const checkoutSessionId = searchParams.get('session_id');
   const [intentId, setIntentId] = useState(0);
+  const [checkoutNotice, setCheckoutNotice] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const handledCheckoutRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (intentType) setIntentId((id) => id + 1);
   }, [intentType]);
+
+  useEffect(() => {
+    if (!checkoutStatus) return;
+
+    const checkoutKey = `${checkoutStatus}:${checkoutSessionId || ''}`;
+    if (handledCheckoutRef.current === checkoutKey) return;
+    handledCheckoutRef.current = checkoutKey;
+
+    const clearCheckoutParams = () => navigate('/projects', { replace: true });
+
+    if (checkoutStatus === 'cancelled') {
+      setCheckoutNotice({ type: 'error', message: t('subscription.checkoutCancelled') });
+      clearCheckoutParams();
+      return;
+    }
+
+    if (checkoutStatus !== 'success' || !checkoutSessionId) {
+      setCheckoutNotice({ type: 'error', message: t('subscription.checkoutFailed') });
+      clearCheckoutParams();
+      return;
+    }
+
+    setCheckoutNotice({ type: 'success', message: t('subscription.checkoutProcessing') });
+    void stripeCheckoutService
+      .completeSession(checkoutSessionId)
+      .then(async ({ plan }) => {
+        await refreshProfile();
+        setCheckoutNotice({
+          type: 'success',
+          message: t('subscription.checkoutSuccess', {
+            plan: t(`subscription.plans.${plan}.name`),
+          }),
+        });
+        clearCheckoutParams();
+      })
+      .catch((error) => {
+        console.error('Could not verify Stripe Checkout:', error);
+        setCheckoutNotice({ type: 'error', message: t('subscription.checkoutFailed') });
+        clearCheckoutParams();
+      });
+  }, [checkoutSessionId, checkoutStatus, navigate, refreshProfile, t]);
 
   const intent =
     intentType === 'create' || intentType === 'search'
@@ -162,6 +210,7 @@ const DashboardRoute: React.FC = () => {
   return (
     <DashboardPage
       intent={intent}
+      checkoutNotice={checkoutNotice}
       onSelectProject={(project) => navigate(`/projects/${project.id}`)}
     />
   );

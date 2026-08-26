@@ -170,6 +170,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setProfile((prev) => (prev ? { ...prev, ...data } : null));
   };
 
+  const refreshProfile = async () => {
+    if (user) await fetchProfile(user);
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -178,6 +182,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         loading,
         signInWithGoogle,
         signOut,
+        refreshProfile,
         updateProfile,
       }}
     >
