@@ -1,5 +1,4 @@
 import { FFmpeg } from '@ffmpeg/ffmpeg';
-import { fetchFile } from '@ffmpeg/util';
 import { inspectFlacMetadata } from './flacMetadata';
 import { acquireFfmpegLock, getFfmpeg } from './ffmpegRuntime';
 
@@ -46,7 +45,7 @@ async function readBinary(ffmpeg: FFmpeg, fileName: string): Promise<Uint8Array>
   if (typeof data === 'string') {
     throw new Error('FFmpeg trả về audio không hợp lệ.');
   }
-  return Uint8Array.from(data);
+  return data;
 }
 
 async function probeDurationSeconds(ffmpeg: FFmpeg, inputName: string, outputName: string): Promise<number> {
@@ -82,15 +81,20 @@ export async function* extractFlacChunks(
   const token = safeToken(fileId);
   const inputName = `input-${token}.${extensionForMimeType(mimeType)}`;
   const durationOutputName = `duration-${token}.txt`;
+  const mountDirectory = `/workerfs-${token}`;
+  const inputPath = `${mountDirectory}/${inputName}`;
   const remainingOutputFiles = new Set<string>();
+  let inputMounted = false;
   const release = await acquireFfmpegLock();
   let ffmpeg: FFmpeg | null = null;
 
   try {
     ffmpeg = await getFfmpeg();
-    await ffmpeg.writeFile(inputName, await fetchFile(mediaBlob));
+    await ffmpeg.createDir(mountDirectory);
+    await ffmpeg.mount('WORKERFS', { blobs: [{ name: inputName, data: mediaBlob }] }, mountDirectory);
+    inputMounted = true;
     remainingOutputFiles.add(durationOutputName);
-    const mediaDurationSeconds = await probeDurationSeconds(ffmpeg, inputName, durationOutputName);
+    const mediaDurationSeconds = await probeDurationSeconds(ffmpeg, inputPath, durationOutputName);
     const durationDeleted = await ffmpeg.deleteFile(durationOutputName).catch(() => false);
     if (durationDeleted) remainingOutputFiles.delete(durationOutputName);
     const chunkCount = Math.ceil(mediaDurationSeconds / CHUNK_DURATION_SECONDS);
@@ -114,7 +118,7 @@ export async function* extractFlacChunks(
         '-ss',
         String(startSeconds),
         '-i',
-        inputName,
+        inputPath,
         '-map',
         '0:a:0',
         '-vn',
@@ -163,11 +167,13 @@ export async function* extractFlacChunks(
     }
   } finally {
     if (ffmpeg) {
-      const cleanup: Promise<unknown>[] = [ffmpeg.deleteFile(inputName)];
-      for (const outputName of remainingOutputFiles) {
-        cleanup.push(ffmpeg.deleteFile(outputName));
+      await Promise.allSettled(
+        Array.from(remainingOutputFiles, (outputName) => ffmpeg.deleteFile(outputName))
+      );
+      if (inputMounted) {
+        await ffmpeg.unmount(mountDirectory).catch(() => undefined);
       }
-      await Promise.allSettled(cleanup);
+      await ffmpeg.deleteDir(mountDirectory).catch(() => undefined);
     }
     release();
   }

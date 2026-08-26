@@ -70,11 +70,11 @@ export const EditorPage: React.FC<EditorPageProps> = ({
 
   const {
     videoUrl,
-    videoBlob,
     videoLoading,
     videoError,
     currentTime,
     setCurrentTime,
+    loadVideoBlob,
   } = useEditorVideo({
     driveFileId: file.drive_file_id,
     inputSource: file.input_source,
@@ -163,13 +163,12 @@ export const EditorPage: React.FC<EditorPageProps> = ({
     videoExportStatus === 'preparing' ||
     videoExportStatus === 'exporting' ||
     videoExportStatus === 'canceling';
-  const videoMimeType = videoBlob?.type.toLowerCase() ?? '';
-  const isVideoBlobReady = Boolean(
-    videoBlob &&
-      videoBlob.size > 0 &&
-      videoMimeType.startsWith('video/') &&
-      !videoMimeType.startsWith('audio/')
-  );
+  const mediaExtension = file.file_name.split('.').pop()?.toLowerCase() ?? '';
+  const isVideoSource =
+    file.mime_type.toLowerCase().startsWith('video/') ||
+    ['mp4', 'webm', 'mov', 'mkv', 'avi'].includes(mediaExtension);
+  const supportsVideoExport =
+    file.input_source === 'media' || file.input_source === 'existing_subtitle';
   const canExportVideo = Boolean(
     !routeLoading &&
       !videoLoading &&
@@ -177,7 +176,8 @@ export const EditorPage: React.FC<EditorPageProps> = ({
       !subtitlesLoading &&
       !subtitlesError &&
       !videoExportBusy &&
-      isVideoBlobReady &&
+      isVideoSource &&
+      supportsVideoExport &&
       effectiveTargetSubtitles.length > 0 &&
       !hasInvalidTimingDraft
   );
@@ -274,16 +274,27 @@ export const EditorPage: React.FC<EditorPageProps> = ({
   };
 
   const handleConfirmVideoExport = async () => {
-    if (!canExportVideo || videoBlob === null || videoExportStatus !== 'confirm') return;
+    if (!canExportVideo || videoExportStatus !== 'confirm') return;
 
     const controller = new AbortController();
     videoExportControllerRef.current = controller;
-    const exportBlob = videoBlob;
     const exportSubtitles = effectiveTargetSubtitles;
 
     try {
       setVideoExportStatus('preparing');
-      await Promise.resolve();
+      let exportBlob: Blob | null;
+      try {
+        exportBlob = await loadVideoBlob(controller.signal);
+      } catch (error) {
+        if (controller.signal.aborted) throw error;
+        throw new VideoSubtitleExportError(
+          'load',
+          error instanceof Error ? error.message : 'Unable to download source video.'
+        );
+      }
+      if (!exportBlob) {
+        throw new VideoSubtitleExportError('load', 'Source video is unavailable.');
+      }
       if (controller.signal.aborted) {
         setVideoExportStatus('canceled');
         return;

@@ -131,7 +131,9 @@ export async function exportVideoWithSubtitles({
   const inputName = `export-${token}-input.mp4`;
   const subtitleName = `export-${token}-subtitles.srt`;
   const outputName = `export-${token}-output.mp4`;
-  const ownedFiles = [inputName, subtitleName, outputName];
+  const mountDirectory = `/workerfs-${token}`;
+  const inputPath = `${mountDirectory}/${inputName}`;
+  const ownedFiles = [subtitleName, outputName];
   const release = await acquireFfmpegLock();
   let ffmpeg: FFmpeg | null = null;
   let progressListenerAttached = false;
@@ -141,6 +143,7 @@ export async function exportVideoWithSubtitles({
   let av1DecodeFailureDetected = false;
   let canceled = Boolean(signal?.aborted);
   let cancelListenerAttached = false;
+  let inputMounted = false;
 
   const handleAbort = () => {
     canceled = true;
@@ -196,7 +199,9 @@ export async function exportVideoWithSubtitles({
       progressListenerAttached = true;
       onProgress?.(0);
 
-      await ffmpeg.writeFile(inputName, await fetchFile(videoBlob));
+      await ffmpeg.createDir(mountDirectory);
+      await ffmpeg.mount('WORKERFS', { blobs: [{ name: inputName, data: videoBlob }] }, mountDirectory);
+      inputMounted = true;
       throwIfCanceled();
       await ffmpeg.writeFile(subtitleName, new TextEncoder().encode(exportToSrt(subtitles)));
       throwIfCanceled();
@@ -204,7 +209,7 @@ export async function exportVideoWithSubtitles({
       const exitCode = await ffmpeg.exec([
         '-y',
         '-i',
-        inputName,
+        inputPath,
         '-map',
         '0:v:0',
         '-map',
@@ -277,6 +282,10 @@ export async function exportVideoWithSubtitles({
         ffmpeg.off('progress', handleProgress);
       }
       await cleanupFiles(ffmpeg, ownedFiles);
+      if (inputMounted) {
+        await ffmpeg.unmount(mountDirectory).catch(() => undefined);
+      }
+      await ffmpeg.deleteDir(mountDirectory).catch(() => undefined);
     }
     release();
   }
