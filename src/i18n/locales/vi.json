@@ -265,6 +265,11 @@
       "loadFailed": "Không thể nạp tệp. Vui lòng thử lại!"
     }
   },
+  "errorBoundary": {
+    "title": "Đã xảy ra lỗi không mong muốn.",
+    "description": "Ứng dụng gặp sự cố khi hiển thị trang này. Vui lòng tải lại trang để tiếp tục.",
+    "reload": "Tải lại trang"
+  },
   "routes": {
     "projectNotFound": "Không tìm thấy dự án.",
     "projectLoadError": "Không thể tải thông tin dự án.",

@@ -3,6 +3,7 @@ import { ThemeProvider } from './context/ThemeContext';
 import { AuthProvider } from './context/AuthContext';
 import { ProcessingProvider } from './context/ProcessingContext';
 import { CosmicBackground } from './components/common/CosmicBackground';
+import { ErrorBoundary } from './components/common/ErrorBoundary';
 import { FloatingProcessingWidget } from './components/common/FloatingProcessingWidget';
 import { AppRoutes } from './AppRoutes';
 import './i18n';
@@ -14,7 +15,9 @@ export default function App() {
         <AuthProvider>
           <ProcessingProvider>
             <CosmicBackground />
-            <AppRoutes />
+            <ErrorBoundary>
+              <AppRoutes />
+            </ErrorBoundary>
             <FloatingProcessingWidget />
           </ProcessingProvider>
         </AuthProvider>

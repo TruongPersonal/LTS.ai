@@ -16,7 +16,6 @@ import { useSubtitleTrack } from '../hooks/useSubtitleTrack';
 import { findActiveCueId, getSourceTextById } from '../utils/subtitleEditor';
 import { getEditorCueDensity } from '../utils/editorDensity';
 import { downloadSubtitleFile, type SubtitleExportFormat, type SubtitleExportTrack } from '../utils/exporter';
-import { saveAs } from 'file-saver';
 import { exportVideoWithSubtitles, VideoSubtitleExportError } from '../services/videoSubtitleExporter';
 
 interface EditorPageProps {
@@ -238,7 +237,7 @@ export const EditorPage: React.FC<EditorPageProps> = ({
     format: SubtitleExportFormat,
     track: SubtitleExportTrack = 'target'
   ) => {
-    downloadSubtitleFile(subtitles, sourceSubtitles, file.file_name, format, track);
+    void downloadSubtitleFile(subtitles, sourceSubtitles, file.file_name, format, track);
   };
 
   const resetVideoExportModal = () => {
@@ -285,6 +284,7 @@ export const EditorPage: React.FC<EditorPageProps> = ({
         return;
       }
       const baseName = file.file_name.replace(/\.[^/.]+$/, '') || file.file_name;
+      const { saveAs } = await import('file-saver');
       saveAs(output, baseName + '_subtitled.mp4');
       setVideoExportProgress(1);
       setVideoExportStatus('completed');

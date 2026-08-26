@@ -1,5 +1,3 @@
-import { saveAs } from 'file-saver';
-import JSZip from 'jszip';
 import type { SubtitleItem } from '../types/database';
 import { exportToSrt, exportToVtt, exportToTxt } from './subtitleParsers';
 
@@ -16,13 +14,15 @@ export interface FileSubtitleExportPackage {
 /**
  * Single subtitle file export
  */
-export const downloadSubtitleFile = (
+export const downloadSubtitleFile = async (
   targetSubtitles: SubtitleItem[],
   sourceSubtitles: SubtitleItem[] = [],
   fileName: string,
   format: SubtitleExportFormat,
   track: SubtitleExportTrack = 'target'
 ) => {
+  // Lazily load file-saver so it stays out of the route chunks until an export happens.
+  const { saveAs } = await import('file-saver');
   const cleanFileName = fileName;
 
   const getContent = (items: SubtitleItem[]) => {
@@ -72,6 +72,11 @@ export const downloadProjectZip = async (
   format: SubtitleExportFormat,
   track: SubtitleExportTrack = 'target'
 ) => {
+  // Lazily load jszip + file-saver so they stay out of the route chunks until an export happens.
+  const [{ default: JSZip }, { saveAs }] = await Promise.all([
+    import('jszip'),
+    import('file-saver'),
+  ]);
   const zip = new JSZip();
   const folder = zip.folder(projectTitle || 'subtitles');
 
