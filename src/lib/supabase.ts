@@ -77,10 +77,16 @@ export function getStoredGoogleAccessToken(): string {
 }
 
 export async function getGoogleAccessToken(): Promise<string> {
-  if (isGoogleTokenExpired()) return '';
-  const { data: { session } } = await supabase.auth.getSession();
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
   const token = persistGoogleProviderToken(session);
-  return token || getStoredGoogleAccessToken();
+
+  if (token) {
+    return token;
+  }
+
+  throw new Error('Google provider access token is unavailable.');
 }
 
 export function clearGoogleAccessToken(): void {
