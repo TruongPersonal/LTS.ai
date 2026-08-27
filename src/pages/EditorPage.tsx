@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next';
 import type { FileMedia, Project, SubtitleItem } from '../types/database';
 import { getNativeLanguageName } from '../types/project';
-import { VideoPlayer } from '../components/editor/VideoPlayer';
+import { VideoPlayer, type VideoPlayerHandle } from '../components/editor/VideoPlayer';
 import { ExportModal } from '../components/editor/ExportModal';
 import { VideoExportModal, type VideoExportStatus } from '../components/editor/VideoExportModal';
 import { EditorToolbar } from '../components/editor/EditorToolbar';
@@ -37,6 +37,7 @@ export const EditorPage: React.FC<EditorPageProps> = ({
   const cueRefs = useRef<Map<number, HTMLDivElement>>(new Map());
   const cueViewportRef = useRef<HTMLDivElement>(null);
   const videoExportControllerRef = useRef<AbortController | null>(null);
+  const videoPlayerRef = useRef<VideoPlayerHandle>(null);
 
   const [isExportOpen, setIsExportOpen] = useState(false);
   const [cuePendingDelete, setCuePendingDelete] = useState<number | null>(null);
@@ -72,8 +73,6 @@ export const EditorPage: React.FC<EditorPageProps> = ({
     videoUrl,
     videoLoading,
     videoError,
-    currentTime,
-    setCurrentTime,
     loadVideoBlob,
   } = useEditorVideo({
     driveFileId: file.drive_file_id,
@@ -110,7 +109,21 @@ export const EditorPage: React.FC<EditorPageProps> = ({
 
   const sourceLanguageLabel = getNativeLanguageName(sourceLanguage || file.detected_source_lang);
   const targetLanguageLabel = getNativeLanguageName(project.target_language);
-  const activeCueId = findActiveCueId(subtitles, currentTime);
+  const [activeCueId, setActiveCueId] = useState<number | null>(null);
+
+  const handlePlaybackTimeUpdate = useCallback(
+    (time: number) => {
+      const nextCueId = findActiveCueId(subtitles, time);
+      setActiveCueId((previousCueId) =>
+        previousCueId === nextCueId ? previousCueId : nextCueId,
+      );
+    },
+    [subtitles],
+  );
+
+  useEffect(() => {
+    setActiveCueId(findActiveCueId(subtitles, 0));
+  }, [subtitles, videoUrl]);
 
   const editingTextCue =
     editingTextCueId === null
@@ -222,10 +235,9 @@ export const EditorPage: React.FC<EditorPageProps> = ({
     onBack();
   };
 
-  const handleSelectCue = useCallback(
-    (item: SubtitleItem) => setCurrentTime(item.start),
-    [setCurrentTime]
-  );
+  const handleSelectCue = useCallback((item: SubtitleItem) => {
+    videoPlayerRef.current?.seekTo(item.start);
+  }, []);
 
   const handleStartTextEdit = useCallback(
     (item: SubtitleItem) =>
@@ -391,11 +403,11 @@ export const EditorPage: React.FC<EditorPageProps> = ({
       <main className="editor-main">
         <section className="editor-video-shell">
           <VideoPlayer
+            ref={videoPlayerRef}
             videoUrl={videoUrl}
             loading={routeLoading || videoLoading}
             error={videoError}
-            currentTime={currentTime}
-            onTimeUpdate={setCurrentTime}
+            onTimeUpdate={handlePlaybackTimeUpdate}
             subtitleTrackUrl={subtitleTrackUrl}
             subtitleLanguage={project.target_language}
           />
