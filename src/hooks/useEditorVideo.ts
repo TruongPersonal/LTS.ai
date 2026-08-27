@@ -119,7 +119,6 @@ export const useEditorVideo = ({
   const [videoBlob, setVideoBlob] = useState<Blob | null>(null);
   const [videoLoading, setVideoLoading] = useState(true);
   const [videoError, setVideoError] = useState<string | null>(null);
-  const [currentTime, setCurrentTime] = useState(0);
 
   const objectUrlRef = useRef<string | null>(null);
 
@@ -227,8 +226,6 @@ export const useEditorVideo = ({
     videoBlob,
     videoLoading,
     videoError,
-    currentTime,
-    setCurrentTime,
     loadVideoBlob,
     reloadVideo: loadVideo,
   };

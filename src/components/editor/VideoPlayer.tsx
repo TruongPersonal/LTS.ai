@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import {
   AlertCircle,
   Captions,
@@ -13,11 +13,14 @@ import {
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
+export interface VideoPlayerHandle {
+  seekTo: (seconds: number) => void;
+}
+
 interface VideoPlayerProps {
   videoUrl?: string;
   loading?: boolean;
   error?: string | null;
-  currentTime: number;
   onTimeUpdate?: (seconds: number) => void;
   subtitleTrackUrl?: string;
   subtitleLanguage?: string;
@@ -46,14 +49,17 @@ const isTextEntryTarget = (target: EventTarget | null) => {
   return target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName);
 };
 
-export const VideoPlayer: React.FC<VideoPlayerProps> = ({
-  videoUrl,
-  error = null,
-  currentTime: editorCurrentTime,
-  onTimeUpdate,
-  subtitleTrackUrl,
-  subtitleLanguage,
-}) => {
+export const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(
+  (
+    {
+      videoUrl,
+      error = null,
+      onTimeUpdate,
+      subtitleTrackUrl,
+      subtitleLanguage,
+    },
+    ref,
+  ) => {
   const { t } = useTranslation();
   const playerRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -61,8 +67,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
   const settingsMenuRef = useRef<HTMLDivElement>(null);
   const settingsButtonRef = useRef<HTMLButtonElement>(null);
   const controlsTimeoutRef = useRef<number | null>(null);
-  const lastVideoUrlRef = useRef(videoUrl);
-  const pendingEditorSeekRef = useRef<number | null>(null);
+  const pendingSeekRef = useRef<number | null>(null);
   const lastAudibleVolumeRef = useRef(1);
   const wasSettingsOpenRef = useRef(false);
   const restoreSettingsFocusRef = useRef(true);
@@ -80,6 +85,32 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
   const [subtitlesEnabled, setSubtitlesEnabled] = useState(true);
   const [isPictureInPicture, setIsPictureInPicture] = useState(false);
   const [isLooping, setIsLooping] = useState(false);
+
+  useImperativeHandle(
+    ref,
+    () => ({
+      seekTo: (seconds: number) => {
+        const video = videoRef.current;
+        if (!video || !Number.isFinite(seconds)) return;
+
+        const requestedTime = Math.max(seconds, 0);
+        const safeTime = Number.isFinite(video.duration) && video.duration > 0
+          ? Math.min(requestedTime, video.duration)
+          : requestedTime;
+
+        if (video.readyState < HTMLMediaElement.HAVE_METADATA) {
+          pendingSeekRef.current = safeTime;
+        } else {
+          pendingSeekRef.current = null;
+        }
+
+        video.currentTime = safeTime;
+        setCurrentTime(safeTime);
+        onTimeUpdate?.(safeTime);
+      },
+    }),
+    [onTimeUpdate],
+  );
 
   const clearControlsTimeout = useCallback(() => {
     if (controlsTimeoutRef.current !== null) {
@@ -141,6 +172,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
 
   useEffect(() => {
     setPlaybackError(null);
+    pendingSeekRef.current = null;
     setCurrentTime(0);
     setDuration(0);
     setIsPlaying(false);
@@ -166,19 +198,19 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
 
     const handleLoadedMetadata = () => {
       const nextDuration = Number.isFinite(video.duration) ? video.duration : 0;
-      const requestedTime = pendingEditorSeekRef.current;
+      const pendingSeek = pendingSeekRef.current;
       const nextTime =
-        requestedTime !== null && Number.isFinite(requestedTime)
+        pendingSeek !== null && Number.isFinite(pendingSeek)
           ? nextDuration > 0
-            ? Math.min(Math.max(requestedTime, 0), nextDuration)
-            : Math.max(requestedTime, 0)
+            ? Math.min(Math.max(pendingSeek, 0), nextDuration)
+            : Math.max(pendingSeek, 0)
           : Number.isFinite(video.currentTime)
             ? video.currentTime
             : 0;
 
-      if (requestedTime !== null) {
+      if (pendingSeek !== null) {
         video.currentTime = nextTime;
-        pendingEditorSeekRef.current = null;
+        pendingSeekRef.current = null;
       }
 
       setDuration(nextDuration);
@@ -263,32 +295,6 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
     if (track) track.mode = subtitleTrackUrl && subtitlesEnabled ? 'showing' : 'hidden';
   }, [subtitleTrackUrl, subtitlesEnabled]);
 
-  useEffect(() => {
-    const video = videoRef.current;
-    if (!video || !Number.isFinite(editorCurrentTime) || editorCurrentTime < 0) return;
-
-    if (lastVideoUrlRef.current !== videoUrl || video.readyState < HTMLMediaElement.HAVE_METADATA) {
-      lastVideoUrlRef.current = videoUrl;
-      pendingEditorSeekRef.current = editorCurrentTime;
-
-      if (video.readyState >= HTMLMediaElement.HAVE_METADATA) {
-        const nextTime = Number.isFinite(video.duration) && video.duration > 0
-          ? Math.min(editorCurrentTime, video.duration)
-          : editorCurrentTime;
-        video.currentTime = nextTime;
-        setCurrentTime(nextTime);
-        pendingEditorSeekRef.current = null;
-      }
-
-      return;
-    }
-
-    const drift = Math.abs(video.currentTime - editorCurrentTime);
-    if (drift > 0.75) {
-      video.currentTime = editorCurrentTime;
-      setCurrentTime(editorCurrentTime);
-    }
-  }, [editorCurrentTime, videoUrl]);
 
   useEffect(() => () => clearControlsTimeout(), [clearControlsTimeout]);
 
@@ -700,4 +706,5 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
       )}
     </div>
   );
-};
+},
+);
