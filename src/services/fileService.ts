@@ -290,7 +290,8 @@ async function processMediaFile(
     const chunkIterator = extractFlacChunks(
       mediaBlob,
       file.mime_type || mediaBlob.type,
-      file.id
+      file.id,
+      effectiveDuration
     );
     const requestNextChunk = () => {
       const promise = chunkIterator.next();

@@ -48,56 +48,26 @@ async function readBinary(ffmpeg: FFmpeg, fileName: string): Promise<Uint8Array>
   return data;
 }
 
-async function probeDurationSeconds(ffmpeg: FFmpeg, inputName: string, outputName: string): Promise<number> {
-  const probeExit = await ffmpeg.ffprobe([
-    '-v',
-    'error',
-    '-show_entries',
-    'format=duration',
-    '-of',
-    'default=noprint_wrappers=1:nokey=1',
-    inputName,
-    '-o',
-    outputName,
-  ]);
-
-  if (probeExit !== 0) {
-    throw new Error(`FFmpeg không thể xác định thời lượng media (mã ${probeExit}).`);
-  }
-
-  const durationData = await ffmpeg.readFile(outputName, 'utf8');
-  const durationSeconds = Number(String(durationData).trim());
-  if (!Number.isFinite(durationSeconds) || durationSeconds <= 0) {
-    throw new Error('FFmpeg trả về thời lượng media không hợp lệ.');
-  }
-  return durationSeconds;
-}
-
 export async function* extractFlacChunks(
   mediaBlob: Blob,
   mimeType: string,
-  fileId: string
+  fileId: string,
+  mediaDurationSeconds: number
 ): AsyncGenerator<AudioChunk, void, void> {
   const token = safeToken(fileId);
   const inputName = `input-${token}.${extensionForMimeType(mimeType)}`;
-  const durationOutputName = `duration-${token}.txt`;
-  const mountDirectory = `/workerfs-${token}`;
-  const inputPath = `${mountDirectory}/${inputName}`;
   const remainingOutputFiles = new Set<string>();
-  let inputMounted = false;
+  const inputPath = inputName;
   const release = await acquireFfmpegLock();
   let ffmpeg: FFmpeg | null = null;
 
   try {
     ffmpeg = await getFfmpeg();
-    await ffmpeg.createDir(mountDirectory);
-    const workerFsType = 'WORKERFS' as Parameters<FFmpeg['mount']>[0];
-    await ffmpeg.mount(workerFsType, { blobs: [{ name: inputName, data: mediaBlob }] }, mountDirectory);
-    inputMounted = true;
-    remainingOutputFiles.add(durationOutputName);
-    const mediaDurationSeconds = await probeDurationSeconds(ffmpeg, inputPath, durationOutputName);
-    const durationDeleted = await ffmpeg.deleteFile(durationOutputName).catch(() => false);
-    if (durationDeleted) remainingOutputFiles.delete(durationOutputName);
+
+    await ffmpeg.writeFile(
+      inputName,
+      new Uint8Array(await mediaBlob.arrayBuffer())
+    );
     const chunkCount = Math.ceil(mediaDurationSeconds / CHUNK_DURATION_SECONDS);
 
     if (chunkCount > MAX_SEGMENT_SCAN) {
@@ -172,10 +142,7 @@ export async function* extractFlacChunks(
       await Promise.allSettled(
         Array.from(remainingOutputFiles, (outputName) => activeFfmpeg.deleteFile(outputName))
       );
-      if (inputMounted) {
-        await ffmpeg.unmount(mountDirectory).catch(() => undefined);
-      }
-      await ffmpeg.deleteDir(mountDirectory).catch(() => undefined);
+      await ffmpeg.deleteFile(inputName).catch(() => undefined);
     }
     release();
   }
