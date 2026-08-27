@@ -111,6 +111,14 @@ export const EditorPage: React.FC<EditorPageProps> = ({
   const targetLanguageLabel = getNativeLanguageName(project.target_language);
   const [activeCueId, setActiveCueId] = useState<number | null>(null);
 
+  useEffect(() => {
+    document.title = `LTS.ai - ${file.file_name}`;
+
+    return () => {
+      document.title = 'LTS.ai - Phụ đề AI';
+    };
+  }, [file.file_name]);
+
   const handlePlaybackTimeUpdate = useCallback(
     (time: number) => {
       const nextCueId = findActiveCueId(subtitles, time);

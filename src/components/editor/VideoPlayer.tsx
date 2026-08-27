@@ -82,7 +82,7 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(
   const [controlsVisible, setControlsVisible] = useState(true);
   const [playbackError, setPlaybackError] = useState<string | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [subtitlesEnabled, setSubtitlesEnabled] = useState(true);
+  const [subtitlesEnabled, setSubtitlesEnabled] = useState(false);
   const [isPictureInPicture, setIsPictureInPicture] = useState(false);
   const [isLooping, setIsLooping] = useState(false);
 

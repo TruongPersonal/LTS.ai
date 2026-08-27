@@ -262,8 +262,13 @@ CREATE POLICY "Users can manage own media files"
             SELECT 1
             FROM lts_ai.projects
             WHERE projects.id = files_media.project_id
-              AND projects.user_id = auth.uid()
+            AND projects.user_id = auth.uid()
         )
+        AND duration_seconds = 0
+        AND status = 'draft'
+        AND processing_attempt_id IS NULL
+        AND processing_last_activity_at IS NULL
+        AND error_message IS NULL
     );
 
 -- Subtitles -------------------------------------------------
@@ -311,16 +316,15 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON lts_ai.projects TO authenticated;
 
 -- Media: client tạo metadata nguồn + đổi tên + xóa file của mình.
 -- Trạng thái xử lý, duration đo được, source language và error là backend-owned.
-GRANT SELECT, DELETE ON lts_ai.files_media TO authenticated;
-GRANT INSERT (
-    project_id,
-    drive_file_id,
-    file_name,
-    mime_type,
-    input_source
-    -- , detected_source_lang   -- <-- MỞ dòng này nếu client thực sự set source lang lúc tạo file
-) ON lts_ai.files_media TO authenticated;
-GRANT UPDATE (file_name) ON lts_ai.files_media TO authenticated;
+-- Media: client có thể tạo metadata nguồn, đọc và xóa file của chính mình.
+-- Processing state và duration vẫn được bảo vệ bởi RLS + backend processing functions.
+GRANT SELECT, INSERT, DELETE
+ON lts_ai.files_media
+TO authenticated;
+
+GRANT UPDATE (file_name)
+ON lts_ai.files_media
+TO authenticated;
 
 -- Subtitles: client cần CRUD cho editor, giới hạn bởi RLS.
 GRANT SELECT, INSERT, UPDATE, DELETE ON lts_ai.subtitles TO authenticated;
