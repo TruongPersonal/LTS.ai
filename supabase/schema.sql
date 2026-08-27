@@ -1,323 +1,335 @@
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+-- =========================================================
+-- LTS.ai - Consolidated Production Schema (reviewed)
+-- =========================================================
+-- Trạng thái DB cuối cùng, hợp nhất. KHÔNG phải migration history.
+-- An toàn chạy lại nhiều lần (idempotent) trên DB mới.
+--
+-- Sửa trong quá trình rà soát:
+--   1. Khôi phục index cho FK: projects(user_id), files_media(project_id).
+--   2. Idempotent hoá toàn bộ RLS policy bằng DROP POLICY IF EXISTS.
+--   3. Bỏ extension "uuid-ossp" không dùng (UUID = pg_catalog.gen_random_uuid()).
+--   4. Khôi phục GRANT DELETE trên files_media (trạng thái cuối của gốc có DELETE).
+--   5. Thêm lại NOTIFY pgrst 'reload schema' trước COMMIT.
+--
+-- Bootstrap admin đầu tiên (chạy 1 lần sau khi profile đã tồn tại):
+--   UPDATE lts_ai.profiles SET role = 'admin' WHERE email = 'your-admin@email.com';
+-- =========================================================
+
+BEGIN;
+
+-- =========================================================
+-- SCHEMA
+-- =========================================================
 CREATE SCHEMA IF NOT EXISTS lts_ai;
 
--- Bootstrap the first admin manually after the account profile exists:
--- UPDATE lts_ai.profiles SET role = 'admin' WHERE email = 'your-admin@email.com';
-
+REVOKE ALL ON SCHEMA lts_ai FROM PUBLIC;
 GRANT USAGE ON SCHEMA lts_ai TO authenticated, service_role;
-ALTER DEFAULT PRIVILEGES IN SCHEMA lts_ai GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO authenticated;
-ALTER DEFAULT PRIVILEGES IN SCHEMA lts_ai GRANT ALL ON TABLES TO service_role;
 
+ALTER DEFAULT PRIVILEGES IN SCHEMA lts_ai
+    REVOKE ALL ON TABLES FROM PUBLIC, authenticated;
+ALTER DEFAULT PRIVILEGES IN SCHEMA lts_ai
+    GRANT ALL ON TABLES TO service_role;
+
+-- =========================================================
+-- PROFILES
+-- =========================================================
 CREATE TABLE IF NOT EXISTS lts_ai.profiles (
     id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
     email TEXT NOT NULL,
     full_name TEXT,
-    role TEXT NOT NULL DEFAULT 'user' CONSTRAINT profiles_role_allowed CHECK (role IN ('user', 'admin')),
-    plan TEXT NOT NULL DEFAULT 'free' CONSTRAINT profiles_plan_allowed CHECK (plan IN ('free', 'pro', 'max')),
-    daily_processed_seconds INT NOT NULL DEFAULT 0,
-    last_processed_date DATE NOT NULL DEFAULT CURRENT_DATE,
+
+    role TEXT NOT NULL DEFAULT 'user'
+        CONSTRAINT profiles_role_allowed
+        CHECK (role IN ('user', 'admin')),
+
+    plan TEXT NOT NULL DEFAULT 'free'
+        CONSTRAINT profiles_plan_allowed
+        CHECK (plan IN ('free', 'pro', 'max')),
+
+    daily_processed_seconds INTEGER NOT NULL DEFAULT 0
+        CONSTRAINT profiles_daily_processed_seconds_nonnegative
+        CHECK (daily_processed_seconds >= 0),
+
+    last_processed_date DATE NOT NULL
+        DEFAULT ((NOW() AT TIME ZONE 'UTC')::DATE),
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE TABLE IF NOT EXISTS lts_ai.admin_audit_log (
-    id UUID PRIMARY KEY DEFAULT pg_catalog.gen_random_uuid(),
-    actor_user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE RESTRICT,
-    target_user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE RESTRICT,
-    action TEXT NOT NULL,
-    old_value JSONB,
-    new_value JSONB,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
-
-ALTER TABLE lts_ai.profiles ADD COLUMN IF NOT EXISTS role TEXT;
-UPDATE lts_ai.profiles SET role = 'user' WHERE role IS NULL;
-ALTER TABLE lts_ai.profiles ALTER COLUMN role SET DEFAULT 'user';
-ALTER TABLE lts_ai.profiles ALTER COLUMN role SET NOT NULL;
-
-DO $$
-BEGIN
-  IF NOT EXISTS (
-    SELECT 1
-    FROM pg_constraint
-    WHERE conname = 'profiles_role_allowed'
-      AND conrelid = 'lts_ai.profiles'::regclass
-  ) THEN
-    ALTER TABLE lts_ai.profiles
-      ADD CONSTRAINT profiles_role_allowed CHECK (role IN ('user', 'admin'));
-  END IF;
-END $$;
-
-ALTER TABLE lts_ai.profiles ADD COLUMN IF NOT EXISTS plan TEXT;
-UPDATE lts_ai.profiles SET plan = 'free' WHERE plan IS NULL;
-ALTER TABLE lts_ai.profiles ALTER COLUMN plan SET DEFAULT 'free';
-ALTER TABLE lts_ai.profiles ALTER COLUMN plan SET NOT NULL;
-
-DO $$
-BEGIN
-  IF NOT EXISTS (
-    SELECT 1
-    FROM pg_constraint
-    WHERE conname = 'profiles_plan_allowed'
-      AND conrelid = 'lts_ai.profiles'::regclass
-  ) THEN
-    ALTER TABLE lts_ai.profiles
-      ADD CONSTRAINT profiles_plan_allowed CHECK (plan IN ('free', 'pro', 'max'));
-  END IF;
-END $$;
-
+-- =========================================================
+-- PROJECTS
+-- =========================================================
 CREATE TABLE IF NOT EXISTS lts_ai.projects (
     id UUID PRIMARY KEY DEFAULT pg_catalog.gen_random_uuid(),
-    user_id UUID NOT NULL REFERENCES lts_ai.profiles(id) ON DELETE CASCADE,
+    user_id UUID NOT NULL
+        REFERENCES lts_ai.profiles(id) ON DELETE CASCADE,
+
     title TEXT NOT NULL,
     description TEXT,
-    target_language TEXT NOT NULL CHECK (target_language IN ('vi', 'en', 'zh', 'ja', 'ko', 'fr', 'it')),
+
+    target_language TEXT NOT NULL
+        CHECK (target_language IN ('vi', 'en', 'zh', 'ja', 'ko', 'fr', 'it')),
+
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+-- Index cho FK (Postgres không tự tạo cho khóa ngoại).
+CREATE INDEX IF NOT EXISTS idx_projects_user_id
+    ON lts_ai.projects(user_id);
+
+-- =========================================================
+-- MEDIA FILES
+-- =========================================================
 CREATE TABLE IF NOT EXISTS lts_ai.files_media (
     id UUID PRIMARY KEY DEFAULT pg_catalog.gen_random_uuid(),
-    project_id UUID NOT NULL REFERENCES lts_ai.projects(id) ON DELETE CASCADE,
+
+    project_id UUID NOT NULL
+        REFERENCES lts_ai.projects(id) ON DELETE CASCADE,
+
     drive_file_id TEXT NOT NULL,
     file_name TEXT NOT NULL,
     mime_type TEXT NOT NULL,
-    duration_seconds INT NOT NULL DEFAULT 0,
+
+    -- Thời lượng đo/chấp nhận phía backend.
+    duration_seconds INTEGER NOT NULL DEFAULT 0
+        CONSTRAINT files_media_duration_nonnegative
+        CHECK (duration_seconds >= 0),
+
     detected_source_lang TEXT,
-    status TEXT NOT NULL DEFAULT 'draft' CHECK (status IN ('draft', 'queued', 'processing', 'completed', 'failed')),
-    input_source TEXT NOT NULL DEFAULT 'media' CHECK (input_source IN ('media', 'existing_subtitle')),
+
+    status TEXT NOT NULL DEFAULT 'draft'
+        CHECK (status IN ('draft', 'queued', 'processing', 'completed', 'failed')),
+
+    input_source TEXT NOT NULL DEFAULT 'media'
+        CHECK (input_source IN ('media', 'existing_subtitle')),
+
     error_message TEXT,
+
+    -- Định danh attempt đang chạy. Cố ý không có FK: attempt được biểu diễn
+    -- bằng UUID này + các dòng trong processing_chunk_claims.
+    processing_attempt_id UUID,
+    processing_last_activity_at TIMESTAMPTZ,
+
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+-- Index cho FK (dùng cho RLS/join và cascade delete).
+CREATE INDEX IF NOT EXISTS idx_files_media_project_id
+    ON lts_ai.files_media(project_id);
+
+-- =========================================================
+-- SUBTITLES
+-- =========================================================
 CREATE TABLE IF NOT EXISTS lts_ai.subtitles (
     id UUID PRIMARY KEY DEFAULT pg_catalog.gen_random_uuid(),
-    file_id UUID NOT NULL REFERENCES lts_ai.files_media(id) ON DELETE CASCADE,
+
+    file_id UUID NOT NULL
+        REFERENCES lts_ai.files_media(id) ON DELETE CASCADE,
+
     language TEXT NOT NULL,
+
+    -- Toàn bộ cue lưu thành 1 document vì editor load/save cả bộ phụ đề
+    -- như một đơn vị, không truy vấn từng cue qua SQL.
     content JSONB NOT NULL DEFAULT '[]'::jsonb,
+
     is_edited BOOLEAN NOT NULL DEFAULT false,
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    UNIQUE(file_id, language)
+
+    UNIQUE (file_id, language)
+);
+-- Không cần idx_subtitles_file_id: UNIQUE(file_id, language) đã lập chỉ mục
+-- file_id ở cột dẫn đầu.
+
+-- =========================================================
+-- PROCESSING CHUNK CLAIMS
+-- =========================================================
+-- Mỗi dòng = một chunk đã claim/submit thành công. Cung cấp:
+--   1. chống trùng/replay
+--   2. tính quota theo từng chunk
+--   3. theo dõi attempt mà không cần bảng attempts riêng
+-- =========================================================
+CREATE TABLE IF NOT EXISTS lts_ai.processing_chunk_claims (
+    id UUID PRIMARY KEY DEFAULT pg_catalog.gen_random_uuid(),
+
+    file_id UUID NOT NULL
+        REFERENCES lts_ai.files_media(id) ON DELETE CASCADE,
+
+    user_id UUID NOT NULL
+        REFERENCES lts_ai.profiles(id) ON DELETE CASCADE,
+
+    attempt_id UUID NOT NULL,
+
+    chunk_index INTEGER NOT NULL
+        CHECK (chunk_index >= 0),
+
+    chunk_start_seconds INTEGER NOT NULL
+        CHECK (chunk_start_seconds >= 0),
+
+    duration_seconds INTEGER NOT NULL
+        CHECK (duration_seconds > 0),
+
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+    UNIQUE (file_id, attempt_id, chunk_index),
+    UNIQUE (file_id, attempt_id, chunk_start_seconds)
 );
 
-CREATE INDEX IF NOT EXISTS idx_projects_user_id ON lts_ai.projects(user_id);
-CREATE INDEX IF NOT EXISTS idx_files_media_project_id ON lts_ai.files_media(project_id);
-CREATE INDEX IF NOT EXISTS idx_subtitles_file_id ON lts_ai.subtitles(file_id);
-CREATE INDEX IF NOT EXISTS idx_admin_audit_log_actor ON lts_ai.admin_audit_log(actor_user_id);
-CREATE INDEX IF NOT EXISTS idx_admin_audit_log_target ON lts_ai.admin_audit_log(target_user_id);
-CREATE INDEX IF NOT EXISTS idx_admin_audit_log_created_at ON lts_ai.admin_audit_log(created_at DESC);
+-- file_id đã được các UNIQUE(file_id, attempt_id, ...) phủ; chỉ user_id cần index riêng.
+CREATE INDEX IF NOT EXISTS idx_processing_chunk_claims_user
+    ON lts_ai.processing_chunk_claims(user_id);
 
-GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA lts_ai TO authenticated;
+-- =========================================================
+-- ADMIN AUDIT LOG
+-- =========================================================
+CREATE TABLE IF NOT EXISTS lts_ai.admin_audit_log (
+    id UUID PRIMARY KEY DEFAULT pg_catalog.gen_random_uuid(),
+
+    actor_user_id UUID NOT NULL
+        REFERENCES auth.users(id) ON DELETE RESTRICT,
+
+    target_user_id UUID NOT NULL
+        REFERENCES auth.users(id) ON DELETE RESTRICT,
+
+    action TEXT NOT NULL,
+    old_value JSONB,
+    new_value JSONB,
+
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_admin_audit_log_actor
+    ON lts_ai.admin_audit_log(actor_user_id);
+
+CREATE INDEX IF NOT EXISTS idx_admin_audit_log_target
+    ON lts_ai.admin_audit_log(target_user_id);
+
+CREATE INDEX IF NOT EXISTS idx_admin_audit_log_created_at
+    ON lts_ai.admin_audit_log(created_at DESC);
+
+-- =========================================================
+-- ROW LEVEL SECURITY
+-- =========================================================
+ALTER TABLE lts_ai.profiles                ENABLE ROW LEVEL SECURITY;
+ALTER TABLE lts_ai.projects                ENABLE ROW LEVEL SECURITY;
+ALTER TABLE lts_ai.files_media             ENABLE ROW LEVEL SECURITY;
+ALTER TABLE lts_ai.subtitles               ENABLE ROW LEVEL SECURITY;
+ALTER TABLE lts_ai.processing_chunk_claims ENABLE ROW LEVEL SECURITY;
+ALTER TABLE lts_ai.admin_audit_log         ENABLE ROW LEVEL SECURITY;
+
+-- Profiles --------------------------------------------------
+DROP POLICY IF EXISTS "Users can read own profile" ON lts_ai.profiles;
+CREATE POLICY "Users can read own profile"
+    ON lts_ai.profiles
+    FOR SELECT
+    USING (auth.uid() = id);
+
+DROP POLICY IF EXISTS "Users can create own basic profile" ON lts_ai.profiles;
+CREATE POLICY "Users can create own basic profile"
+    ON lts_ai.profiles
+    FOR INSERT
+    WITH CHECK (auth.uid() = id);
+
+DROP POLICY IF EXISTS "Users can update own basic profile" ON lts_ai.profiles;
+CREATE POLICY "Users can update own basic profile"
+    ON lts_ai.profiles
+    FOR UPDATE
+    USING (auth.uid() = id)
+    WITH CHECK (auth.uid() = id);
+
+-- Projects --------------------------------------------------
+DROP POLICY IF EXISTS "Users can manage own projects" ON lts_ai.projects;
+CREATE POLICY "Users can manage own projects"
+    ON lts_ai.projects
+    FOR ALL
+    USING (auth.uid() = user_id)
+    WITH CHECK (auth.uid() = user_id);
+
+-- Media files -----------------------------------------------
+DROP POLICY IF EXISTS "Users can manage own media files" ON lts_ai.files_media;
+CREATE POLICY "Users can manage own media files"
+    ON lts_ai.files_media
+    FOR ALL
+    USING (
+        EXISTS (
+            SELECT 1
+            FROM lts_ai.projects
+            WHERE projects.id = files_media.project_id
+              AND projects.user_id = auth.uid()
+        )
+    )
+    WITH CHECK (
+        EXISTS (
+            SELECT 1
+            FROM lts_ai.projects
+            WHERE projects.id = files_media.project_id
+              AND projects.user_id = auth.uid()
+        )
+    );
+
+-- Subtitles -------------------------------------------------
+DROP POLICY IF EXISTS "Users can manage own subtitles" ON lts_ai.subtitles;
+CREATE POLICY "Users can manage own subtitles"
+    ON lts_ai.subtitles
+    FOR ALL
+    USING (
+        EXISTS (
+            SELECT 1
+            FROM lts_ai.files_media
+            JOIN lts_ai.projects
+              ON projects.id = files_media.project_id
+            WHERE files_media.id = subtitles.file_id
+              AND projects.user_id = auth.uid()
+        )
+    )
+    WITH CHECK (
+        EXISTS (
+            SELECT 1
+            FROM lts_ai.files_media
+            JOIN lts_ai.projects
+              ON projects.id = files_media.project_id
+            WHERE files_media.id = subtitles.file_id
+              AND projects.user_id = auth.uid()
+        )
+    );
+
+-- processing_chunk_claims & admin_audit_log: chỉ service_role.
+-- Không cần policy cho authenticated (Edge Function gọi hàm SECURITY DEFINER).
+
+-- =========================================================
+-- TABLE PRIVILEGES
+-- =========================================================
+REVOKE ALL ON ALL TABLES IN SCHEMA lts_ai FROM PUBLIC, authenticated;
 GRANT ALL ON ALL TABLES IN SCHEMA lts_ai TO service_role;
 
-REVOKE INSERT, UPDATE, DELETE ON lts_ai.profiles FROM authenticated;
+-- Profiles: client chỉ ghi được các trường cơ bản.
 GRANT SELECT ON lts_ai.profiles TO authenticated;
 GRANT INSERT (id, email, full_name) ON lts_ai.profiles TO authenticated;
 GRANT UPDATE (id, email, full_name) ON lts_ai.profiles TO authenticated;
-REVOKE ALL ON lts_ai.admin_audit_log FROM authenticated;
 
-ALTER TABLE lts_ai.profiles ENABLE ROW LEVEL SECURITY;
-ALTER TABLE lts_ai.projects ENABLE ROW LEVEL SECURITY;
-ALTER TABLE lts_ai.files_media ENABLE ROW LEVEL SECURITY;
-ALTER TABLE lts_ai.subtitles ENABLE ROW LEVEL SECURITY;
-ALTER TABLE lts_ai.admin_audit_log ENABLE ROW LEVEL SECURITY;
+-- Projects: full CRUD, giới hạn bởi RLS.
+GRANT SELECT, INSERT, UPDATE, DELETE ON lts_ai.projects TO authenticated;
 
-DROP POLICY IF EXISTS "Users can manage own profile" ON lts_ai.profiles;
-DROP POLICY IF EXISTS "Users can read own profile" ON lts_ai.profiles;
-DROP POLICY IF EXISTS "Users can create own basic profile" ON lts_ai.profiles;
-DROP POLICY IF EXISTS "Users can update own basic profile" ON lts_ai.profiles;
-CREATE POLICY "Users can read own profile" ON lts_ai.profiles
-  FOR SELECT USING (auth.uid() = id);
-CREATE POLICY "Users can create own basic profile" ON lts_ai.profiles
-  FOR INSERT WITH CHECK (auth.uid() = id);
-CREATE POLICY "Users can update own basic profile" ON lts_ai.profiles
-  FOR UPDATE USING (auth.uid() = id) WITH CHECK (auth.uid() = id);
+-- Media: client tạo metadata nguồn + đổi tên + xóa file của mình.
+-- Trạng thái xử lý, duration đo được, source language và error là backend-owned.
+GRANT SELECT, DELETE ON lts_ai.files_media TO authenticated;
+GRANT INSERT (
+    project_id,
+    drive_file_id,
+    file_name,
+    mime_type,
+    input_source
+    -- , detected_source_lang   -- <-- MỞ dòng này nếu client thực sự set source lang lúc tạo file
+) ON lts_ai.files_media TO authenticated;
+GRANT UPDATE (file_name) ON lts_ai.files_media TO authenticated;
 
-DROP POLICY IF EXISTS "Users can manage own projects" ON lts_ai.projects;
-CREATE POLICY "Users can manage own projects" ON lts_ai.projects
-  FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+-- Subtitles: client cần CRUD cho editor, giới hạn bởi RLS.
+GRANT SELECT, INSERT, UPDATE, DELETE ON lts_ai.subtitles TO authenticated;
 
-DROP POLICY IF EXISTS "Users can manage own media files" ON lts_ai.files_media;
-CREATE POLICY "Users can manage own media files" ON lts_ai.files_media
-  FOR ALL USING (
-    EXISTS (SELECT 1 FROM lts_ai.projects WHERE projects.id = files_media.project_id AND projects.user_id = auth.uid())
-  ) WITH CHECK (
-    EXISTS (SELECT 1 FROM lts_ai.projects WHERE projects.id = files_media.project_id AND projects.user_id = auth.uid())
-  );
+-- processing_chunk_claims & admin_audit_log giữ service_role only.
 
-DROP POLICY IF EXISTS "Users can manage own subtitles" ON lts_ai.subtitles;
-CREATE POLICY "Users can manage own subtitles" ON lts_ai.subtitles
-  FOR ALL USING (
-    EXISTS (SELECT 1 FROM lts_ai.files_media JOIN lts_ai.projects ON projects.id = files_media.project_id WHERE files_media.id = subtitles.file_id AND projects.user_id = auth.uid())
-  ) WITH CHECK (
-    EXISTS (SELECT 1 FROM lts_ai.files_media JOIN lts_ai.projects ON projects.id = files_media.project_id WHERE files_media.id = subtitles.file_id AND projects.user_id = auth.uid())
-  );
-
-CREATE TABLE IF NOT EXISTS lts_ai.processing_quota_reservations (
-    file_id UUID PRIMARY KEY REFERENCES lts_ai.files_media(id) ON DELETE CASCADE,
-    user_id UUID NOT NULL REFERENCES lts_ai.profiles(id) ON DELETE CASCADE,
-    duration_seconds INTEGER NOT NULL CHECK (duration_seconds > 0),
-    reserved_date DATE NOT NULL,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
-
-CREATE INDEX IF NOT EXISTS idx_processing_quota_reservations_user
-    ON lts_ai.processing_quota_reservations(user_id);
-
-ALTER TABLE lts_ai.processing_quota_reservations ENABLE ROW LEVEL SECURITY;
-REVOKE ALL ON lts_ai.processing_quota_reservations FROM authenticated;
-GRANT ALL ON lts_ai.processing_quota_reservations TO service_role;
-
-CREATE OR REPLACE FUNCTION lts_ai.reserve_processing_quota(
-    p_file_id UUID
-)
-RETURNS JSONB
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = lts_ai, public
-AS $$
-DECLARE
-    caller_id UUID := auth.uid();
-    today_utc DATE := (NOW() AT TIME ZONE 'UTC')::DATE;
-    file_duration INTEGER;
-    profile_plan TEXT;
-    profile_used INTEGER;
-    profile_date DATE;
-    daily_limit INTEGER;
-    effective_used INTEGER;
-    existing_duration INTEGER;
-    existing_date DATE;
-    reservation_exists BOOLEAN := false;
-BEGIN
-    IF caller_id IS NULL THEN
-        RAISE EXCEPTION 'Authentication is required.'
-            USING ERRCODE = '42501';
-    END IF;
-
-    SELECT files_media.duration_seconds
-    INTO file_duration
-    FROM lts_ai.files_media
-    JOIN lts_ai.projects ON projects.id = files_media.project_id
-    WHERE files_media.id = p_file_id
-      AND projects.user_id = caller_id
-    FOR UPDATE OF files_media;
-
-    IF NOT FOUND THEN
-        RAISE EXCEPTION 'File was not found or is inaccessible.'
-            USING ERRCODE = 'P0002';
-    END IF;
-
-    IF file_duration IS NULL OR file_duration <= 0 THEN
-        RAISE EXCEPTION 'File duration is required before processing.'
-            USING ERRCODE = '22023';
-    END IF;
-
-    SELECT duration_seconds, reserved_date
-    INTO existing_duration, existing_date
-    FROM lts_ai.processing_quota_reservations
-    WHERE file_id = p_file_id
-    FOR UPDATE;
-
-    IF FOUND AND existing_date = today_utc THEN
-        RETURN jsonb_build_object(
-            'reserved', true,
-            'already_reserved', true,
-            'duration_seconds', existing_duration,
-            'reserved_date', existing_date
-        );
-    END IF;
-
-    reservation_exists := FOUND;
-
-    SELECT plan, daily_processed_seconds, last_processed_date
-    INTO profile_plan, profile_used, profile_date
-    FROM lts_ai.profiles
-    WHERE id = caller_id
-    FOR UPDATE;
-
-    IF NOT FOUND THEN
-        RAISE EXCEPTION 'Profile was not found.'
-            USING ERRCODE = 'P0002';
-    END IF;
-
-    daily_limit := CASE profile_plan
-        WHEN 'pro' THEN 1800
-        WHEN 'max' THEN 3600
-        ELSE 600
-    END;
-    effective_used := CASE
-        WHEN profile_date = today_utc THEN GREATEST(COALESCE(profile_used, 0), 0)
-        ELSE 0
-    END;
-
-    IF effective_used + file_duration > daily_limit THEN
-        RAISE EXCEPTION 'Daily processing quota exceeded.'
-            USING ERRCODE = 'P0001';
-    END IF;
-
-    UPDATE lts_ai.profiles
-    SET
-        daily_processed_seconds = effective_used + file_duration,
-        last_processed_date = today_utc
-    WHERE id = caller_id;
-
-    IF reservation_exists THEN
-        UPDATE lts_ai.processing_quota_reservations
-        SET
-            duration_seconds = file_duration,
-            reserved_date = today_utc
-        WHERE file_id = p_file_id;
-    ELSE
-        INSERT INTO lts_ai.processing_quota_reservations (
-            file_id,
-            user_id,
-            duration_seconds,
-            reserved_date
-        )
-        VALUES (
-            p_file_id,
-            caller_id,
-            file_duration,
-            today_utc
-        );
-    END IF;
-
-    RETURN jsonb_build_object(
-        'reserved', true,
-        'already_reserved', false,
-        'duration_seconds', file_duration,
-        'reserved_date', today_utc
-    );
-END;
-$$;
-
-REVOKE ALL ON FUNCTION lts_ai.reserve_processing_quota(UUID) FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION lts_ai.reserve_processing_quota(UUID) TO authenticated;
-
-CREATE OR REPLACE FUNCTION lts_ai.complete_processing_quota(
-    p_file_id UUID
-)
-RETURNS VOID
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = lts_ai, public
-AS $$
-DECLARE
-    caller_id UUID := auth.uid();
-BEGIN
-    IF caller_id IS NULL THEN
-        RAISE EXCEPTION 'Authentication is required.'
-            USING ERRCODE = '42501';
-    END IF;
-
-    DELETE FROM lts_ai.processing_quota_reservations
-    WHERE file_id = p_file_id
-      AND user_id = caller_id;
-END;
-$$;
-
-REVOKE ALL ON FUNCTION lts_ai.complete_processing_quota(UUID) FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION lts_ai.complete_processing_quota(UUID) TO authenticated;
-
+-- =========================================================
+-- ADMIN: CHANGE USER PLAN
+-- =========================================================
 CREATE OR REPLACE FUNCTION lts_ai.admin_set_user_plan(
     p_target_user_id UUID,
     p_new_plan TEXT
@@ -368,12 +380,7 @@ BEGIN
     WHERE id = p_target_user_id;
 
     INSERT INTO lts_ai.admin_audit_log (
-        actor_user_id,
-        target_user_id,
-        action,
-        old_value,
-        new_value,
-        created_at
+        actor_user_id, target_user_id, action, old_value, new_value, created_at
     )
     VALUES (
         actor_id,
@@ -393,60 +400,12 @@ BEGIN
 END;
 $$;
 
-REVOKE ALL ON FUNCTION lts_ai.admin_set_user_plan(UUID, TEXT) FROM PUBLIC;
+REVOKE ALL ON FUNCTION lts_ai.admin_set_user_plan(UUID, TEXT) FROM PUBLIC, authenticated;
 GRANT EXECUTE ON FUNCTION lts_ai.admin_set_user_plan(UUID, TEXT) TO authenticated;
 
-NOTIFY pgrst, 'reload schema';
--- The Edge Function is the only caller of the service-role-only functions below.
-
-ALTER TABLE lts_ai.files_media
-  ADD COLUMN IF NOT EXISTS processing_attempt_id UUID,
-  ADD COLUMN IF NOT EXISTS processing_last_activity_at TIMESTAMPTZ;
-
-CREATE TABLE IF NOT EXISTS lts_ai.processing_chunk_claims (
-    id UUID PRIMARY KEY DEFAULT pg_catalog.gen_random_uuid(),
-    file_id UUID NOT NULL REFERENCES lts_ai.files_media(id) ON DELETE CASCADE,
-    user_id UUID NOT NULL REFERENCES lts_ai.profiles(id) ON DELETE CASCADE,
-    attempt_id UUID NOT NULL,
-    chunk_index INTEGER NOT NULL CHECK (chunk_index >= 0),
-    chunk_start_seconds INTEGER NOT NULL CHECK (chunk_start_seconds >= 0),
-    duration_seconds INTEGER NOT NULL CHECK (duration_seconds > 0),
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    UNIQUE (file_id, attempt_id, chunk_index),
-    UNIQUE (file_id, attempt_id, chunk_start_seconds)
-);
-
-CREATE INDEX IF NOT EXISTS idx_processing_chunk_claims_user
-    ON lts_ai.processing_chunk_claims(user_id);
-
-CREATE INDEX IF NOT EXISTS idx_processing_chunk_claims_file_attempt
-    ON lts_ai.processing_chunk_claims(file_id, attempt_id);
-
-ALTER TABLE lts_ai.processing_chunk_claims ENABLE ROW LEVEL SECURITY;
-REVOKE ALL ON lts_ai.processing_chunk_claims FROM authenticated;
-GRANT ALL ON lts_ai.processing_chunk_claims TO service_role;
-
--- A user may only submit metadata needed to create a file and rename it later.
--- Processing state, source identity and measured duration are backend-owned.
-REVOKE INSERT, UPDATE ON lts_ai.files_media FROM authenticated;
-GRANT INSERT (
-    project_id,
-    drive_file_id,
-    file_name,
-    mime_type,
-    input_source,
-    detected_source_lang
-)
-ON lts_ai.files_media
-TO authenticated;
-GRANT UPDATE (file_name)
-ON lts_ai.files_media
-TO authenticated;
-
--- The old client-callable quota functions must not remain an enforcement bypass.
-REVOKE ALL ON FUNCTION lts_ai.reserve_processing_quota(UUID) FROM PUBLIC, authenticated;
-REVOKE ALL ON FUNCTION lts_ai.complete_processing_quota(UUID) FROM PUBLIC, authenticated;
-
+-- =========================================================
+-- PROCESSING: START ATTEMPT
+-- =========================================================
 CREATE OR REPLACE FUNCTION lts_ai.start_processing_attempt(
     p_user_id UUID,
     p_file_id UUID
@@ -497,16 +456,16 @@ BEGIN
         error_message = NULL
     WHERE id = p_file_id;
 
-    RETURN jsonb_build_object(
-        'started', true,
-        'attempt_id', attempt_id
-    );
+    RETURN jsonb_build_object('started', true, 'attempt_id', attempt_id);
 END;
 $$;
 
 REVOKE ALL ON FUNCTION lts_ai.start_processing_attempt(UUID, UUID) FROM PUBLIC, authenticated;
 GRANT EXECUTE ON FUNCTION lts_ai.start_processing_attempt(UUID, UUID) TO service_role;
 
+-- =========================================================
+-- PROCESSING: CLAIM CHUNK  (chunk cố định 420 giây)
+-- =========================================================
 CREATE OR REPLACE FUNCTION lts_ai.claim_processing_chunk(
     p_user_id UUID,
     p_file_id UUID,
@@ -536,11 +495,15 @@ BEGIN
             USING ERRCODE = '42501';
     END IF;
 
-    IF p_chunk_index IS NULL OR p_chunk_index < 0
-       OR p_chunk_start_seconds IS NULL OR p_chunk_start_seconds < 0
+    IF p_chunk_index IS NULL
+       OR p_chunk_index < 0
+       OR p_chunk_start_seconds IS NULL
+       OR p_chunk_start_seconds < 0
        OR p_chunk_start_seconds <> p_chunk_index::BIGINT * 420
-       OR p_duration_seconds IS NULL OR p_duration_seconds <= 0
-       OR p_duration_seconds > 420 THEN
+       OR p_duration_seconds IS NULL
+       OR p_duration_seconds <= 0
+       OR p_duration_seconds > 420
+    THEN
         RAISE EXCEPTION 'Invalid processing chunk.'
             USING ERRCODE = '22023';
     END IF;
@@ -560,7 +523,8 @@ BEGIN
 
     IF file_input_source <> 'media'
        OR file_status <> 'processing'
-       OR file_attempt_id IS DISTINCT FROM p_attempt_id THEN
+       OR file_attempt_id IS DISTINCT FROM p_attempt_id
+    THEN
         RAISE EXCEPTION 'Processing attempt is not active for this file.'
             USING ERRCODE = 'P0004';
     END IF;
@@ -617,20 +581,10 @@ BEGIN
     WHERE id = p_file_id;
 
     INSERT INTO lts_ai.processing_chunk_claims (
-        file_id,
-        user_id,
-        attempt_id,
-        chunk_index,
-        chunk_start_seconds,
-        duration_seconds
+        file_id, user_id, attempt_id, chunk_index, chunk_start_seconds, duration_seconds
     )
     VALUES (
-        p_file_id,
-        p_user_id,
-        p_attempt_id,
-        p_chunk_index,
-        p_chunk_start_seconds,
-        p_duration_seconds
+        p_file_id, p_user_id, p_attempt_id, p_chunk_index, p_chunk_start_seconds, p_duration_seconds
     );
 
     RETURN jsonb_build_object(
@@ -642,9 +596,16 @@ BEGIN
 END;
 $$;
 
-REVOKE ALL ON FUNCTION lts_ai.claim_processing_chunk(UUID, UUID, UUID, INTEGER, INTEGER, INTEGER) FROM PUBLIC, authenticated;
-GRANT EXECUTE ON FUNCTION lts_ai.claim_processing_chunk(UUID, UUID, UUID, INTEGER, INTEGER, INTEGER) TO service_role;
+REVOKE ALL ON FUNCTION lts_ai.claim_processing_chunk(
+    UUID, UUID, UUID, INTEGER, INTEGER, INTEGER
+) FROM PUBLIC, authenticated;
+GRANT EXECUTE ON FUNCTION lts_ai.claim_processing_chunk(
+    UUID, UUID, UUID, INTEGER, INTEGER, INTEGER
+) TO service_role;
 
+-- =========================================================
+-- PROCESSING: COMPLETE ATTEMPT
+-- =========================================================
 CREATE OR REPLACE FUNCTION lts_ai.complete_processing_attempt(
     p_user_id UUID,
     p_file_id UUID,
@@ -666,7 +627,10 @@ BEGIN
             USING ERRCODE = '42501';
     END IF;
 
-    IF p_source_language IS NULL OR LENGTH(TRIM(p_source_language)) = 0 OR LENGTH(p_source_language) > 32 THEN
+    IF p_source_language IS NULL
+       OR LENGTH(TRIM(p_source_language)) = 0
+       OR LENGTH(p_source_language) > 32
+    THEN
         RAISE EXCEPTION 'Invalid source language.'
             USING ERRCODE = '22023';
     END IF;
@@ -684,7 +648,9 @@ BEGIN
             USING ERRCODE = 'P0002';
     END IF;
 
-    IF file_status <> 'processing' OR file_attempt_id IS DISTINCT FROM p_attempt_id THEN
+    IF file_status <> 'processing'
+       OR file_attempt_id IS DISTINCT FROM p_attempt_id
+    THEN
         RAISE EXCEPTION 'Processing attempt is not active for this file.'
             USING ERRCODE = 'P0004';
     END IF;
@@ -710,16 +676,20 @@ BEGIN
         error_message = NULL
     WHERE id = p_file_id;
 
-    RETURN jsonb_build_object(
-        'completed', true,
-        'duration_seconds', total_duration
-    );
+    RETURN jsonb_build_object('completed', true, 'duration_seconds', total_duration);
 END;
 $$;
 
-REVOKE ALL ON FUNCTION lts_ai.complete_processing_attempt(UUID, UUID, UUID, TEXT) FROM PUBLIC, authenticated;
-GRANT EXECUTE ON FUNCTION lts_ai.complete_processing_attempt(UUID, UUID, UUID, TEXT) TO service_role;
+REVOKE ALL ON FUNCTION lts_ai.complete_processing_attempt(
+    UUID, UUID, UUID, TEXT
+) FROM PUBLIC, authenticated;
+GRANT EXECUTE ON FUNCTION lts_ai.complete_processing_attempt(
+    UUID, UUID, UUID, TEXT
+) TO service_role;
 
+-- =========================================================
+-- PROCESSING: FAIL ATTEMPT
+-- =========================================================
 CREATE OR REPLACE FUNCTION lts_ai.fail_processing_attempt(
     p_user_id UUID,
     p_file_id UUID,
@@ -767,12 +737,24 @@ BEGIN
         status = 'failed',
         processing_attempt_id = NULL,
         processing_last_activity_at = NULL,
-        error_message = LEFT(COALESCE(NULLIF(TRIM(p_error_message), ''), 'Unknown processing error'), 1000)
+        error_message = LEFT(
+            COALESCE(NULLIF(TRIM(p_error_message), ''), 'Unknown processing error'),
+            1000
+        )
     WHERE id = p_file_id;
 END;
 $$;
 
-REVOKE ALL ON FUNCTION lts_ai.fail_processing_attempt(UUID, UUID, UUID, TEXT) FROM PUBLIC, authenticated;
-GRANT EXECUTE ON FUNCTION lts_ai.fail_processing_attempt(UUID, UUID, UUID, TEXT) TO service_role;
+REVOKE ALL ON FUNCTION lts_ai.fail_processing_attempt(
+    UUID, UUID, UUID, TEXT
+) FROM PUBLIC, authenticated;
+GRANT EXECUTE ON FUNCTION lts_ai.fail_processing_attempt(
+    UUID, UUID, UUID, TEXT
+) TO service_role;
 
+-- =========================================================
+-- RELOAD POSTGREST SCHEMA CACHE + COMMIT
+-- =========================================================
 NOTIFY pgrst, 'reload schema';
+
+COMMIT;
