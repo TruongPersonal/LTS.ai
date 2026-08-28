@@ -86,7 +86,9 @@
       "auditLogs": "Logs"
     },
     "revenue": {
-      "title": "Estimated Revenue"
+      "title": "Estimated Revenue",
+      "stripeLive": "Stripe Revenue",
+      "stripeEstimate": "Estimated Revenue"
     },
     "metrics": {
       "users": "Total Users",

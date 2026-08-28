@@ -130,27 +130,40 @@ serve(async (request) => {
         0
       );
 
-      let revenueAmount = proUsers * 10 + maxUsers * 29;
+      let revenueAmount = Number((proUsers * 2.69 + maxUsers * 4.99).toFixed(2));
       let revenueSource = 'plan_estimate';
 
       if (stripeSecretKey) {
         try {
           const authHeader = `Basic ${btoa(`${stripeSecretKey}:`)}`;
-          const balanceRes = await fetch('https://api.stripe.com/v1/balance', {
+          const chargesRes = await fetch('https://api.stripe.com/v1/charges?limit=100', {
             headers: { Authorization: authHeader },
           });
-          if (balanceRes.ok) {
-            const balanceData = await balanceRes.json();
-            const availableUsd = (balanceData.available || []).find((b: { currency: string; amount: number }) => b.currency === 'usd')?.amount || 0;
-            const pendingUsd = (balanceData.pending || []).find((b: { currency: string; amount: number }) => b.currency === 'usd')?.amount || 0;
-            const totalBalance = (availableUsd + pendingUsd) / 100;
-            if (totalBalance > 0) {
-              revenueAmount = Math.round(totalBalance);
+          if (chargesRes.ok) {
+            const chargesData = await chargesRes.json();
+            const charges = (chargesData.data || []) as Array<{
+              amount: number;
+              currency: string;
+              status: string;
+              paid: boolean;
+              refunded: boolean;
+              description?: string | null;
+            }>;
+            const validCharges = charges.filter(
+              (c) =>
+                c.status === 'succeeded' &&
+                c.paid &&
+                !c.refunded &&
+                (!c.description || !c.description.includes('Testing Blueprints'))
+            );
+            const totalGrossCents = validCharges.reduce((acc, c) => acc + (c.amount || 0), 0);
+            if (totalGrossCents > 0) {
+              revenueAmount = Number((totalGrossCents / 100).toFixed(2));
               revenueSource = 'stripe_balance';
             }
           }
         } catch (err) {
-          console.warn('[Admin Overview] Failed to fetch live Stripe balance:', err);
+          console.warn('[Admin Overview] Failed to fetch live Stripe charges:', err);
         }
       }
 

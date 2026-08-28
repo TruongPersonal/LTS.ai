@@ -55,14 +55,19 @@ export const AdminOverviewTab: React.FC<AdminOverviewTabProps> = ({
             </div>
           </div>
           <div className="text-3xl font-extrabold text-emerald-500">
-            {loading ? '—' : `$${overview?.revenue.estimated_mrr ?? 0}`}
+            {loading
+              ? '—'
+              : `$${Number(overview?.revenue.estimated_mrr ?? 0).toLocaleString('en-US', {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                })}`}
           </div>
           <div className="text-[11px] ui-muted flex items-center gap-1.5">
             <span className="size-1.5 rounded-full bg-emerald-500" />
             <span>
               {overview?.revenue.source === 'stripe_balance'
-                ? 'Stripe Live Balance'
-                : 'Stripe Active Billing'}
+                ? t('admin.revenue.stripeLive')
+                : t('admin.revenue.stripeEstimate')}
             </span>
           </div>
         </div>

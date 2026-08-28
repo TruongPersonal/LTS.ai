@@ -86,7 +86,9 @@
       "auditLogs": "Nhật ký"
     },
     "revenue": {
-      "title": "Doanh thu Ước tính"
+      "title": "Doanh thu Ước tính",
+      "stripeLive": "Thu nhập Stripe",
+      "stripeEstimate": "Doanh thu ước tính"
     },
     "metrics": {
       "users": "Tổng người dùng",
