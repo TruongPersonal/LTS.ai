@@ -419,7 +419,6 @@ serve(async (req) => {
     }
 
     if (action === 'recover_stale_files') {
-      const staleBefore = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString();
       const { error } = await internalClient
         .from('files_media')
         .update({
@@ -429,8 +428,7 @@ serve(async (req) => {
           error_message: null,
         })
         .eq('project_id', projectId)
-        .eq('status', 'processing')
-        .or(`processing_last_activity_at.is.null,processing_last_activity_at.lt.${staleBefore}`);
+        .eq('status', 'processing');
       if (error) throw error;
       return jsonResponse({ success: true });
     }
