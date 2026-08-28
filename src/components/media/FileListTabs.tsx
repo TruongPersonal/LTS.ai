@@ -105,7 +105,6 @@ export const FileListTabs: React.FC<FileListTabsProps> = ({
                 file={file}
                 completed={activeTab === 'completed'}
                 progress={processingProgressByFile[file.id]}
-                isProcessing={isProcessing}
                 onOpen={() => onOpenFileEditor(file)}
                 onExport={() => onExportFile(file)}
                 onRename={() => setRenamingFile(file)}

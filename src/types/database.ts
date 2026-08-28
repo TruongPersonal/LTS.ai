@@ -13,22 +13,69 @@ export interface PlanLimits {
   dailyDurationSeconds: number;
 }
 
+export interface RawQuotasConfig {
+  free_daily_minutes?: number;
+  free_max_file_size_mb?: number;
+  pro_daily_minutes?: number;
+  pro_max_file_size_mb?: number;
+  max_daily_minutes?: number;
+  max_max_file_size_mb?: number;
+}
+
 export const DEFAULT_PLAN: Plan = 'free';
 
-export const PLAN_LIMITS: Record<Plan, PlanLimits> = {
+export const DEFAULT_PLAN_LIMITS: Record<Plan, PlanLimits> = {
   free: {
-    maxFileSizeBytes: 100 * 1024 * 1024,
+    maxFileSizeBytes: 50 * 1024 * 1024,
     dailyDurationSeconds: 10 * 60,
   },
   pro: {
-    maxFileSizeBytes: 300 * 1024 * 1024,
-    dailyDurationSeconds: 30 * 60,
+    maxFileSizeBytes: 200 * 1024 * 1024,
+    dailyDurationSeconds: 60 * 60,
   },
   max: {
     maxFileSizeBytes: 500 * 1024 * 1024,
-    dailyDurationSeconds: 60 * 60,
+    dailyDurationSeconds: 300 * 60,
   },
 };
+
+export const PLAN_LIMITS: Record<Plan, PlanLimits> = {
+  free: { ...DEFAULT_PLAN_LIMITS.free },
+  pro: { ...DEFAULT_PLAN_LIMITS.pro },
+  max: { ...DEFAULT_PLAN_LIMITS.max },
+};
+
+type LimitsListener = (limits: Record<Plan, PlanLimits>) => void;
+const listeners = new Set<LimitsListener>();
+
+export function updatePlanLimitsFromQuotas(quotas: RawQuotasConfig) {
+  if (quotas.free_daily_minutes != null) {
+    PLAN_LIMITS.free.dailyDurationSeconds = Number(quotas.free_daily_minutes) * 60;
+  }
+  if (quotas.free_max_file_size_mb != null) {
+    PLAN_LIMITS.free.maxFileSizeBytes = Number(quotas.free_max_file_size_mb) * 1024 * 1024;
+  }
+  if (quotas.pro_daily_minutes != null) {
+    PLAN_LIMITS.pro.dailyDurationSeconds = Number(quotas.pro_daily_minutes) * 60;
+  }
+  if (quotas.pro_max_file_size_mb != null) {
+    PLAN_LIMITS.pro.maxFileSizeBytes = Number(quotas.pro_max_file_size_mb) * 1024 * 1024;
+  }
+  if (quotas.max_daily_minutes != null) {
+    PLAN_LIMITS.max.dailyDurationSeconds = Number(quotas.max_daily_minutes) * 60;
+  }
+  if (quotas.max_max_file_size_mb != null) {
+    PLAN_LIMITS.max.maxFileSizeBytes = Number(quotas.max_max_file_size_mb) * 1024 * 1024;
+  }
+  listeners.forEach((fn) => fn(PLAN_LIMITS));
+}
+
+export function subscribeToPlanLimits(fn: LimitsListener) {
+  listeners.add(fn);
+  return () => {
+    listeners.delete(fn);
+  };
+}
 
 export const PLAN_ORDER: readonly Plan[] = ['free', 'pro', 'max'];
 
@@ -51,6 +98,7 @@ export interface Profile {
   full_name: string | null;
   role: UserRole;
   plan: Plan;
+  plan_expires_at?: string | null;
   daily_processed_seconds?: number;
   last_processed_date?: string;
   created_at: string;

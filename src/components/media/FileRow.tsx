@@ -12,7 +12,6 @@ interface FileRowProps {
   file: FileMedia;
   completed: boolean;
   progress?: ProcessingProgress;
-  isProcessing?: boolean;
   onOpen: () => void;
   onExport: () => void;
   onRename: () => void;
@@ -167,3 +166,4 @@ export const FileRow: React.FC<FileRowProps> = ({
     </article>
   );
 };
+

@@ -20,6 +20,7 @@ export const ProcessingProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
   const isProcessingRef = useRef(false);
   const queueRef = useRef<ProcessingQueueItem[]>([]);
+  const inFlightFileIdsRef = useRef<Set<string>>(new Set());
   const dismissTimerRef = useRef<number | null>(null);
 
   const dismissWidget = useCallback(() => {
@@ -48,6 +49,7 @@ export const ProcessingProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         const current = queueRef.current.shift();
         if (!current) return;
 
+        inFlightFileIdsRef.current.add(current.file.id);
         setActiveItem(current);
         setQueuedItems([...queueRef.current]);
         setActivePercent(0);
@@ -59,8 +61,6 @@ export const ProcessingProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             current.file,
             (progress) => {
               setProgressByFile((prev) => ({ ...prev, [progress.fileId]: progress }));
-              // The compact widget follows whichever active file emitted the
-              // latest progress; per-file progress remains available in the map.
               setActiveItem(current);
               setActivePercent(Math.min(100, Math.max(0, Math.round(progress.percent))));
               if (progress.message) setActiveMessage(progress.message);
@@ -70,6 +70,8 @@ export const ProcessingProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         } catch (err) {
           console.error('Error processing background file:', current.file.file_name, err);
           setFailedCount((prev) => prev + 1);
+        } finally {
+          inFlightFileIdsRef.current.delete(current.file.id);
         }
       }
     };
@@ -87,14 +89,13 @@ export const ProcessingProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     isProcessingRef.current = false;
     setIsProcessing(false);
 
-    // An item may be appended just as the last worker exits. Start a new batch
-    // instead of leaving that item queued until another user action occurs.
     if (queueRef.current.length > 0) {
       void runProcessingQueue();
       return;
     }
 
-    // Auto-dismiss widget after 6 seconds of completion
+    inFlightFileIdsRef.current.clear();
+
     dismissTimerRef.current = window.setTimeout(() => {
       setIsWidgetVisible(false);
       dismissTimerRef.current = null;
@@ -103,17 +104,29 @@ export const ProcessingProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
   const startProcessingProject = useCallback(
     async (projectId: string, filesToProcess: FileMedia[]) => {
-      const newItems: ProcessingQueueItem[] = filesToProcess.map((file) => ({
+      const activeOrQueuedIds = new Set([
+        ...inFlightFileIdsRef.current,
+        ...queueRef.current.map((q) => q.file.id),
+      ]);
+
+      const uniqueFiles = filesToProcess.filter((f) => !activeOrQueuedIds.has(f.id));
+      if (uniqueFiles.length === 0 && isProcessingRef.current) return;
+
+      const newItems: ProcessingQueueItem[] = uniqueFiles.map((file) => ({
         file,
         projectId,
       }));
 
-      queueRef.current = [...queueRef.current, ...newItems];
-      setQueuedItems([...queueRef.current]);
-      setTotalCount((prev) => (isProcessingRef.current ? prev + newItems.length : newItems.length));
       if (!isProcessingRef.current) {
+        queueRef.current = [...newItems];
+        setQueuedItems([...newItems]);
         setCompletedCount(0);
         setFailedCount(0);
+        setTotalCount(newItems.length);
+      } else {
+        queueRef.current = [...queueRef.current, ...newItems];
+        setQueuedItems([...queueRef.current]);
+        setTotalCount((prev) => prev + newItems.length);
       }
 
       void runQueue();

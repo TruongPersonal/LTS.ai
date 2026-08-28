@@ -17,7 +17,6 @@ export const TARGET_LANGUAGES: LanguageOption[] = [
 ];
 
 export const NATIVE_LANGUAGE_NAMES: Record<string, string> = {
-  // ISO-639-1 Codes
   vi: 'Tiếng Việt',
   en: 'English',
   ja: '日本語',
@@ -31,8 +30,6 @@ export const NATIVE_LANGUAGE_NAMES: Record<string, string> = {
   pt: 'Português',
   th: 'ไทย',
   id: 'Bahasa Indonesia',
-
-  // Full English names from Whisper/Gemini/AI detection
   vietnamese: 'Tiếng Việt',
   english: 'English',
   japanese: '日本語',

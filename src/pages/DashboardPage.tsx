@@ -12,10 +12,9 @@ import { ConfirmDialog } from '../components/common/ConfirmDialog';
 interface DashboardPageProps {
   onSelectProject: (project: Project) => void;
   intent?: { type: 'create' | 'search'; id: number } | null;
-  checkoutNotice?: { type: 'success' | 'error'; message: string } | null;
 }
 
-export const DashboardPage: React.FC<DashboardPageProps> = ({ onSelectProject, intent, checkoutNotice }) => {
+export const DashboardPage: React.FC<DashboardPageProps> = ({ onSelectProject, intent }) => {
   const { t } = useTranslation();
   const { profile } = useAuth();
   const {
@@ -64,11 +63,6 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ onSelectProject, i
 
   return (
     <div className="workspace-page ui-container py-9 sm:py-12 space-y-8">
-      {checkoutNotice && (
-        <div className={checkoutNotice.type === 'success' ? 'ui-status-success p-3 text-xs' : 'ui-status-error p-3 text-xs'} role="status">
-          {checkoutNotice.message}
-        </div>
-      )}
       <section className="workspace-page-header">
         <div className="max-w-2xl">
           <h1 className="text-3xl sm:text-4xl font-extrabold tracking-[-0.035em]">

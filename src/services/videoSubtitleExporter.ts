@@ -2,7 +2,7 @@ import { FFmpeg } from '@ffmpeg/ffmpeg';
 import { fetchFile } from '@ffmpeg/util';
 import type { SubtitleItem } from '../types/database';
 import { exportToSrt } from '../utils/subtitleParsers';
-import { acquireFfmpegLock, getFfmpeg, terminateFfmpeg } from './ffmpegRuntime';
+import { acquireFfmpegLock, getFfmpeg } from './ffmpegRuntime';
 
 const BUNDLED_FONT_URL = '/NotoSansCJKjp-Regular.otf';
 const FONT_DIRECTORY = '/fonts';
@@ -27,7 +27,6 @@ export interface VideoSubtitleExportOptions {
   subtitles: SubtitleItem[];
   fileName: string;
   onProgress?: (progress: number) => void;
-  signal?: AbortSignal;
 }
 
 function messageFromError(error: unknown): string {
@@ -53,29 +52,21 @@ function clampProgress(progress: number): number {
   return Math.min(1, Math.max(0, progress));
 }
 
-function createVideoExportCanceledError(): Error {
-  const error = new Error('Video export was canceled.');
-  error.name = 'AbortError';
-  return error;
-}
-
 async function cleanupFiles(ffmpeg: FFmpeg, fileNames: string[]): Promise<void> {
   await Promise.allSettled(fileNames.map((fileName) => ffmpeg.deleteFile(fileName)));
 }
 
-// The bundled CJK font (~5 MB) is fetched once per app session and kept in the
-// FFmpeg filesystem across exports, so repeated exports skip both the network
-// fetch and the filesystem write.
 let fontDataPromise: Promise<Uint8Array> | null = null;
 
-function loadBundledFontData(): Promise<Uint8Array> {
+async function loadBundledFontData(): Promise<Uint8Array> {
   if (!fontDataPromise) {
     fontDataPromise = fetchFile(BUNDLED_FONT_URL).catch((error) => {
       fontDataPromise = null;
       throw error;
     });
   }
-  return fontDataPromise;
+  const data = await fontDataPromise;
+  return data.slice(0);
 }
 
 async function ensureBundledFont(ffmpeg: FFmpeg): Promise<void> {
@@ -103,11 +94,7 @@ export async function exportVideoWithSubtitles({
   subtitles,
   fileName,
   onProgress,
-  signal,
 }: VideoSubtitleExportOptions): Promise<Blob> {
-  if (signal?.aborted) {
-    throw createVideoExportCanceledError();
-  }
 
   if (
     videoBlob.size === 0 ||
@@ -141,25 +128,7 @@ export async function exportVideoWithSubtitles({
   let phase: VideoExportErrorKind = 'load';
   let av1InputDetected = false;
   let av1DecodeFailureDetected = false;
-  let canceled = Boolean(signal?.aborted);
-  let cancelListenerAttached = false;
   let inputMounted = false;
-
-  const handleAbort = () => {
-    canceled = true;
-    if (ffmpeg) {
-      terminateFfmpeg(ffmpeg);
-    }
-  };
-
-  const throwIfCanceled = () => {
-    if (canceled || signal?.aborted) {
-      if (ffmpeg) {
-        terminateFfmpeg(ffmpeg);
-      }
-      throw createVideoExportCanceledError();
-    }
-  };
 
   const handleProgress = ({ progress }: { progress: number }) => {
     onProgress?.(clampProgress(progress));
@@ -181,19 +150,11 @@ export async function exportVideoWithSubtitles({
   };
 
   try {
-    if (signal) {
-      signal.addEventListener('abort', handleAbort, { once: true });
-      cancelListenerAttached = true;
-    }
-    throwIfCanceled();
-
     try {
       ffmpeg = await getFfmpeg();
-      throwIfCanceled();
       ffmpeg.on('log', handleLog);
       logListenerAttached = true;
       await ensureBundledFont(ffmpeg);
-      throwIfCanceled();
       phase = 'execution';
       ffmpeg.on('progress', handleProgress);
       progressListenerAttached = true;
@@ -203,9 +164,7 @@ export async function exportVideoWithSubtitles({
       const workerFsType = 'WORKERFS' as Parameters<FFmpeg['mount']>[0];
       await ffmpeg.mount(workerFsType, { blobs: [{ name: inputName, data: videoBlob }] }, mountDirectory);
       inputMounted = true;
-      throwIfCanceled();
       await ffmpeg.writeFile(subtitleName, new TextEncoder().encode(exportToSrt(subtitles)));
-      throwIfCanceled();
 
       const exitCode = await ffmpeg.exec([
         '-y',
@@ -216,12 +175,9 @@ export async function exportVideoWithSubtitles({
         '-map',
         '0:a?',
         '-vf',
-        `subtitles=${subtitleName}:fontsdir=${FONT_DIRECTORY}:force_style=FontName=Noto Sans CJK JP`,
+        `subtitles=${subtitleName}:fontsdir=${FONT_DIRECTORY}:force_style='FontName=Noto Sans CJK JP,FontSize=16,BorderStyle=3,BackColour=&H60000000,Outline=1,MarginV=14'`,
         '-c:v',
         'libx264',
-        // ultrafast is the fastest x264 preset; on the single-thread WASM core
-        // it cuts encode time roughly 2-3x vs veryfast at the cost of a larger
-        // output file. Encoding speed is the dominant UX cost of this export.
         '-preset',
         'ultrafast',
         '-crf',
@@ -248,7 +204,6 @@ export async function exportVideoWithSubtitles({
       }
 
       phase = 'output';
-      throwIfCanceled();
       const outputData = await ffmpeg.readFile(outputName, 'binary');
       if (typeof outputData === 'string' || outputData.byteLength === 0) {
         throw new VideoSubtitleExportError(
@@ -257,37 +212,35 @@ export async function exportVideoWithSubtitles({
         );
       }
 
-      throwIfCanceled();
       onProgress?.(1);
-      // readFile already returns a copy transferred from the FFmpeg worker, so
-      // wrap it directly instead of duplicating hundreds of MB synchronously.
       return new Blob([outputData as unknown as BlobPart], { type: 'video/mp4' });
     } catch (error) {
-      if (canceled || signal?.aborted) {
-        throw createVideoExportCanceledError();
-      }
       if (import.meta.env.DEV) {
         console.error('[VideoSubtitleExporter]', { phase, error });
       }
       throw asVideoExportError(error, phase);
     }
   } finally {
-    if (signal && cancelListenerAttached) {
-      signal.removeEventListener('abort', handleAbort);
+    try {
+      if (ffmpeg) {
+        if (logListenerAttached) {
+          try { ffmpeg.off('log', handleLog); } catch { /* ignore */ }
+        }
+        if (progressListenerAttached) {
+          try { ffmpeg.off('progress', handleProgress); } catch { /* ignore */ }
+        }
+        await cleanupFiles(ffmpeg, ownedFiles).catch(() => undefined);
+        if (inputMounted) {
+          await ffmpeg.unmount(mountDirectory).catch(() => undefined);
+        }
+        await ffmpeg.deleteDir(mountDirectory).catch(() => undefined);
+      }
+    } catch (cleanupError) {
+      if (import.meta.env.DEV) {
+        console.warn('[VideoSubtitleExporter] Cleanup error:', cleanupError);
+      }
+    } finally {
+      release();
     }
-    if (ffmpeg) {
-      if (logListenerAttached) {
-        ffmpeg.off('log', handleLog);
-      }
-      if (progressListenerAttached) {
-        ffmpeg.off('progress', handleProgress);
-      }
-      await cleanupFiles(ffmpeg, ownedFiles);
-      if (inputMounted) {
-        await ffmpeg.unmount(mountDirectory).catch(() => undefined);
-      }
-      await ffmpeg.deleteDir(mountDirectory).catch(() => undefined);
-    }
-    release();
   }
 }

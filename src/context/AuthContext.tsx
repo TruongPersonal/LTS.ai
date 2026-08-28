@@ -9,6 +9,7 @@ import {
   supabase,
 } from '../lib/supabase';
 import { normalizePlan, normalizeUserRole, type Profile } from '../types/database';
+import { systemService } from '../services/systemService';
 import { AuthContext } from './auth-context';
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -46,9 +47,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       if (data) {
+        const rawPlan = normalizePlan(data.plan);
+        const isPlanExpired =
+          rawPlan !== 'free' &&
+          Boolean(data.plan_expires_at) &&
+          !Number.isNaN(new Date(data.plan_expires_at).getTime()) &&
+          new Date(data.plan_expires_at).getTime() <= Date.now();
+
         setProfile({
           ...data,
-          plan: normalizePlan(data.plan),
+          plan: isPlanExpired ? 'free' : rawPlan,
+          plan_expires_at: isPlanExpired ? null : data.plan_expires_at,
           role: normalizeUserRole(data.role),
         });
       } else {
@@ -75,12 +84,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 plan: normalizePlan(createdData.plan),
                 role: normalizeUserRole(createdData.role),
               }
-            : {
-                ...profilePayload,
-                plan: 'free' as const,
-                role: 'user' as const,
-                created_at: new Date().toISOString(),
-              }
+            : null
         );
       }
     } catch (err) {
@@ -106,15 +110,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     setUser(authUser);
     await fetchProfile(authUser);
-    if (typeof window !== 'undefined') {
-      if (window.location.hash || window.location.href.endsWith('#')) {
-        const cleanUrl = window.location.pathname + window.location.search;
-        window.history.replaceState(null, '', cleanUrl || '/');
-      }
-    }
   }, [fetchProfile, signOut]);
 
   useEffect(() => {
+    void systemService.fetchAndApplyQuotas();
+
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       const providerToken = persistGoogleProviderToken(session);
       if (session?.user && !isGoogleTokenExpired()) {

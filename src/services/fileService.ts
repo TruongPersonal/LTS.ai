@@ -143,7 +143,6 @@ function sanitizeErrorMessage(rawError: unknown): string {
 
   const rawMessage = rawError instanceof Error ? rawError.message : String(rawError || '');
   
-  // 1. Connection & Local Load & Processing Payload errors
   if (
     !rawMessage ||
     rawMessage.includes('Failed to fetch') ||
@@ -163,12 +162,10 @@ function sanitizeErrorMessage(rawError: unknown): string {
     return i18n.t('processing.processFailed');
   }
 
-  // 2. Rate Limit (429) errors
   if (rawMessage.includes('429') || rawMessage.toLowerCase().includes('rate limit')) {
     return i18n.t('media.systemQuotaExceeded');
   }
 
-  // 3. Server 500 / Http Errors
   if (
     rawMessage.includes('non-2xx status code') ||
     rawMessage.includes('FunctionsHttpError') ||
@@ -295,8 +292,6 @@ async function processMediaFile(
     );
     const requestNextChunk = () => {
       const promise = chunkIterator.next();
-      // Attach a rejection handler immediately because this promise may settle
-      // while the current chunk is still waiting on the network.
       void promise.catch(() => undefined);
       return promise;
     };
@@ -311,8 +306,6 @@ async function processMediaFile(
         }
 
         const chunk = nextChunk.value;
-        // Start encoding the next chunk before uploading the current one. FFmpeg
-        // runs in its worker while the transcription request waits on network.
         nextChunkPromise = requestNextChunk();
 
         if (!sawChunk) {
@@ -341,8 +334,6 @@ async function processMediaFile(
         chunkResults.push(await transcribeChunk(projectId, file.id, attemptId, chunk));
       }
     } finally {
-      // If transcription fails while the next chunk is encoding, wait for that
-      // single in-flight encode and then close the generator so MEMFS is cleaned.
       if (nextChunkPromise) {
         await nextChunkPromise.catch(() => undefined);
       }
@@ -352,7 +343,6 @@ async function processMediaFile(
     emitProgress(onProgress, file.id, 'finalizing', 86, i18n.t('processing.saving'));
     const merged = mergeTranscriptionChunks(chunkResults);
 
-    // 1. Save source subtitles to Supabase DB
     await supabase.from('subtitles').upsert(
       {
         file_id: file.id,
@@ -364,7 +354,6 @@ async function processMediaFile(
       { onConflict: 'file_id,language' }
     );
 
-    // 2. Fetch project target language
     const { data: projectData } = await supabase
       .from('projects')
       .select('target_language')
@@ -372,7 +361,6 @@ async function processMediaFile(
       .single();
     const targetLanguage = projectData?.target_language || 'vi';
 
-    // 3. Client-driven batching for translation
     const translatedSubtitles = await translateSubtitlesClientSide(
       projectId,
       file.id,
@@ -382,7 +370,6 @@ async function processMediaFile(
       onProgress
     );
 
-    // 4. Save target translated subtitles to Supabase DB
     await supabase.from('subtitles').upsert(
       {
         file_id: file.id,
@@ -454,7 +441,6 @@ async function translateSubtitlesClientSide(
     translatedAll.push(...batchTranslated);
   }
 
-  // Force exact 1-to-1 alignment with sourceSubtitles to guarantee continuous global IDs (1..N) and exact timestamps
   return sourceSubtitles.map((source, index) => {
     const translatedItem = translatedAll[index];
     return {

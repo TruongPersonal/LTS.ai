@@ -19,10 +19,10 @@ import { EditorSkeleton } from './components/common/LoadingSkeleton';
 import { projectService } from './services/projectService';
 import { fileService } from './services/fileService';
 import { stripeCheckoutService } from './services/stripeCheckoutService';
-import type { Project, FileMedia } from './types/database';
+import { CheckoutSuccessModal } from './components/subscription/CheckoutSuccessModal';
+import { Toaster, type ToastItem } from './components/common/Toaster';
+import type { Project, FileMedia, Plan } from './types/database';
 
-// Heavy authenticated pages are lazy-loaded so the public landing/login
-// bundle stays small (code-splitting per route).
 const DashboardPage = lazy(() =>
   import('./pages/DashboardPage').then((m) => ({ default: m.DashboardPage }))
 );
@@ -97,6 +97,7 @@ const PublicLandingRoute: React.FC = () => {
   const isAppLoading = useFixedLoading(loading, 1200);
 
   if (isAppLoading) return <PulseLoadingScreen />;
+  if (profile?.role === 'admin') return <Navigate to="/admin" replace />;
   if (profile) return <Navigate to="/projects" replace />;
 
   return (
@@ -113,6 +114,7 @@ const PublicLoginRoute: React.FC = () => {
   const isAppLoading = useFixedLoading(loading, 1200);
 
   if (isAppLoading) return <PulseLoadingScreen />;
+  if (profile?.role === 'admin') return <Navigate to="/admin" replace />;
   if (profile) return <Navigate to="/projects" replace />;
 
   return (
@@ -123,7 +125,7 @@ const PublicLoginRoute: React.FC = () => {
   );
 };
 
-const ProtectedLayout: React.FC = () => {
+const ProtectedUserLayout: React.FC = () => {
   const { profile, loading } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
@@ -131,16 +133,14 @@ const ProtectedLayout: React.FC = () => {
 
   if (isAppLoading) return <PulseLoadingScreen />;
   if (!profile) return <Navigate to="/" replace />;
+  if (profile.role === 'admin') return <Navigate to="/admin" replace />;
 
   const isEditorView = location.pathname.includes('/editor');
-  const isAdminView = location.pathname.startsWith('/admin');
-  const activeView = isAdminView
-    ? 'admin'
-    : isEditorView
-      ? 'editor'
-      : location.pathname.startsWith('/projects/')
-        ? 'project'
-        : 'projects';
+  const activeView = isEditorView
+    ? 'editor'
+    : location.pathname.startsWith('/projects/')
+      ? 'project'
+      : 'projects';
 
   return (
     <div className="authenticated-shell">
@@ -148,7 +148,6 @@ const ProtectedLayout: React.FC = () => {
         onHome={() => navigate('/projects')}
         onCreateProject={() => navigate('/projects?intent=create')}
         onSearchProjects={() => navigate('/projects?intent=search')}
-        onAdmin={() => navigate('/admin')}
         editorActive={isEditorView}
         activeView={activeView}
       />
@@ -162,16 +161,26 @@ const ProtectedLayout: React.FC = () => {
 };
 
 const DashboardRoute: React.FC = () => {
-  const { t } = useTranslation();
-  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const { t } = useTranslation();
   const { refreshProfile } = useAuth();
   const intentType = searchParams.get('intent');
   const checkoutStatus = searchParams.get('checkout');
   const checkoutSessionId = searchParams.get('session_id');
   const [intentId, setIntentId] = useState(0);
-  const [checkoutNotice, setCheckoutNotice] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const [successPlan, setSuccessPlan] = useState<Plan | null>(null);
+  const [toasts, setToasts] = useState<ToastItem[]>([]);
   const handledCheckoutRef = useRef<string | null>(null);
+
+  const showToast = (message: string, type: ToastItem['type'] = 'success') => {
+    const id = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+    setToasts((prev) => [...prev, { id, type, message }]);
+  };
+
+  const dismissToast = (id: string) => {
+    setToasts((prev) => prev.filter((t) => t.id !== id));
+  };
 
   useEffect(() => {
     if (intentType) setIntentId((id) => id + 1);
@@ -187,33 +196,28 @@ const DashboardRoute: React.FC = () => {
     const clearCheckoutParams = () => navigate('/projects', { replace: true });
 
     if (checkoutStatus === 'cancelled') {
-      setCheckoutNotice({ type: 'error', message: t('subscription.checkoutCancelled') });
+      showToast(t('subscription.checkoutCancelled'), 'error');
       clearCheckoutParams();
       return;
     }
 
     if (checkoutStatus !== 'success' || !checkoutSessionId) {
-      setCheckoutNotice({ type: 'error', message: t('subscription.checkoutFailed') });
+      showToast(t('subscription.checkoutFailed'), 'error');
       clearCheckoutParams();
       return;
     }
 
-    setCheckoutNotice({ type: 'success', message: t('subscription.checkoutProcessing') });
+    showToast(t('subscription.checkoutProcessing'), 'info');
     void stripeCheckoutService
       .completeSession(checkoutSessionId)
       .then(async ({ plan }) => {
         await refreshProfile();
-        setCheckoutNotice({
-          type: 'success',
-          message: t('subscription.checkoutSuccess', {
-            plan: t(`subscription.plans.${plan}.name`),
-          }),
-        });
+        setSuccessPlan(plan);
         clearCheckoutParams();
       })
       .catch((error) => {
         console.error('Could not verify Stripe Checkout:', error);
-        setCheckoutNotice({ type: 'error', message: t('subscription.checkoutFailed') });
+        showToast(t('subscription.checkoutFailed'), 'error');
         clearCheckoutParams();
       });
   }, [checkoutSessionId, checkoutStatus, navigate, refreshProfile, t]);
@@ -224,11 +228,22 @@ const DashboardRoute: React.FC = () => {
       : null;
 
   return (
-    <DashboardPage
-      intent={intent}
-      checkoutNotice={checkoutNotice}
-      onSelectProject={(project) => navigate(`/projects/${project.id}`)}
-    />
+    <>
+      <DashboardPage
+        intent={intent}
+        onSelectProject={(project) => navigate(`/projects/${project.id}`)}
+      />
+
+      <Toaster toasts={toasts} onDismiss={dismissToast} position="bottom-right" />
+
+      {successPlan && (
+        <CheckoutSuccessModal
+          isOpen
+          onClose={() => setSuccessPlan(null)}
+          plan={successPlan}
+        />
+      )}
+    </>
   );
 };
 
@@ -396,28 +411,33 @@ const EditorRoute: React.FC = () => {
 };
 
 const AdminRoute: React.FC = () => {
-  const { profile } = useAuth();
-  if (profile?.role !== 'admin') return <Navigate to="/projects" replace />;
+  const { profile, loading } = useAuth();
+  const isAppLoading = useFixedLoading(loading, 1200);
+
+  if (isAppLoading) return <PulseLoadingScreen />;
+  if (!profile) return <Navigate to="/login" replace />;
+  if (profile.role !== 'admin') return <Navigate to="/projects" replace />;
   return <AdminPage />;
 };
 
 export const AppRoutes: React.FC = () => {
-  // Suspense shows the shared pulse loader while a lazy route chunk downloads.
   return (
     <Suspense fallback={<PulseLoadingScreen />}>
-    <Routes>
-      <Route path="/" element={<PublicLandingRoute />} />
-      <Route path="/login" element={<PublicLoginRoute />} />
+      <Routes>
+        <Route path="/" element={<PublicLandingRoute />} />
+        <Route path="/login" element={<PublicLoginRoute />} />
 
-      <Route element={<ProtectedLayout />}>
-        <Route path="/projects" element={<DashboardRoute />} />
-        <Route path="/projects/:projectId" element={<ProjectDetailRoute />} />
-        <Route path="/projects/:projectId/editor/:fileId" element={<EditorRoute />} />
-        <Route path="/admin" element={<AdminRoute />} />
-      </Route>
+        <Route element={<ProtectedUserLayout />}>
+          <Route path="/projects" element={<DashboardRoute />} />
+          <Route path="/projects/:projectId" element={<ProjectDetailRoute />} />
+          <Route path="/projects/:projectId/editor/:fileId" element={<EditorRoute />} />
+        </Route>
 
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
+        <Route path="/admin" element={<Navigate to="/admin/overview" replace />} />
+        <Route path="/admin/:section" element={<AdminRoute />} />
+
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
     </Suspense>
   );
 };

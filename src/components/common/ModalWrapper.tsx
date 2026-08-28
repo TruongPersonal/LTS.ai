@@ -11,6 +11,7 @@ export interface ModalWrapperProps {
   icon?: React.ReactNode;
   maxWidth?: 'sm' | 'md' | 'lg' | 'xl' | '2xl';
   children: React.ReactNode;
+  showCloseButton?: boolean;
 }
 
 const focusableSelector = [
@@ -30,6 +31,7 @@ export const ModalWrapper: React.FC<ModalWrapperProps> = ({
   icon,
   maxWidth = 'md',
   children,
+  showCloseButton = true,
 }) => {
   const { t } = useTranslation();
   const titleId = useId();
@@ -53,6 +55,7 @@ export const ModalWrapper: React.FC<ModalWrapperProps> = ({
 
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
+        if (!showCloseButton) return;
         event.preventDefault();
         onClose();
         return;
@@ -84,7 +87,7 @@ export const ModalWrapper: React.FC<ModalWrapperProps> = ({
       const prior = priorFocusRef.current;
       if (prior?.isConnected) window.setTimeout(() => prior.focus(), 0);
     };
-  }, [isOpen, onClose]);
+  }, [isOpen, onClose, showCloseButton]);
 
   if (!isOpen) return null;
 
@@ -92,7 +95,7 @@ export const ModalWrapper: React.FC<ModalWrapperProps> = ({
 
   return ReactDOM.createPortal(
     <div className="ui-modal-overlay" role="presentation">
-      <div className="absolute inset-0" onClick={onClose} aria-hidden="true" />
+      <div className="absolute inset-0" onClick={showCloseButton ? onClose : undefined} aria-hidden="true" />
       <div
         ref={dialogRef}
         tabIndex={-1}
@@ -109,9 +112,11 @@ export const ModalWrapper: React.FC<ModalWrapperProps> = ({
               {subtitle && <p className="text-xs ui-muted mt-0.5">{subtitle}</p>}
             </div>
           </div>
-          <button onClick={onClose} className="ui-icon-button ui-icon-button-md" title={t('dialog.close')} aria-label={t('accessibility.closeDialog')}>
-            <X className="size-4" />
-          </button>
+          {showCloseButton && (
+            <button onClick={onClose} className="ui-icon-button ui-icon-button-md" title={t('dialog.close')} aria-label={t('accessibility.closeDialog')}>
+              <X className="size-4" />
+            </button>
+          )}
         </div>
         <div className="p-5 sm:p-6">{children}</div>
       </div>
