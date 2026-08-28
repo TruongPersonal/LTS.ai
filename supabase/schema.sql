@@ -10,9 +10,25 @@
 --   3. Bỏ extension "uuid-ossp" không dùng (UUID = pg_catalog.gen_random_uuid()).
 --   4. Khôi phục GRANT DELETE trên files_media (trạng thái cuối của gốc có DELETE).
 --   5. Thêm lại NOTIFY pgrst 'reload schema' trước COMMIT.
+--   6. Bổ sung ALTER TABLE ... ADD COLUMN IF NOT EXISTS cho các cột mới của
+--      profiles (plan_expires_at, is_banned): CREATE TABLE IF NOT EXISTS bị
+--      bỏ qua trên DB đã có bảng, thiếu ALTER sẽ làm chết pipeline xử lý
+--      media với lỗi 42703 khi claim_processing_chunk tham chiếu cột mới.
+--   7. Bổ sung DROP POLICY IF EXISTS cho policy quotas (system_settings):
+--      trước đây thiếu nên chạy schema lần thứ 2 bị lỗi duplicate policy.
+--   8. admin_set_user_plan đồng bộ plan_expires_at (free = xoá hạn,
+--      pro/max = +30 ngày) nhất quán với complete-checkout-session.
 --
--- Bootstrap admin đầu tiên (chạy 1 lần sau khi profile đã tồn tại):
---   UPDATE lts_ai.profiles SET role = 'admin' WHERE email = 'your-admin@email.com';
+-- QUY TRÌNH LÀM MỚI DB (wipe & rebuild):
+--   Bước 0. BACKUP trước: tối thiểu bảng profiles (email/plan/role) và
+--           subtitles/projects nếu cần giữ dữ liệu. Storage (Supabase
+--           Storage/Drive) và auth.users KHÔNG nằm trong schema lts_ai.
+--   Bước 1. DROP SCHEMA IF EXISTS lts_ai CASCADE;   (chỉ schema lts_ai!)
+--   Bước 2. Chạy toàn bộ file schema.sql này.
+--   Bước 3. Bootstrap admin: UPDATE lts_ai.profiles SET role='admin' ...
+--           (chạy sau khi user đó đăng nhập lần đầu để profile được tạo).
+--   Bước 4. Deploy lại Edge Functions (admin, process-media,
+--           complete-checkout-session) và deploy frontend.
 -- =========================================================
 
 BEGIN;
@@ -58,6 +74,14 @@ CREATE TABLE IF NOT EXISTS lts_ai.profiles (
         DEFAULT ((NOW() AT TIME ZONE 'UTC')::DATE),
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+-- Chiến lược "fresh-apply + re-runnable": CREATE TABLE IF NOT EXISTS phía trên
+-- bị BỎ QUA khi bảng đã tồn tại (DB cũ đang chạy), nên MỌI cột thêm mới vào
+-- các bảng hiện hữu PHẢI có lệnh ALTER TABLE ... ADD COLUMN IF NOT EXISTS
+-- tương ứng tại khu vực này, nếu không hàm/function mới tham chiếu cột đó
+-- sẽ lỗi 42703 (column does not exist) và làm chết pipeline xử lý media.
+ALTER TABLE lts_ai.profiles ADD COLUMN IF NOT EXISTS plan_expires_at TIMESTAMPTZ;
+ALTER TABLE lts_ai.profiles ADD COLUMN IF NOT EXISTS is_banned BOOLEAN NOT NULL DEFAULT FALSE;
 
 -- =========================================================
 -- PROJECTS
@@ -206,6 +230,7 @@ ON CONFLICT (key) DO NOTHING;
 
 ALTER TABLE lts_ai.system_settings ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Allow public read access for quotas" ON lts_ai.system_settings;
 CREATE POLICY "Allow public read access for quotas"
     ON lts_ai.system_settings
     FOR SELECT
@@ -383,6 +408,8 @@ AS $$
 DECLARE
     actor_id UUID := auth.uid();
     previous_plan TEXT;
+    previous_expires_at TIMESTAMPTZ;
+    new_expires_at TIMESTAMPTZ;
     changed_at TIMESTAMPTZ := NOW();
 BEGIN
     IF actor_id IS NULL THEN
@@ -405,8 +432,8 @@ BEGIN
             USING ERRCODE = '22023';
     END IF;
 
-    SELECT plan
-    INTO previous_plan
+    SELECT plan, plan_expires_at
+    INTO previous_plan, previous_expires_at
     FROM lts_ai.profiles
     WHERE id = p_target_user_id
     FOR UPDATE;
@@ -416,8 +443,16 @@ BEGIN
             USING ERRCODE = 'P0002';
     END IF;
 
+    -- Đồng bộ với model gói 30 ngày của complete-checkout-session:
+    -- free => xoá hạn (gói vĩnh viễn), pro/max => đặt hạn 30 ngày kể từ lúc cấp.
+    new_expires_at := CASE
+        WHEN p_new_plan = 'free' THEN NULL::TIMESTAMPTZ
+        ELSE NOW() + INTERVAL '30 days'
+    END;
+
     UPDATE lts_ai.profiles
-    SET plan = p_new_plan
+    SET plan = p_new_plan,
+        plan_expires_at = new_expires_at
     WHERE id = p_target_user_id;
 
     INSERT INTO lts_ai.admin_audit_log (
@@ -427,8 +462,8 @@ BEGIN
         actor_id,
         p_target_user_id,
         'set_plan',
-        jsonb_build_object('plan', previous_plan),
-        jsonb_build_object('plan', p_new_plan),
+        jsonb_build_object('plan', previous_plan, 'plan_expires_at', previous_expires_at),
+        jsonb_build_object('plan', p_new_plan, 'plan_expires_at', new_expires_at),
         changed_at
     );
 
@@ -436,6 +471,7 @@ BEGIN
         'target_user_id', p_target_user_id,
         'previous_plan', previous_plan,
         'plan', p_new_plan,
+        'plan_expires_at', new_expires_at,
         'changed_at', changed_at
     );
 END;

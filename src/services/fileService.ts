@@ -20,7 +20,7 @@ type EdgeResult = {
   subtitles?: Array<{ id: number; start: number; end: number; text: string }>;
 };
 
-const FILE_PROCESSING_CONCURRENCY = 1;
+const FILE_PROCESSING_CONCURRENCY = 2;
 
 class EdgeInvocationError extends Error {
   readonly code?: string;

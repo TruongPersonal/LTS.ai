@@ -4,7 +4,7 @@ import type { ProcessingProgress } from '../types/processing';
 import { fileService } from '../services/fileService';
 import { ProcessingContext, type ProcessingQueueItem } from './processing-context';
 
-const FILE_PROCESSING_CONCURRENCY = 1;
+const FILE_PROCESSING_CONCURRENCY = 2;
 
 export const ProcessingProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [isProcessing, setIsProcessing] = useState(false);
