@@ -40,7 +40,6 @@ export const useProjectFiles = (projectId: string, targetLanguage: string) => {
     void loadFiles();
   }, [loadFiles]);
 
-  // Synchronize completed/failed state from global queue to file list
   useEffect(() => {
     const progressEntries = Object.values(globalProgress);
     let shouldReload = false;

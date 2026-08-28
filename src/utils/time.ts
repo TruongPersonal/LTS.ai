@@ -5,6 +5,29 @@ export const formatDisplayTime = (seconds: number): string => {
   return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
 };
 
+export const formatPlayerTime = (seconds: number): string => {
+  if (!Number.isFinite(seconds) || seconds < 0) return '0:00';
+  const totalSeconds = Math.floor(seconds);
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const remainingSeconds = totalSeconds % 60;
+  if (hours > 0) {
+    return `${hours}:${String(minutes).padStart(2, '0')}:${String(remainingSeconds).padStart(2, '0')}`;
+  }
+  return `${minutes}:${String(remainingSeconds).padStart(2, '0')}`;
+};
+
+export const formatAdminDuration = (seconds: number | null | undefined): string => {
+  if (!seconds || seconds <= 0) return '0:00';
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  const remainingSeconds = seconds % 60;
+  if (hours > 0) {
+    return `${hours}h ${minutes}m ${remainingSeconds}s`;
+  }
+  return `${minutes}:${String(remainingSeconds).padStart(2, '0')}`;
+};
+
 export const formatDuration = (seconds?: number | null): string => {
   if (!seconds || seconds <= 0 || isNaN(seconds)) return '';
   const totalSecs = Math.round(seconds);
@@ -18,9 +41,6 @@ export const formatDuration = (seconds?: number | null): string => {
   return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
 };
 
-/**
- * Formats seconds into SRT timestamp format: HH:MM:SS,mmm (e.g. 83.45 -> "00:01:23,450")
- */
 export const formatSrtTimestamp = (seconds: number): string => {
   const hours = Math.floor(seconds / 3600);
   const mins = Math.floor((seconds % 3600) / 60);
@@ -34,16 +54,10 @@ export const formatSrtTimestamp = (seconds: number): string => {
     .padStart(3, '0')}`;
 };
 
-/**
- * Formats seconds into VTT timestamp format: HH:MM:SS.mmm (e.g. 83.45 -> "00:01:23.450")
- */
 export const formatVttTimestamp = (seconds: number): string => {
   return formatSrtTimestamp(seconds).replace(',', '.');
 };
 
-/**
- * Parses timestamp string (e.g. "00:01:23,450" or "01:23.450") into total seconds number
- */
 export const parseTimestampToSeconds = (timestampStr: string): number => {
   if (!timestampStr) return 0;
   const normalized = timestampStr.trim().replace(',', '.');
@@ -61,3 +75,4 @@ export const parseTimestampToSeconds = (timestampStr: string): number => {
   }
   return parseFloat(normalized) || 0;
 };
+

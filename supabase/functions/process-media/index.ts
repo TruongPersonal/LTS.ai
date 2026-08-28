@@ -346,7 +346,6 @@ serve(async (req) => {
     const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
     const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY') ?? '';
     const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
-    const groqApiKey = Deno.env.get('GROQ_API_KEY') ?? '';
     const authorization = req.headers.get('Authorization') ?? '';
 
     if (!supabaseUrl || !supabaseAnonKey || !serviceRoleKey) {
@@ -361,6 +360,9 @@ serve(async (req) => {
     const internalClient = createClient(supabaseUrl, serviceRoleKey, {
       db: { schema: 'lts_ai' },
     });
+
+    const groqApiKey = Deno.env.get('GROQ_API_KEY') ?? '';
+    const geminiApiKey = Deno.env.get('GEMINI_API_KEY') ?? '';
 
     const { data: authData, error: authError } = await supabase.auth.getUser();
     if (authError || !authData.user) return jsonResponse({ error: 'Unauthorized.' }, 401);
@@ -543,20 +545,20 @@ serve(async (req) => {
       const message = reason instanceof Error ? reason.message : String(reason || 'Unknown processing error');
       const { error } = attemptId
         ? await internalClient.rpc('fail_processing_attempt', {
-            p_user_id: authData.user.id,
-            p_file_id: fileId,
-            p_attempt_id: attemptId,
-            p_error_message: message.slice(0, 1000),
-          })
+          p_user_id: authData.user.id,
+          p_file_id: fileId,
+          p_attempt_id: attemptId,
+          p_error_message: message.slice(0, 1000),
+        })
         : await internalClient
-            .from('files_media')
-              .update({
-                status: 'failed',
-                processing_attempt_id: null,
-                processing_last_activity_at: null,
-                error_message: message.slice(0, 1000),
-              })
-            .eq('id', fileId);
+          .from('files_media')
+          .update({
+            status: 'failed',
+            processing_attempt_id: null,
+            processing_last_activity_at: null,
+            error_message: message.slice(0, 1000),
+          })
+          .eq('id', fileId);
       if (error) console.error('Could not mark file failed:', error);
     };
 
@@ -575,20 +577,20 @@ serve(async (req) => {
         const message = String(jsonBody.error_message || 'Unknown processing error').slice(0, 1000);
         const { error } = attemptId
           ? await internalClient.rpc('fail_processing_attempt', {
-              p_user_id: authData.user.id,
-              p_file_id: fileId,
-              p_attempt_id: attemptId,
-              p_error_message: message,
-            })
+            p_user_id: authData.user.id,
+            p_file_id: fileId,
+            p_attempt_id: attemptId,
+            p_error_message: message,
+          })
           : await internalClient
-              .from('files_media')
+            .from('files_media')
             .update({
               status: 'failed',
               processing_attempt_id: null,
               processing_last_activity_at: null,
               error_message: message,
             })
-              .eq('id', fileId);
+            .eq('id', fileId);
         if (error) {
           const response = errorResponse(error);
           if (response) return response;
@@ -697,7 +699,7 @@ serve(async (req) => {
           sourceSubtitles,
           sourceLanguage,
           project.target_language,
-          Deno.env.get('GEMINI_API_KEY') ?? ''
+          geminiApiKey
         );
 
         const { error: subtitleError } = await supabase
@@ -776,7 +778,7 @@ serve(async (req) => {
           sourceSubtitles,
           sourceLanguage,
           project.target_language,
-          Deno.env.get('GEMINI_API_KEY') ?? ''
+          geminiApiKey
         );
 
         const { error: targetSaveError } = await supabase

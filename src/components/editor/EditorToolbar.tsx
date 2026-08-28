@@ -21,6 +21,7 @@ interface EditorToolbarProps {
   onExport: () => void;
   onExportVideo: () => void;
   exportVideoDisabled: boolean;
+  showExportVideo?: boolean;
 }
 
 const ToolOffIcon: React.FC<{ className?: string }> = ({ className = 'size-4' }) => (
@@ -56,6 +57,7 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
   onExport,
   onExportVideo,
   exportVideoDisabled,
+  showExportVideo = true,
 }) => {
   const { t } = useTranslation();
 
@@ -146,15 +148,17 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
             <span>{t('editor.export')}</span>
           </button>
 
-          <button
-            type="button"
-            onClick={onExportVideo}
-            disabled={exportVideoDisabled}
-            className="ui-button ui-button-secondary"
-          >
-            <FileVideo className="size-4" />
-            <span>{t('editor.exportVideo')}</span>
-          </button>
+          {showExportVideo && (
+            <button
+              type="button"
+              onClick={onExportVideo}
+              disabled={exportVideoDisabled}
+              className="ui-button ui-button-secondary"
+            >
+              <FileVideo className="size-4" />
+              <span>{t('editor.exportVideo')}</span>
+            </button>
+          )}
         </div>
       </div>
     </header>

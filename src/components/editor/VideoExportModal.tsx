@@ -1,5 +1,5 @@
 import React from 'react';
-import { AlertCircle, CheckCircle2, FileVideo, Loader2, XCircle } from 'lucide-react';
+import { AlertCircle, CheckCircle2, FileVideo, Loader2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { ModalWrapper } from '../common/ModalWrapper';
 
@@ -8,9 +8,7 @@ export type VideoExportStatus =
   | 'confirm'
   | 'preparing'
   | 'exporting'
-  | 'canceling'
   | 'completed'
-  | 'canceled'
   | 'error';
 
 export interface VideoExportModalProps {
@@ -21,7 +19,6 @@ export interface VideoExportModalProps {
   error?: string | null;
   onClose: () => void;
   onConfirm: () => void;
-  onCancel: () => void;
 }
 
 export const VideoExportModal: React.FC<VideoExportModalProps> = ({
@@ -32,11 +29,10 @@ export const VideoExportModal: React.FC<VideoExportModalProps> = ({
   error,
   onClose,
   onConfirm,
-  onCancel,
 }) => {
   const { t } = useTranslation();
   const isConfirming = status === 'confirm';
-  const isBusy = status === 'preparing' || status === 'exporting' || status === 'canceling';
+  const isBusy = status === 'preparing' || status === 'exporting';
   const percent = Math.min(100, Math.max(0, Math.round(progress * 100)));
   const handleClose = isBusy ? () => undefined : onClose;
 
@@ -84,22 +80,10 @@ export const VideoExportModal: React.FC<VideoExportModalProps> = ({
         </div>
       </div>
     ),
-    canceling: (
-      <div className="flex items-center gap-2 text-sm font-semibold text-[var(--ui-text)]" role="status" aria-live="polite" aria-busy="true">
-        <Loader2 className="size-4 animate-spin text-[var(--ui-accent)]" aria-hidden="true" />
-        <span>{t('editor.videoExport.canceling')}</span>
-      </div>
-    ),
     completed: (
       <div className="flex items-center gap-2 text-sm font-semibold text-[var(--ui-success)]" role="status" aria-live="polite">
         <CheckCircle2 className="size-4" aria-hidden="true" />
         <span>{t('editor.videoExport.completed')}</span>
-      </div>
-    ),
-    canceled: (
-      <div className="flex items-center gap-2 text-sm font-semibold text-[var(--ui-text)]" role="status" aria-live="polite">
-        <XCircle className="size-4 text-[var(--ui-muted)]" aria-hidden="true" />
-        <span>{t('editor.videoExport.canceled')}</span>
       </div>
     ),
     error: (
@@ -118,33 +102,18 @@ export const VideoExportModal: React.FC<VideoExportModalProps> = ({
       subtitle={fileName}
       icon={<FileVideo className="size-5" />}
       maxWidth="sm"
+      showCloseButton={!isBusy}
     >
       <div className="space-y-5">
         <div className="min-h-10">{statusContent}</div>
 
         {isConfirming && (
           <div className="flex items-center justify-end gap-2 border-t border-[var(--ui-border)] pt-4">
-            <button type="button" onClick={onCancel} className="ui-button ui-button-secondary" data-autofocus>
+            <button type="button" onClick={onClose} className="ui-button ui-button-secondary" data-autofocus>
               {t('editor.videoExport.cancel')}
             </button>
             <button type="button" onClick={onConfirm} className="ui-button ui-button-primary">
               {t('editor.videoExport.confirm')}
-            </button>
-          </div>
-        )}
-
-        {isBusy && (
-          <div className="flex justify-end border-t border-[var(--ui-border)] pt-4">
-            <button
-              type="button"
-              onClick={onCancel}
-              disabled={status === 'canceling'}
-              className="ui-button ui-button-danger"
-            >
-              {status === 'canceling' && <Loader2 className="size-4 animate-spin" aria-hidden="true" />}
-              <span>
-                {t(status === 'canceling' ? 'editor.videoExport.canceling' : 'editor.videoExport.cancel')}
-              </span>
             </button>
           </div>
         )}

@@ -10,9 +10,10 @@ import { normalizePlan } from '../../types/database';
 interface UserDropdownProps {
   sidebar?: boolean;
   compact?: boolean;
+  hidePlan?: boolean;
 }
 
-export const UserDropdown: React.FC<UserDropdownProps> = ({ sidebar = false, compact = false }) => {
+export const UserDropdown: React.FC<UserDropdownProps> = ({ sidebar = false, compact = false, hidePlan = false }) => {
   const { t } = useTranslation();
   const { profile, updateProfile, signOut } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
@@ -158,21 +159,23 @@ export const UserDropdown: React.FC<UserDropdownProps> = ({ sidebar = false, com
             </div>
           </div>
 
-          <div className="p-3 border-b border-[var(--ui-border)] ">
-            <button
-              type="button"
-              role="menuitem"
-              onClick={() => {
-                setIsOpen(false);
-                setIsSubscriptionOpen(true);
-              }}
-              className="ui-button ui-button-ghost w-full justify-start gap-2 !pl-0"
-            >
-              <ArrowUpCircle className="size-4" />
-              <span className="flex-1 text-left">{t('subscription.manage')}</span>
-              <span className="text-[10px] font-bold uppercase tracking-wide ui-muted">{t(`subscription.plans.${currentPlan}.name`)}</span>
-            </button>
-          </div>
+          {!hidePlan && profile?.role !== 'admin' && (
+            <div className="p-3 border-b border-[var(--ui-border)] ">
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  setIsOpen(false);
+                  setIsSubscriptionOpen(true);
+                }}
+                className="ui-button ui-button-ghost w-full justify-start gap-2 !pl-0"
+              >
+                <ArrowUpCircle className="size-4" />
+                <span className="flex-1 text-left">{t('subscription.manage')}</span>
+                <span className="text-[10px] font-bold uppercase tracking-wide ui-muted">{t(`subscription.plans.${currentPlan}.name`)}</span>
+              </button>
+            </div>
+          )}
 
           <div className="p-2">
             <button

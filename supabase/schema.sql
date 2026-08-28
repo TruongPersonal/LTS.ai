@@ -46,6 +46,10 @@ CREATE TABLE IF NOT EXISTS lts_ai.profiles (
         CONSTRAINT profiles_plan_allowed
         CHECK (plan IN ('free', 'pro', 'max')),
 
+    plan_expires_at TIMESTAMPTZ,
+
+    is_banned BOOLEAN NOT NULL DEFAULT FALSE,
+
     daily_processed_seconds INTEGER NOT NULL DEFAULT 0
         CONSTRAINT profiles_daily_processed_seconds_nonnegative
         CHECK (daily_processed_seconds >= 0),
@@ -179,16 +183,48 @@ CREATE INDEX IF NOT EXISTS idx_processing_chunk_claims_user
     ON lts_ai.processing_chunk_claims(user_id);
 
 -- =========================================================
+-- SYSTEM SETTINGS
+-- =========================================================
+CREATE TABLE IF NOT EXISTS lts_ai.system_settings (
+    key TEXT PRIMARY KEY,
+    value JSONB NOT NULL,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Seed default quotas
+INSERT INTO lts_ai.system_settings (key, value)
+VALUES
+    ('quotas', jsonb_build_object(
+        'free_daily_minutes', 10,
+        'free_max_file_size_mb', 50,
+        'pro_daily_minutes', 60,
+        'pro_max_file_size_mb', 200,
+        'max_daily_minutes', 300,
+        'max_max_file_size_mb', 500
+    ))
+ON CONFLICT (key) DO NOTHING;
+
+ALTER TABLE lts_ai.system_settings ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Allow public read access for quotas"
+    ON lts_ai.system_settings
+    FOR SELECT
+    USING (key = 'quotas');
+
+GRANT SELECT ON lts_ai.system_settings TO anon, authenticated;
+GRANT ALL ON lts_ai.system_settings TO service_role;
+
+-- =========================================================
 -- ADMIN AUDIT LOG
 -- =========================================================
 CREATE TABLE IF NOT EXISTS lts_ai.admin_audit_log (
     id UUID PRIMARY KEY DEFAULT pg_catalog.gen_random_uuid(),
 
-    actor_user_id UUID NOT NULL
-        REFERENCES auth.users(id) ON DELETE RESTRICT,
+    actor_user_id UUID
+        REFERENCES auth.users(id) ON DELETE SET NULL,
 
-    target_user_id UUID NOT NULL
-        REFERENCES auth.users(id) ON DELETE RESTRICT,
+    target_user_id UUID
+        REFERENCES auth.users(id) ON DELETE SET NULL,
 
     action TEXT NOT NULL,
     old_value JSONB,
@@ -215,6 +251,7 @@ ALTER TABLE lts_ai.files_media             ENABLE ROW LEVEL SECURITY;
 ALTER TABLE lts_ai.subtitles               ENABLE ROW LEVEL SECURITY;
 ALTER TABLE lts_ai.processing_chunk_claims ENABLE ROW LEVEL SECURITY;
 ALTER TABLE lts_ai.admin_audit_log         ENABLE ROW LEVEL SECURITY;
+ALTER TABLE lts_ai.system_settings         ENABLE ROW LEVEL SECURITY;
 
 -- Profiles --------------------------------------------------
 DROP POLICY IF EXISTS "Users can read own profile" ON lts_ai.profiles;
@@ -488,6 +525,7 @@ DECLARE
     file_status TEXT;
     file_input_source TEXT;
     profile_plan TEXT;
+    profile_expires_at TIMESTAMPTZ;
     profile_used INTEGER;
     profile_date DATE;
     daily_limit INTEGER;
@@ -547,8 +585,8 @@ BEGIN
             USING ERRCODE = 'P0003';
     END IF;
 
-    SELECT plan, daily_processed_seconds, last_processed_date
-    INTO profile_plan, profile_used, profile_date
+    SELECT plan, plan_expires_at, daily_processed_seconds, last_processed_date
+    INTO profile_plan, profile_expires_at, profile_used, profile_date
     FROM lts_ai.profiles
     WHERE id = p_user_id
     FOR UPDATE;
@@ -558,11 +596,38 @@ BEGIN
             USING ERRCODE = 'P0002';
     END IF;
 
-    daily_limit := CASE profile_plan
-        WHEN 'pro' THEN 1800
-        WHEN 'max' THEN 3600
-        ELSE 600
-    END;
+    -- Tự động hạ về free nếu gói đã hết hạn 30 ngày
+    IF profile_plan <> 'free' AND profile_expires_at IS NOT NULL AND profile_expires_at < NOW() THEN
+        profile_plan := 'free';
+        UPDATE lts_ai.profiles
+        SET plan = 'free', plan_expires_at = NULL
+        WHERE id = p_user_id;
+    END IF;
+
+    -- Lấy giới hạn hạn mức động từ system_settings (hoặc mặc định nếu chưa cấu hình)
+    SELECT COALESCE(
+        CASE profile_plan
+            WHEN 'pro' THEN (s.value->>'pro_daily_minutes')::INTEGER * 60
+            WHEN 'max' THEN (s.value->>'max_daily_minutes')::INTEGER * 60
+            ELSE (s.value->>'free_daily_minutes')::INTEGER * 60
+        END,
+        CASE profile_plan
+            WHEN 'pro' THEN 3600
+            WHEN 'max' THEN 18000
+            ELSE 600
+        END
+    )
+    INTO daily_limit
+    FROM lts_ai.system_settings AS s
+    WHERE s.key = 'quotas';
+
+    IF daily_limit IS NULL THEN
+        daily_limit := CASE profile_plan
+            WHEN 'pro' THEN 3600
+            WHEN 'max' THEN 18000
+            ELSE 600
+        END;
+    END IF;
 
     effective_used := CASE
         WHEN profile_date = today_utc THEN GREATEST(COALESCE(profile_used, 0), 0)

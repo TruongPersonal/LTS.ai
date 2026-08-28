@@ -65,16 +65,20 @@ serve(async (request) => {
     }
 
     const adminClient = createClient(supabaseUrl, serviceRoleKey, { db: { schema: 'lts_ai' } });
+    const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
     const { error: updateError } = await adminClient
       .from('profiles')
-      .update({ plan })
+      .update({
+        plan,
+        plan_expires_at: expiresAt,
+      })
       .eq('id', authData.user.id);
     if (updateError) {
       console.error('Could not update profile after Stripe Checkout:', updateError);
       return jsonResponse({ error: 'Could not apply the selected plan.' }, 500);
     }
 
-    return jsonResponse({ plan });
+    return jsonResponse({ plan, plan_expires_at: expiresAt });
   } catch (error) {
     console.error('Could not complete Stripe Checkout session:', error);
     return jsonResponse({ error: 'Could not complete the Stripe Checkout session.' }, 500);

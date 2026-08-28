@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Play } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { formatDisplayTime } from '../../utils/time';
 
 interface LandingHeroVideoProps {
   videoSrc?: string;
@@ -18,13 +19,6 @@ export const LandingHeroVideo: React.FC<LandingHeroVideoProps> = ({
   const [duration, setDuration] = useState('00:18');
   const [hasVideoError, setHasVideoError] = useState(false);
 
-  const formatTime = (secs: number) => {
-    const m = Math.floor(secs / 60);
-    const s = Math.floor(secs % 60);
-    return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
-  };
-
-  // Continuous timer while playing (starts at 00:00 and increments endlessly)
   useEffect(() => {
     if (!isPlaying) return;
 
@@ -60,7 +54,7 @@ export const LandingHeroVideo: React.FC<LandingHeroVideoProps> = ({
     if (!videoRef.current) return;
     const dur = videoRef.current.duration;
     if (dur && !isNaN(dur) && isFinite(dur)) {
-      setDuration(formatTime(dur));
+      setDuration(formatDisplayTime(dur));
     }
     setHasVideoError(false);
   };
@@ -120,7 +114,7 @@ export const LandingHeroVideo: React.FC<LandingHeroVideoProps> = ({
 
         {/* Dynamic Timestamp Badge */}
         <span className="landing-proof-time z-10 pointer-events-none font-mono">
-          {isPlaying ? formatTime(elapsedSeconds) : `00:00 → ${duration}`}
+          {isPlaying ? formatDisplayTime(elapsedSeconds) : `00:00 → ${duration}`}
         </span>
       </div>
 
