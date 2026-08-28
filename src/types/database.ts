@@ -1,6 +1,6 @@
 export type TargetLanguageCode = 'vi' | 'en' | 'zh' | 'ja' | 'ko' | 'fr' | 'it';
 
-export type FileStatus = 'draft' | 'queued' | 'processing' | 'completed' | 'failed';
+export type FileStatus = 'draft' | 'processing' | 'completed' | 'failed';
 
 export type InputSource = 'media' | 'existing_subtitle';
 

@@ -1,7 +1,6 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
-
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -60,7 +59,6 @@ function getFlacDurationSeconds(audio: File): Promise<number> {
   return audio.arrayBuffer().then((buffer) => {
     const bytes = new Uint8Array(buffer);
 
-    // FLAC signature: "fLaC"
     if (
       bytes.length < 8 ||
       String.fromCharCode(...bytes.subarray(0, 4)) !== 'fLaC'
@@ -74,13 +72,10 @@ function getFlacDurationSeconds(audio: File): Promise<number> {
     while (offset + 4 <= bytes.length) {
       const blockHeader = bytes[offset];
 
-      // Bit 7 = last metadata block flag
       const isLastBlock = (blockHeader & 0x80) !== 0;
 
-      // Bits 0-6 = metadata block type
       const blockType = blockHeader & 0x7f;
 
-      // 24-bit big-endian block length
       const blockLength =
         (bytes[offset + 1] << 16) |
         (bytes[offset + 2] << 8) |
@@ -93,25 +88,20 @@ function getFlacDurationSeconds(audio: File): Promise<number> {
         throw new Error('FLAC metadata block is truncated.');
       }
 
-      // STREAMINFO block
       if (blockType === 0) {
         foundStreamInfo = true;
 
-        // STREAMINFO must be exactly 34 bytes
         if (blockLength < 34) {
           throw new Error('Invalid FLAC STREAMINFO block.');
         }
 
         const streamInfo = bytes.subarray(dataStart, dataEnd);
 
-        // Sample rate: 20 bits
         const sampleRate =
           (streamInfo[10] << 12) |
           (streamInfo[11] << 4) |
           (streamInfo[12] >> 4);
 
-        // Total samples: 36 bits
-        // 4 low bits of byte 13 + bytes 14..17
         const totalSamples =
           (streamInfo[13] & 0x0f) * 0x100000000 +
           streamInfo[14] * 0x1000000 +
@@ -198,6 +188,36 @@ const TRANSCRIPTION_MODELS = [
   'whisper-large-v3',
 ] as const;
 
+const LANGUAGE_NAME_TO_CODE: Record<string, string> = {
+  vietnamese: 'vi',
+  english: 'en',
+  japanese: 'ja',
+  korean: 'ko',
+  chinese: 'zh',
+  french: 'fr',
+  italian: 'it',
+  spanish: 'es',
+  german: 'de',
+  russian: 'ru',
+  portuguese: 'pt',
+  thai: 'th',
+  indonesian: 'id',
+  arabic: 'ar',
+  hindi: 'hi',
+  dutch: 'nl',
+  polish: 'pl',
+  turkish: 'tr',
+  swedish: 'sv',
+  tagalog: 'tl',
+};
+
+function normalizeLanguageCode(lang: string | null | undefined): string {
+  if (!lang) return 'en';
+  const trimmed = lang.trim().toLowerCase();
+  if (trimmed.length === 2) return trimmed;
+  return LANGUAGE_NAME_TO_CODE[trimmed] || trimmed;
+}
+
 async function transcribeFlac(
   blob: Blob,
   fileName: string,
@@ -228,7 +248,7 @@ async function transcribeFlac(
       const subtitles = normalizeSegments(payload.segments || [], offsetSeconds);
 
       return {
-        sourceLanguage: String(payload.language || 'en'),
+        sourceLanguage: normalizeLanguageCode(payload.language || 'en'),
         subtitles,
       };
     } catch (err) {
@@ -336,8 +356,6 @@ Translation Principles:
   throw lastError || new Error('All Gemini translation models failed.');
 }
 
-
-
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
   if (req.method !== 'POST') return jsonResponse({ error: 'Method not allowed' }, 405);
@@ -362,7 +380,6 @@ serve(async (req) => {
     });
 
     const groqApiKey = Deno.env.get('GROQ_API_KEY') ?? '';
-    const geminiApiKey = Deno.env.get('GEMINI_API_KEY') ?? '';
 
     const { data: authData, error: authError } = await supabase.auth.getUser();
     if (authError || !authData.user) return jsonResponse({ error: 'Unauthorized.' }, 401);
@@ -412,7 +429,7 @@ serve(async (req) => {
           error_message: null,
         })
         .eq('project_id', projectId)
-        .in('status', ['queued', 'processing'])
+        .eq('status', 'processing')
         .or(`processing_last_activity_at.is.null,processing_last_activity_at.lt.${staleBefore}`);
       if (error) throw error;
       return jsonResponse({ success: true });
@@ -541,34 +558,13 @@ serve(async (req) => {
       return jsonResponse(data || { completed: true });
     }
 
-    const failFile = async (attemptId: string | null, reason: unknown) => {
-      const message = reason instanceof Error ? reason.message : String(reason || 'Unknown processing error');
-      const { error } = attemptId
-        ? await internalClient.rpc('fail_processing_attempt', {
-          p_user_id: authData.user.id,
-          p_file_id: fileId,
-          p_attempt_id: attemptId,
-          p_error_message: message.slice(0, 1000),
-        })
-        : await internalClient
-          .from('files_media')
-          .update({
-            status: 'failed',
-            processing_attempt_id: null,
-            processing_last_activity_at: null,
-            error_message: message.slice(0, 1000),
-          })
-          .eq('id', fileId);
-      if (error) console.error('Could not mark file failed:', error);
-    };
-
     if (action === 'mark_failed') {
       const attemptId = String(jsonBody.attempt_id || '').trim();
       if (
         !attemptId &&
         !(
           file.input_source === 'existing_subtitle' ||
-          (file.input_source === 'media' && ['draft', 'queued'].includes(file.status))
+          (file.input_source === 'media' && file.status === 'draft')
         )
       ) {
         return jsonResponse({ error: 'Missing processing attempt.' }, 400);
@@ -660,158 +656,8 @@ serve(async (req) => {
       });
     }
 
-    // These legacy actions are not used by the current client flow. Keeping them
-    // callable would allow media completion without a server-side chunk claim.
     if (action === 'process_existing_subtitle' || action === 'finalize_media') {
       return jsonResponse({ error: 'Unsupported action.' }, 400);
-    }
-
-    if (action === 'process_existing_subtitle') {
-      if (file.input_source !== 'existing_subtitle') {
-        return jsonResponse({ error: 'This file does not use an existing subtitle.' }, 409);
-      }
-
-      try {
-        const { error: processingError } = await internalClient
-          .from('files_media')
-          .update({
-            status: 'processing',
-            processing_attempt_id: null,
-            processing_last_activity_at: new Date().toISOString(),
-            error_message: null,
-          })
-          .eq('id', fileId);
-        if (processingError) throw processingError;
-
-        const sourceLanguage = String(file.detected_source_lang || '');
-        if (!sourceLanguage) throw new Error('Source subtitle language is missing.');
-
-        const { data: existing, error: existingError } = await supabase
-          .from('subtitles')
-          .select('language,content')
-          .eq('file_id', fileId)
-          .eq('language', sourceLanguage)
-          .maybeSingle();
-        if (existingError) throw existingError;
-
-        const sourceSubtitles = normalizeSubmittedSubtitles(existing?.content || []);
-        const translated = await translateBatchGemini(
-          sourceSubtitles,
-          sourceLanguage,
-          project.target_language,
-          geminiApiKey
-        );
-
-        const { error: subtitleError } = await supabase
-          .from('subtitles')
-          .upsert(
-            {
-              file_id: fileId,
-              language: project.target_language,
-              content: translated,
-              is_edited: false,
-              updated_at: new Date().toISOString(),
-            },
-            { onConflict: 'file_id,language' }
-          );
-        if (subtitleError) throw subtitleError;
-
-        const { error: completeError } = await internalClient
-          .from('files_media')
-          .update({
-            status: 'completed',
-            processing_attempt_id: null,
-            processing_last_activity_at: null,
-            error_message: null,
-          })
-          .eq('id', fileId);
-        if (completeError) throw completeError;
-
-        return jsonResponse({ success: true });
-      } catch (error) {
-        await failFile(null, error);
-        throw error;
-      }
-    }
-
-    if (action === 'finalize_media') {
-      if (file.input_source !== 'media') {
-        return jsonResponse({ error: 'This file does not use media transcription.' }, 409);
-      }
-      if (!['draft', 'failed', 'processing'].includes(file.status)) {
-        return jsonResponse({ error: 'This file is not finalizable.' }, 409);
-      }
-
-      try {
-        const sourceLanguage = String(jsonBody.source_language || '').trim();
-        if (!sourceLanguage || sourceLanguage.length > 32) {
-          return jsonResponse({ error: 'Invalid source_language.' }, 400);
-        }
-        const sourceSubtitles = normalizeSubmittedSubtitles(jsonBody.subtitles);
-
-        const { error: processingError } = await internalClient
-          .from('files_media')
-          .update({
-            status: 'processing',
-            processing_attempt_id: null,
-            processing_last_activity_at: new Date().toISOString(),
-            error_message: null,
-          })
-          .eq('id', fileId);
-        if (processingError) throw processingError;
-
-        const { error: sourceSaveError } = await supabase
-          .from('subtitles')
-          .upsert(
-            {
-              file_id: fileId,
-              language: sourceLanguage,
-              content: sourceSubtitles,
-              is_edited: false,
-              updated_at: new Date().toISOString(),
-            },
-            { onConflict: 'file_id,language' }
-          );
-        if (sourceSaveError) throw sourceSaveError;
-
-        const translated = await translateBatchGemini(
-          sourceSubtitles,
-          sourceLanguage,
-          project.target_language,
-          geminiApiKey
-        );
-
-        const { error: targetSaveError } = await supabase
-          .from('subtitles')
-          .upsert(
-            {
-              file_id: fileId,
-              language: project.target_language,
-              content: translated,
-              is_edited: false,
-              updated_at: new Date().toISOString(),
-            },
-            { onConflict: 'file_id,language' }
-          );
-        if (targetSaveError) throw targetSaveError;
-
-        const { error: completeError } = await internalClient
-          .from('files_media')
-          .update({
-            status: 'completed',
-            detected_source_lang: sourceLanguage,
-            processing_attempt_id: null,
-            processing_last_activity_at: null,
-            error_message: null,
-          })
-          .eq('id', fileId);
-        if (completeError) throw completeError;
-
-        return jsonResponse({ success: true });
-      } catch (error) {
-        await failFile(null, error);
-        throw error;
-      }
     }
 
     return jsonResponse({ error: 'Unsupported action.' }, 400);

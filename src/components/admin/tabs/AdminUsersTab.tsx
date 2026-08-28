@@ -1,14 +1,11 @@
 import React, { useMemo } from 'react';
 import {
-  Ban,
   Loader2,
   RefreshCw,
-  RotateCcw,
   Search,
   Shield,
   Trash2,
   UserCheck,
-  UserX,
   Users,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
@@ -31,10 +28,7 @@ interface AdminUsersTabProps {
   onSearchChange: (search: string) => void;
   onSubTabChange: (subTab: 'users' | 'admins') => void;
   onRefresh: () => void;
-  onBanUser: (user: AdminUser) => void;
-  onUnbanUser: (user: AdminUser) => void;
-  onToggleRole: (user: AdminUser) => void;
-  onResetQuota: (user: AdminUser) => void;
+  onPromoteAdmin: (user: AdminUser) => void;
   onDeleteUser: (user: AdminUser) => void;
 }
 
@@ -50,10 +44,7 @@ export const AdminUsersTab: React.FC<AdminUsersTabProps> = ({
   onSearchChange,
   onSubTabChange,
   onRefresh,
-  onBanUser,
-  onUnbanUser,
-  onToggleRole,
-  onResetQuota,
+  onPromoteAdmin,
   onDeleteUser,
 }) => {
   const { t } = useTranslation();
@@ -149,15 +140,12 @@ export const AdminUsersTab: React.FC<AdminUsersTabProps> = ({
 
       <div className="ui-card overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[750px] text-left text-sm">
+          <table className="w-full min-w-[650px] text-left text-sm">
             <thead className="bg-[var(--ui-surface-subtle)] text-xs ui-muted">
               <tr>
                 <th className="px-5 py-3 font-semibold">{t('admin.users.user')}</th>
                 {subTab === 'users' && (
                   <th className="px-5 py-3 font-semibold">{t('admin.users.plan')}</th>
-                )}
-                {subTab === 'users' && (
-                  <th className="px-5 py-3 font-semibold">{t('admin.users.status')}</th>
                 )}
                 {subTab === 'users' && (
                   <th className="px-5 py-3 font-semibold">{t('admin.users.dailyUsage')}</th>
@@ -169,13 +157,13 @@ export const AdminUsersTab: React.FC<AdminUsersTabProps> = ({
             <tbody className="divide-y divide-[var(--ui-border)]">
               {loading ? (
                 <tr>
-                  <td colSpan={6} className="px-5 py-12 text-center ui-muted">
+                  <td colSpan={5} className="px-5 py-12 text-center ui-muted">
                     <Loader2 className="size-5 animate-spin mx-auto text-[var(--ui-accent)]" />
                   </td>
                 </tr>
               ) : users.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-5 py-12 text-center ui-muted text-xs">
+                  <td colSpan={5} className="px-5 py-12 text-center ui-muted text-xs">
                     {subTab === 'admins'
                       ? t('admin.users.noAdmins')
                       : t('admin.users.noUsers')}
@@ -211,20 +199,6 @@ export const AdminUsersTab: React.FC<AdminUsersTabProps> = ({
                     )}
 
                     {subTab === 'users' && (
-                      <td className="px-5 py-3.5">
-                        {user.is_banned ? (
-                          <span className="ui-badge ui-badge-compact font-bold bg-rose-500/10 text-rose-500 border-rose-500/20">
-                            {t('admin.users.banned')}
-                          </span>
-                        ) : (
-                          <span className="ui-badge ui-badge-compact font-semibold bg-emerald-500/10 text-emerald-500 border-emerald-500/20">
-                            {t('admin.users.active')}
-                          </span>
-                        )}
-                      </td>
-                    )}
-
-                    {subTab === 'users' && (
                       <td className="px-5 py-3.5 text-xs font-mono">
                         {formatAdminDuration(user.daily_processed_seconds)}
                       </td>
@@ -237,55 +211,13 @@ export const AdminUsersTab: React.FC<AdminUsersTabProps> = ({
                     <td className="px-5 py-3.5 text-right">
                       <div className="flex items-center justify-end gap-1.5">
                         {subTab === 'users' && (
-                          <>
-                            <button
-                              type="button"
-                              onClick={() => onResetQuota(user)}
-                              className="ui-icon-button ui-icon-button-sm text-[var(--ui-accent)] hover:bg-[var(--ui-accent-soft)]"
-                              title={t('admin.users.resetQuota')}
-                            >
-                              <RotateCcw className="size-3.5" />
-                            </button>
-
-                            <button
-                              type="button"
-                              onClick={() => onToggleRole(user)}
-                              className="ui-icon-button ui-icon-button-sm text-purple-400 hover:bg-purple-500/10"
-                              title={t('admin.users.makeAdmin')}
-                            >
-                              <UserCheck className="size-3.5" />
-                            </button>
-
-                            {user.is_banned ? (
-                              <button
-                                type="button"
-                                onClick={() => onUnbanUser(user)}
-                                className="ui-icon-button ui-icon-button-sm text-emerald-500 hover:bg-emerald-500/10"
-                                title={t('admin.users.unban')}
-                              >
-                                <RotateCcw className="size-3.5" />
-                              </button>
-                            ) : (
-                              <button
-                                type="button"
-                                onClick={() => onBanUser(user)}
-                                className="ui-icon-button ui-icon-button-sm text-amber-500 hover:bg-amber-500/10"
-                                title={t('admin.users.ban')}
-                              >
-                                <Ban className="size-3.5" />
-                              </button>
-                            )}
-                          </>
-                        )}
-
-                        {subTab === 'admins' && user.id !== currentAdminId && (
                           <button
                             type="button"
-                            onClick={() => onToggleRole(user)}
-                            className="ui-icon-button ui-icon-button-sm text-amber-500 hover:bg-amber-500/10"
-                            title={t('admin.users.makeUser')}
+                            onClick={() => onPromoteAdmin(user)}
+                            className="ui-icon-button ui-icon-button-sm text-purple-400 hover:bg-purple-500/10"
+                            title={t('admin.users.makeAdmin')}
                           >
-                            <UserX className="size-3.5" />
+                            <UserCheck className="size-3.5" />
                           </button>
                         )}
 

@@ -15,19 +15,12 @@ type CursorMode = 'default' | 'pointer' | 'text' | 'disabled';
 
 const IDLE_HIDE_DELAY_MS = 1200;
 
-/**
- * Interactive Studio Ambient Canvas with:
- * 1. Global Vibrant Mouse Spotlight.
- * 2. Water Ripple wave animation on click.
- * 3. Complete Native Cursor Replacement with Fluid Studio Custom Cursor.
- * 4. Auto-hide when idle (1.2s) or when mouse leaves viewport.
- */
 export const CosmicBackground: React.FC = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const { isDark } = useTheme();
   const rafRef = useRef<number>(0);
   const idleTimerRef = useRef<number | null>(null);
-  const fadeAlphaRef = useRef<number>(0); // Smooth lerping opacity for spotlight and cursor
+  const fadeAlphaRef = useRef<number>(0); 
 
   const mouseRef = useRef({
     x: -1000,
@@ -87,7 +80,6 @@ export const CosmicBackground: React.FC = () => {
       mouseRef.current.isInsideWindow = true;
       resetIdleTimer();
 
-      // Smart cursor mode detection based on hovered element
       const target = event.target as HTMLElement | null;
       if (target) {
         if (target.closest('input, textarea, [contenteditable="true"]')) {
@@ -134,7 +126,6 @@ export const CosmicBackground: React.FC = () => {
       const x = event.clientX;
       const y = event.clientY;
 
-      // Create 3 harmonic concentric water ripple rings on click
       ripplesRef.current.push(
         {
           x,
@@ -180,17 +171,10 @@ export const CosmicBackground: React.FC = () => {
     window.addEventListener('mouseup', onMouseUp, { passive: true });
 
     const tick = () => {
-      if (document.hidden) {
-        rafRef.current = requestAnimationFrame(tick);
-        return;
-      }
-
-      // Compute target visibility alpha (0 when idle or outside window, 1 when active)
       const shouldBeVisible = mouseRef.current.isInsideWindow && !mouseRef.current.isIdle;
       const targetAlpha = shouldBeVisible ? 1 : 0;
       fadeAlphaRef.current += (targetAlpha - fadeAlphaRef.current) * 0.12;
 
-      // Physics damping for spotlight & fluid custom cursor ring
       mouseRef.current.x += (mouseRef.current.targetX - mouseRef.current.x) * 0.08;
       mouseRef.current.y += (mouseRef.current.targetY - mouseRef.current.y) * 0.08;
       mouseRef.current.ringX += (mouseRef.current.targetX - mouseRef.current.ringX) * 0.22;
@@ -200,7 +184,6 @@ export const CosmicBackground: React.FC = () => {
 
       const currentAlpha = fadeAlphaRef.current;
 
-      // 1. Enhanced Vibrant Spotlight (with auto-fade)
       if (currentAlpha > 0.005) {
         const maxDim = Math.max(canvas.width, canvas.height);
         const spotlightRadius = maxDim * 0.55;
@@ -214,8 +197,8 @@ export const CosmicBackground: React.FC = () => {
         );
 
         if (isDark) {
-          spotlight.addColorStop(0, `rgba(59, 130, 246, ${(0.15 * currentAlpha).toFixed(3)})`); // Electric Cobalt center
-          spotlight.addColorStop(0.25, `rgba(99, 102, 241, ${(0.08 * currentAlpha).toFixed(3)})`); // Indigo mid
+          spotlight.addColorStop(0, `rgba(59, 130, 246, ${(0.15 * currentAlpha).toFixed(3)})`); 
+          spotlight.addColorStop(0.25, `rgba(99, 102, 241, ${(0.08 * currentAlpha).toFixed(3)})`); 
           spotlight.addColorStop(0.55, `rgba(37, 99, 235, ${(0.025 * currentAlpha).toFixed(3)})`);
           spotlight.addColorStop(1, 'rgba(0, 0, 0, 0)');
         } else {
@@ -228,11 +211,10 @@ export const CosmicBackground: React.FC = () => {
         ctx.fillRect(0, 0, canvas.width, canvas.height);
       }
 
-      // 2. Animate Water Ripples (independent of cursor fade)
       for (let i = ripplesRef.current.length - 1; i >= 0; i--) {
         const ripple = ripplesRef.current[i];
         ripple.radius += ripple.speed;
-        ripple.alpha *= 0.945; // Smooth exponential water decay
+        ripple.alpha *= 0.945; 
 
         if (ripple.alpha <= 0.01 || ripple.radius >= ripple.maxRadius) {
           ripplesRef.current.splice(i, 1);
@@ -251,21 +233,20 @@ export const CosmicBackground: React.FC = () => {
         ctx.stroke();
       }
 
-      // 3. Fluid Custom Cursor Rendering (with smooth fade-out on idle/leave)
       if (currentAlpha > 0.005 && window.matchMedia('(pointer: fine)').matches) {
         const { mode, isClicking, targetX, targetY, ringX, ringY } = mouseRef.current;
 
         if (mode === 'text') {
-          // Studio I-Beam Text Caret Cursor
+          
           const beamHeight = 16;
           ctx.beginPath();
-          // Vertical line
+          
           ctx.moveTo(targetX, targetY - beamHeight / 2);
           ctx.lineTo(targetX, targetY + beamHeight / 2);
-          // Top serif
+          
           ctx.moveTo(targetX - 3.5, targetY - beamHeight / 2);
           ctx.lineTo(targetX + 3.5, targetY - beamHeight / 2);
-          // Bottom serif
+          
           ctx.moveTo(targetX - 3.5, targetY + beamHeight / 2);
           ctx.lineTo(targetX + 3.5, targetY + beamHeight / 2);
 
@@ -276,7 +257,7 @@ export const CosmicBackground: React.FC = () => {
           ctx.lineCap = 'round';
           ctx.stroke();
         } else if (mode === 'disabled') {
-          // Disabled Not-Allowed Cursor
+          
           ctx.beginPath();
           ctx.arc(targetX, targetY, 8, 0, Math.PI * 2);
           ctx.moveTo(targetX - 5.5, targetY + 5.5);
@@ -287,11 +268,10 @@ export const CosmicBackground: React.FC = () => {
           ctx.lineWidth = 1.5;
           ctx.stroke();
         } else {
-          // Default / Pointer Fluid Magnetic Cursor
+          
           const isPointer = mode === 'pointer';
           const targetRingRadius = isClicking ? 10 : isPointer ? 22 : 13;
 
-          // Outer Magnetic Spring Aura Ring
           ctx.beginPath();
           ctx.arc(ringX, ringY, targetRingRadius, 0, Math.PI * 2);
           if (isDark) {
@@ -313,7 +293,6 @@ export const CosmicBackground: React.FC = () => {
           ctx.fill();
           ctx.stroke();
 
-          // Inner Precise Core Dot
           ctx.beginPath();
           ctx.arc(targetX, targetY, isPointer ? 2.8 : 2.2, 0, Math.PI * 2);
           ctx.fillStyle = isDark
@@ -326,10 +305,33 @@ export const CosmicBackground: React.FC = () => {
       rafRef.current = requestAnimationFrame(tick);
     };
 
-    rafRef.current = requestAnimationFrame(tick);
+    const startLoop = () => {
+      if (!rafRef.current) {
+        rafRef.current = requestAnimationFrame(tick);
+      }
+    };
+
+    const stopLoop = () => {
+      if (rafRef.current) {
+        cancelAnimationFrame(rafRef.current);
+        rafRef.current = 0;
+      }
+    };
+
+    const onVisibilityChange = () => {
+      if (document.hidden) {
+        stopLoop();
+      } else {
+        startLoop();
+      }
+    };
+
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    startLoop();
 
     return () => {
-      cancelAnimationFrame(rafRef.current);
+      stopLoop();
+      document.removeEventListener('visibilitychange', onVisibilityChange);
       if (idleTimerRef.current !== null) {
         window.clearTimeout(idleTimerRef.current);
       }
@@ -356,7 +358,7 @@ export const CosmicBackground: React.FC = () => {
         width: '100%',
         height: '100%',
         pointerEvents: 'none',
-        zIndex: 99999, // Render on top of all elements so the custom cursor is always crisp & visible
+        zIndex: 99999, 
       }}
     />
   );

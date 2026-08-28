@@ -1,9 +1,6 @@
 import type { SubtitleItem } from '../types/database';
 import { formatSrtTimestamp, formatVttTimestamp, parseTimestampToSeconds } from './time';
 
-/**
- * Converts SubtitleItem[] array to standard .srt formatted text
- */
 export const exportToSrt = (subtitles: SubtitleItem[]): string => {
   return subtitles
     .map((item, index) => {
@@ -15,9 +12,6 @@ export const exportToSrt = (subtitles: SubtitleItem[]): string => {
     .join('\n');
 };
 
-/**
- * Converts SubtitleItem[] array to WebVTT (.vtt) formatted text
- */
 export const exportToVtt = (subtitles: SubtitleItem[]): string => {
   const header = 'WEBVTT\n\n';
   const body = subtitles
@@ -31,16 +25,10 @@ export const exportToVtt = (subtitles: SubtitleItem[]): string => {
   return header + body;
 };
 
-/**
- * Converts SubtitleItem[] array to plain text (.txt) format
- */
 export const exportToTxt = (subtitles: SubtitleItem[]): string => {
   return subtitles.map((item) => item.text.trim()).join('\n');
 };
 
-/**
- * Parses raw .srt or .vtt file string content into SubtitleItem[]
- */
 export const parseSubtitleFile = (content: string): SubtitleItem[] => {
   if (!content) return [];
   const cleanContent = content.replace(/\r\n/g, '\n').replace(/\r/g, '\n');

@@ -22,7 +22,6 @@ export const AuditLogDetailModal: React.FC<AuditLogDetailModalProps> = ({
 
   const actorEmail = String((log.new_value as Record<string, unknown> | null)?.actor_email || log.actor_user_id || '—');
   
-  // Clean new_value to remove duplicate actor_email
   const cleanedNewValue = { ...((log.new_value as Record<string, unknown> | null) || {}) };
   delete cleanedNewValue.actor_email;
   
@@ -48,7 +47,7 @@ export const AuditLogDetailModal: React.FC<AuditLogDetailModalProps> = ({
       maxWidth="2xl"
     >
       <div className="space-y-5">
-        {/* Meta summary strip */}
+        {}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-3.5 bg-[var(--ui-surface-subtle)] rounded-xl border border-[var(--ui-border)] text-xs">
           <div>
             <div className="ui-muted mb-1">{t('admin.logs.action', 'Hành động')}</div>
@@ -66,9 +65,9 @@ export const AuditLogDetailModal: React.FC<AuditLogDetailModalProps> = ({
           </div>
         </div>
 
-        {/* Diff Comparison Blocks */}
+        {}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* Old Value */}
+          {}
           <div className="flex flex-col space-y-2">
             <div className="flex items-center gap-1.5 text-xs font-semibold text-[var(--ui-danger)]">
               <div className="size-2 rounded-full bg-[var(--ui-danger)]" />
@@ -87,7 +86,7 @@ export const AuditLogDetailModal: React.FC<AuditLogDetailModalProps> = ({
             </div>
           </div>
 
-          {/* New Value */}
+          {}
           <div className="flex flex-col space-y-2">
             <div className="flex items-center gap-1.5 text-xs font-semibold text-emerald-400">
               <div className="size-2 rounded-full bg-emerald-400" />
@@ -107,7 +106,7 @@ export const AuditLogDetailModal: React.FC<AuditLogDetailModalProps> = ({
           </div>
         </div>
 
-        {/* Footer actions */}
+        {}
         <div className="flex justify-end pt-3 border-t border-[var(--ui-border)]">
           <button
             type="button"

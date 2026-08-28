@@ -101,7 +101,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
           </div>
         </section>
 
-        {/* Figma-Inspired Aesthetic Showcase Gallery */}
+        {}
         <LandingShowcaseGallery />
 
         <section className="landing-cta ui-container">

@@ -4,7 +4,7 @@ import type { ProcessingProgress } from '../types/processing';
 import { fileService } from '../services/fileService';
 import { ProcessingContext, type ProcessingQueueItem } from './processing-context';
 
-const FILE_PROCESSING_CONCURRENCY = 2;
+const FILE_PROCESSING_CONCURRENCY = 1;
 
 export const ProcessingProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [isProcessing, setIsProcessing] = useState(false);
@@ -117,15 +117,27 @@ export const ProcessingProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         projectId,
       }));
 
+      const queuedProgress: Record<string, ProcessingProgress> = {};
+      uniqueFiles.forEach((file) => {
+        queuedProgress[file.id] = {
+          fileId: file.id,
+          stage: 'queued',
+          percent: 0,
+          message: 'Đang xếp hàng...',
+        };
+      });
+
       if (!isProcessingRef.current) {
         queueRef.current = [...newItems];
         setQueuedItems([...newItems]);
+        setProgressByFile((prev) => ({ ...prev, ...queuedProgress }));
         setCompletedCount(0);
         setFailedCount(0);
         setTotalCount(newItems.length);
       } else {
         queueRef.current = [...queueRef.current, ...newItems];
         setQueuedItems([...queueRef.current]);
+        setProgressByFile((prev) => ({ ...prev, ...queuedProgress }));
         setTotalCount((prev) => prev + newItems.length);
       }
 

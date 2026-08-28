@@ -2,11 +2,16 @@ import { supabase } from '../lib/supabase';
 import { updatePlanLimitsFromQuotas, type RawQuotasConfig } from '../types/database';
 
 export const systemService = {
-  /**
-   * Tải hạn mức cấu hình mới nhất từ database và áp dụng vào toàn bộ frontend.
-   */
+  
   async fetchAndApplyQuotas(): Promise<void> {
     try {
+      
+      const rpcResult = await supabase.rpc('get_system_quotas');
+      if (!rpcResult.error && rpcResult.data && typeof rpcResult.data === 'object') {
+        updatePlanLimitsFromQuotas(rpcResult.data as RawQuotasConfig);
+        return;
+      }
+
       const { data, error } = await supabase
         .from('system_settings')
         .select('value')

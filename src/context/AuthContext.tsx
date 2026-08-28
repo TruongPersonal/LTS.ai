@@ -2,9 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
 import {
   clearGoogleAccessToken,
-  getGoogleAccessToken,
   getStoredGoogleAccessToken,
-  isGoogleTokenExpired,
   persistGoogleProviderToken,
   supabase,
 } from '../lib/supabase';
@@ -95,33 +93,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const acceptGoogleSession = useCallback(async (authUser: SupabaseUser, accessToken?: string) => {
-    if (isGoogleTokenExpired()) {
-      void signOut();
-      return;
-    }
     const token = accessToken || getStoredGoogleAccessToken();
     if (!token) {
-      console.error('Google OAuth session is missing the Drive provider token.');
-      setUser(null);
-      setProfile(null);
-      setLoading(false);
-      return;
+      console.warn('Google OAuth session is active without cached Drive provider token.');
     }
 
     setUser(authUser);
     await fetchProfile(authUser);
-  }, [fetchProfile, signOut]);
+  }, [fetchProfile]);
 
   useEffect(() => {
     void systemService.fetchAndApplyQuotas();
 
     supabase.auth.getSession().then(async ({ data: { session } }) => {
-      const providerToken = persistGoogleProviderToken(session);
-      if (session?.user && !isGoogleTokenExpired()) {
-        const accessToken = providerToken || (await getGoogleAccessToken());
+      if (session?.user) {
+        const providerToken = persistGoogleProviderToken(session);
+        const accessToken = providerToken || getStoredGoogleAccessToken();
         void acceptGoogleSession(session.user, accessToken);
       } else {
-        if (isGoogleTokenExpired()) void signOut();
         setUser(null);
         setProfile(null);
         setLoading(false);
@@ -131,11 +120,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
-      const providerToken = persistGoogleProviderToken(session);
-      if (session?.user && !isGoogleTokenExpired()) {
+      if (session?.user) {
+        const providerToken = persistGoogleProviderToken(session);
         void acceptGoogleSession(session.user, providerToken || getStoredGoogleAccessToken());
       } else {
-        if (isGoogleTokenExpired()) void signOut();
         setUser(null);
         setProfile(null);
         setLoading(false);
@@ -143,26 +131,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
 
     return () => subscription.unsubscribe();
-  }, [acceptGoogleSession, signOut]);
-
-  useEffect(() => {
-    if (!user) return;
-    const interval = window.setInterval(() => {
-      if (isGoogleTokenExpired()) {
-        void signOut();
-      }
-    }, 10000);
-    return () => window.clearInterval(interval);
-  }, [signOut, user]);
+  }, [acceptGoogleSession]);
 
   const signInWithGoogle = async () => {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
         scopes:
-          'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.readonly',
+          'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.readonly email profile',
         queryParams: {
-          prompt: 'consent',
+          prompt: 'select_account',
           access_type: 'offline',
         },
         redirectTo: `${window.location.origin}/projects`,

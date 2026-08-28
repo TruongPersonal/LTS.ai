@@ -15,7 +15,6 @@ import { AppSidebar } from './components/common/AppSidebar';
 import { Footer } from './components/common/Footer';
 import { LandingPage } from './pages/LandingPage';
 import { LoginPage } from './pages/LoginPage';
-import { EditorSkeleton } from './components/common/LoadingSkeleton';
 import { projectService } from './services/projectService';
 import { fileService } from './services/fileService';
 import { stripeCheckoutService } from './services/stripeCheckoutService';
@@ -37,7 +36,7 @@ const AdminPage = lazy(() =>
 );
 
 const PulseLoadingScreen: React.FC = () => (
-  <div className="app-shell flex items-center justify-center min-h-screen">
+  <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-[var(--ui-canvas,#050814)] w-screen h-screen select-none">
     <div className="app-loading flex flex-col items-center justify-center" role="status" aria-live="polite">
       <div className="relative" style={{ animation: 'float-gravity 3.5s ease-in-out infinite' }}>
         <div
@@ -75,28 +74,25 @@ const PulseLoadingScreen: React.FC = () => (
   </div>
 );
 
-const useFixedLoading = (authLoading: boolean, durationMs = 1200) => {
+const usePageLoading = (isDataLoading = false, durationMs = 300) => {
   const [minLoadingDone, setMinLoadingDone] = useState(false);
-  const [wasInitiallyLoading] = useState(authLoading);
 
   useEffect(() => {
-    if (!wasInitiallyLoading) return;
     const timer = setTimeout(() => {
       setMinLoadingDone(true);
     }, durationMs);
     return () => clearTimeout(timer);
-  }, [durationMs, wasInitiallyLoading]);
+  }, [durationMs]);
 
-  if (!wasInitiallyLoading) return false;
-  return authLoading || !minLoadingDone;
+  return isDataLoading || !minLoadingDone;
 };
 
 const PublicLandingRoute: React.FC = () => {
   const { profile, loading } = useAuth();
   const navigate = useNavigate();
-  const isAppLoading = useFixedLoading(loading, 1200);
+  const isPageLoading = usePageLoading(loading, 300);
 
-  if (isAppLoading) return <PulseLoadingScreen />;
+  if (isPageLoading) return <PulseLoadingScreen />;
   if (profile?.role === 'admin') return <Navigate to="/admin" replace />;
   if (profile) return <Navigate to="/projects" replace />;
 
@@ -111,9 +107,9 @@ const PublicLandingRoute: React.FC = () => {
 const PublicLoginRoute: React.FC = () => {
   const { profile, loading } = useAuth();
   const navigate = useNavigate();
-  const isAppLoading = useFixedLoading(loading, 1200);
+  const isPageLoading = usePageLoading(loading, 300);
 
-  if (isAppLoading) return <PulseLoadingScreen />;
+  if (isPageLoading) return <PulseLoadingScreen />;
   if (profile?.role === 'admin') return <Navigate to="/admin" replace />;
   if (profile) return <Navigate to="/projects" replace />;
 
@@ -129,9 +125,8 @@ const ProtectedUserLayout: React.FC = () => {
   const { profile, loading } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
-  const isAppLoading = useFixedLoading(loading, 1200);
 
-  if (isAppLoading) return <PulseLoadingScreen />;
+  if (loading) return <PulseLoadingScreen />;
   if (!profile) return <Navigate to="/" replace />;
   if (profile.role === 'admin') return <Navigate to="/admin" replace />;
 
@@ -165,6 +160,7 @@ const DashboardRoute: React.FC = () => {
   const navigate = useNavigate();
   const { t } = useTranslation();
   const { refreshProfile } = useAuth();
+  const isPageLoading = usePageLoading(false, 300);
   const intentType = searchParams.get('intent');
   const checkoutStatus = searchParams.get('checkout');
   const checkoutSessionId = searchParams.get('session_id');
@@ -220,7 +216,9 @@ const DashboardRoute: React.FC = () => {
         showToast(t('subscription.checkoutFailed'), 'error');
         clearCheckoutParams();
       });
-  }, [checkoutSessionId, checkoutStatus, navigate, refreshProfile, t]);
+  }, [checkoutSessionId, checkoutStatus, navigate, refreshProfile]);
+
+  if (isPageLoading) return <PulseLoadingScreen />;
 
   const intent =
     intentType === 'create' || intentType === 'search'
@@ -254,6 +252,7 @@ const ProjectDetailRoute: React.FC = () => {
   const [project, setProject] = useState<Project | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const isPageLoading = usePageLoading(loading, 300);
 
   useEffect(() => {
     if (!projectId) return;
@@ -280,7 +279,9 @@ const ProjectDetailRoute: React.FC = () => {
     return () => {
       mounted = false;
     };
-  }, [projectId, t]);
+  }, [projectId]);
+
+  if (isPageLoading) return <PulseLoadingScreen />;
 
   if (error && !loading) {
     return (
@@ -324,6 +325,7 @@ const EditorRoute: React.FC = () => {
   const [file, setFile] = useState<FileMedia | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const isPageLoading = usePageLoading(loading, 300);
 
   useEffect(() => {
     if (!projectId || !fileId) return;
@@ -356,11 +358,9 @@ const EditorRoute: React.FC = () => {
     return () => {
       mounted = false;
     };
-  }, [fileId, projectId, t]);
+  }, [fileId, projectId]);
 
-  if (loading) {
-    return <EditorSkeleton />;
-  }
+  if (isPageLoading) return <PulseLoadingScreen />;
 
   if (error) {
     return (
@@ -412,9 +412,9 @@ const EditorRoute: React.FC = () => {
 
 const AdminRoute: React.FC = () => {
   const { profile, loading } = useAuth();
-  const isAppLoading = useFixedLoading(loading, 1200);
+  const isPageLoading = usePageLoading(loading, 300);
 
-  if (isAppLoading) return <PulseLoadingScreen />;
+  if (isPageLoading) return <PulseLoadingScreen />;
   if (!profile) return <Navigate to="/login" replace />;
   if (profile.role !== 'admin') return <Navigate to="/projects" replace />;
   return <AdminPage />;

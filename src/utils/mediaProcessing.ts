@@ -1,4 +1,5 @@
 import type { SubtitleItem } from '../types/database';
+import { normalizeLanguageCode } from '../types/project';
 
 export interface TranscriptionChunkResult {
   sourceLanguage: string;
@@ -13,7 +14,8 @@ export interface MergedTranscription {
 export function mergeTranscriptionChunks(
   chunks: TranscriptionChunkResult[]
 ): MergedTranscription {
-  const sourceLanguage = chunks.find((chunk) => chunk.sourceLanguage.trim())?.sourceLanguage.trim();
+  const rawLanguage = chunks.find((chunk) => chunk.sourceLanguage.trim())?.sourceLanguage.trim();
+  const sourceLanguage = rawLanguage ? normalizeLanguageCode(rawLanguage) : '';
   const merged = chunks.flatMap((chunk) => chunk.subtitles);
 
   if (!sourceLanguage || merged.length === 0) {

@@ -2,7 +2,8 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { Calendar, CheckCircle2, Clock3, Crown, FileUp, Sparkles, Zap } from 'lucide-react';
 import { ModalWrapper } from '../common/ModalWrapper';
-import { getPlanLimits, type Plan } from '../../types/database';
+import { usePlanLimits } from '../../hooks/usePlanLimits';
+import type { Plan } from '../../types/database';
 
 interface CheckoutSuccessModalProps {
   isOpen: boolean;
@@ -16,7 +17,8 @@ export const CheckoutSuccessModal: React.FC<CheckoutSuccessModalProps> = ({
   plan,
 }) => {
   const { t } = useTranslation();
-  const limits = getPlanLimits(plan);
+  const planLimitsMap = usePlanLimits();
+  const limits = planLimitsMap[plan];
   const maxFileSizeMb = Math.round(limits.maxFileSizeBytes / (1024 * 1024));
   const dailyMinutes = Math.round(limits.dailyDurationSeconds / 60);
 
@@ -32,7 +34,7 @@ export const CheckoutSuccessModal: React.FC<CheckoutSuccessModalProps> = ({
       maxWidth="sm"
     >
       <div className="space-y-6 pt-2 text-center">
-        {/* Celebration Icon Header */}
+        {}
         <div className="relative mx-auto size-16 rounded-2xl bg-[var(--ui-accent-soft)] border border-[var(--ui-accent)]/40 flex items-center justify-center shadow-md">
           {isMax ? (
             <Crown className="size-8 text-[var(--ui-accent)] animate-bounce" />
@@ -55,7 +57,7 @@ export const CheckoutSuccessModal: React.FC<CheckoutSuccessModalProps> = ({
           </p>
         </div>
 
-        {/* Plan Benefits Summary Card */}
+        {}
         <div className="rounded-2xl border border-[var(--ui-accent)]/30 bg-[var(--ui-surface-subtle)] p-4 space-y-3 text-left">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-[var(--ui-text)]">

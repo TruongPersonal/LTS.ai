@@ -11,13 +11,19 @@ export const useSubtitleTrack = (subtitles: SubtitleItem[]): string | undefined 
       return;
     }
 
-    const vtt = exportToVtt(subtitles);
-    const blob = new Blob([vtt], { type: 'text/vtt' });
-    const url = URL.createObjectURL(blob);
-    setSubtitleTrackUrl(url);
+    let activeUrl: string | undefined;
+    const timeoutId = window.setTimeout(() => {
+      const vtt = exportToVtt(subtitles);
+      const blob = new Blob([vtt], { type: 'text/vtt' });
+      activeUrl = URL.createObjectURL(blob);
+      setSubtitleTrackUrl(activeUrl);
+    }, 150);
 
     return () => {
-      URL.revokeObjectURL(url);
+      window.clearTimeout(timeoutId);
+      if (activeUrl) {
+        URL.revokeObjectURL(activeUrl);
+      }
     };
   }, [subtitles]);
 

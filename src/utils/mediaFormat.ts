@@ -1,6 +1,4 @@
-/**
- * Formats a MIME type string into a human-readable display label.
- */
+
 export function formatMimeTypeLabel(mimeType?: string): string {
   if (!mimeType) return 'Media';
   if (mimeType.includes('mp4')) return 'Video MP4';

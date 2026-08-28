@@ -29,7 +29,7 @@ export const useProjects = (userId?: string | null) => {
     } finally {
       setLoading(false);
     }
-  }, [userId, t]);
+  }, [userId]);
 
   useEffect(() => {
     void loadProjects();

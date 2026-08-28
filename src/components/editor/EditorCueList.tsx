@@ -25,6 +25,7 @@ interface EditorCueListProps {
   cuePendingDelete: number | null;
   cueViewportRef: React.RefObject<HTMLDivElement | null>;
   cueRefs: React.MutableRefObject<Map<number, HTMLDivElement>>;
+  onUserScrollInteraction?: () => void;
   onSelectCue: (item: SubtitleItem) => void;
   onCueVisibilityToggle: (cueId: number, key: CueVisibilityKey, currentResolvedValue: boolean) => void;
   getResolvedVisibility: (cueId: number) => CueVisibility;
@@ -57,6 +58,7 @@ const EditorCueListComponent: React.FC<EditorCueListProps> = ({
   cuePendingDelete,
   cueViewportRef,
   cueRefs,
+  onUserScrollInteraction,
   onSelectCue,
   onCueVisibilityToggle,
   getResolvedVisibility,
@@ -90,6 +92,10 @@ const EditorCueListComponent: React.FC<EditorCueListProps> = ({
       data-cue-density={cueDensity}
       className="editor-cue-viewport"
       aria-label={t('editor.subtitleList')}
+      onWheel={onUserScrollInteraction}
+      onTouchMove={onUserScrollInteraction}
+      onPointerDown={onUserScrollInteraction}
+      onKeyDown={onUserScrollInteraction}
     >
       {subtitles.length === 0 ? (
         <div className="h-full ui-card-flat flex flex-col items-center justify-center gap-3 text-center p-6">

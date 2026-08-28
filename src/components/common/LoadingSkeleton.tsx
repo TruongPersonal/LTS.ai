@@ -48,7 +48,7 @@ export const CueListSkeleton: React.FC<{ count?: number }> = ({ count = 4 }) => 
           className="p-4 space-y-3.5 rounded-2xl border border-[var(--ui-border)] bg-[var(--ui-surface)]/70 backdrop-blur-sm"
           style={{ opacity: Math.max(0.35, 1 - i * 0.18) }}
         >
-          {/* Header pill: Index + Timecode */}
+          {}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <div className="ui-skeleton h-5 w-7 rounded-full opacity-80" />
@@ -57,7 +57,7 @@ export const CueListSkeleton: React.FC<{ count?: number }> = ({ count = 4 }) => 
             <div className="ui-skeleton size-5 rounded-md opacity-30" />
           </div>
 
-          {/* Subtitle text placeholders: Source (thin) + Translation (full) */}
+          {}
           <div className="space-y-2 pt-0.5">
             <div className="ui-skeleton h-3.5 w-7/12 rounded-md opacity-40" />
             <div className="ui-skeleton h-4 w-10/12 rounded-md opacity-90" />

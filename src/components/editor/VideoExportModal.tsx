@@ -33,7 +33,12 @@ export const VideoExportModal: React.FC<VideoExportModalProps> = ({
   const { t } = useTranslation();
   const isConfirming = status === 'confirm';
   const isBusy = status === 'preparing' || status === 'exporting';
-  const percent = Math.min(100, Math.max(0, Math.round(progress * 100)));
+  const percent =
+    status === 'confirm' || status === 'preparing' || status === 'idle'
+      ? 0
+      : status === 'completed'
+      ? 100
+      : Math.min(100, Math.max(0, Math.round(progress * 100)));
   const handleClose = isBusy ? () => undefined : onClose;
 
   const statusContent = {

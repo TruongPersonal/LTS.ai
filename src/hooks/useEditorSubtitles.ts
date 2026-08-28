@@ -53,23 +53,34 @@ export const useEditorSubtitles = ({
     } finally {
       setLoading(false);
     }
-  }, [fileId, detectedSourceLang, targetLanguage, markDirty, t]);
+  }, [fileId, detectedSourceLang, targetLanguage, markDirty]);
 
   useEffect(() => {
     void loadSubtitles();
   }, [loadSubtitles]);
 
-  const saveSubtitles = useCallback(async () => {
+  const saveSubtitles = useCallback(async (
+    overrideSubtitles?: SubtitleItem[],
+    overrideSourceSubtitles?: SubtitleItem[]
+  ) => {
     if (!fileId || saving) return;
     setSaving(true);
     setSaveError(null);
     setSaveSuccess(false);
 
+    const targetToSave = overrideSubtitles ?? subtitles;
+    const sourceToSave = overrideSourceSubtitles ?? sourceSubtitles;
+
     try {
-      await subtitleService.saveSubtitles(fileId, targetLanguage, subtitles);
+      const saveOps: Promise<void>[] = [
+        subtitleService.saveSubtitles(fileId, targetLanguage, targetToSave),
+      ];
       if (sourceLanguage) {
-        await subtitleService.saveSubtitles(fileId, sourceLanguage, sourceSubtitles);
+        saveOps.push(subtitleService.saveSubtitles(fileId, sourceLanguage, sourceToSave));
       }
+      await Promise.all(saveOps);
+      if (overrideSubtitles) setSubtitles(overrideSubtitles);
+      if (overrideSourceSubtitles) setSourceSubtitles(overrideSourceSubtitles);
       markDirty(false);
       setSaveSuccess(true);
       window.setTimeout(() => setSaveSuccess(false), 2500);
@@ -79,7 +90,7 @@ export const useEditorSubtitles = ({
     } finally {
       setSaving(false);
     }
-  }, [fileId, saving, targetLanguage, subtitles, sourceLanguage, sourceSubtitles, markDirty, t]);
+  }, [fileId, saving, targetLanguage, subtitles, sourceLanguage, sourceSubtitles, markDirty]);
 
   const updateCueText = useCallback(
     (cueId: number, targetText?: string, sourceText?: string) => {

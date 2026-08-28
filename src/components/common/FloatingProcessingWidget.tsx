@@ -41,7 +41,7 @@ export const FloatingProcessingWidget: React.FC = () => {
       className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-2.5 font-sans select-none"
       aria-label="Tiến trình xử lý toàn cục"
     >
-      {/* Expanded Details Card: Minimalist, file name + % + progress bar */}
+      {}
       {expanded && (
         <div
           className="w-72 p-3.5 rounded-2xl border border-[var(--ui-border-strong)] bg-[var(--ui-surface)]/95 backdrop-blur-xl shadow-2xl space-y-2.5 animate-in fade-in zoom-in-95 duration-200"
@@ -105,7 +105,7 @@ export const FloatingProcessingWidget: React.FC = () => {
         </div>
       )}
 
-      {/* Floating Circular Widget Button */}
+      {}
       <button
         type="button"
         onClick={() => setExpanded((prev) => !prev)}
@@ -113,7 +113,7 @@ export const FloatingProcessingWidget: React.FC = () => {
         title={isAllDone ? t('processing.doneTitle') : `${processedCount}/${totalCount}`}
         aria-label={t('processing.progressAria', { processed: processedCount, total: totalCount })}
       >
-        {/* SVG Circular Progress Ring */}
+        {}
         <svg className="absolute inset-0 size-14 -rotate-90" viewBox="0 0 56 56">
           <circle
             cx="28"
@@ -143,7 +143,7 @@ export const FloatingProcessingWidget: React.FC = () => {
           </defs>
         </svg>
 
-        {/* Center Content: Completed/Total count, Checkmark, Warning, or Failed X */}
+        {}
         <div className="relative z-10 flex flex-col items-center justify-center">
           {isAllSuccess ? (
             <Check className="size-5 text-[var(--ui-success)] animate-in zoom-in" />
@@ -163,7 +163,7 @@ export const FloatingProcessingWidget: React.FC = () => {
           )}
         </div>
 
-        {/* Expand toggle badge */}
+        {}
         <span className="absolute -top-1 -right-1 size-4 rounded-full bg-[var(--ui-surface)] border border-[var(--ui-border)] flex items-center justify-center text-[9px] ui-muted shadow-sm">
           <ChevronUp
             className={`size-2.5 transition-transform duration-200 ${

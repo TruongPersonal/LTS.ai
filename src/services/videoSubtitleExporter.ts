@@ -2,7 +2,7 @@ import { FFmpeg } from '@ffmpeg/ffmpeg';
 import { fetchFile } from '@ffmpeg/util';
 import type { SubtitleItem } from '../types/database';
 import { exportToSrt } from '../utils/subtitleParsers';
-import { acquireFfmpegLock, getFfmpeg } from './ffmpegRuntime';
+import { acquireFfmpegLock, getFfmpeg, terminateFfmpeg } from './ffmpegRuntime';
 
 const BUNDLED_FONT_URL = '/NotoSansCJKjp-Regular.otf';
 const FONT_DIRECTORY = '/fonts';
@@ -130,8 +130,13 @@ export async function exportVideoWithSubtitles({
   let av1DecodeFailureDetected = false;
   let inputMounted = false;
 
+  let maxSeenProgress = 0;
   const handleProgress = ({ progress }: { progress: number }) => {
-    onProgress?.(clampProgress(progress));
+    const clamped = clampProgress(progress);
+    if (clamped >= maxSeenProgress && clamped < 1) {
+      maxSeenProgress = clamped;
+      onProgress?.(clamped);
+    }
   };
   const handleLog = ({ message }: { message: string }) => {
     if (/\b(?:Video: av1|av1 \(native\)|\[av1 @)/i.test(message)) {
@@ -224,20 +229,24 @@ export async function exportVideoWithSubtitles({
     try {
       if (ffmpeg) {
         if (logListenerAttached) {
-          try { ffmpeg.off('log', handleLog); } catch { /* ignore */ }
+          try { ffmpeg.off('log', handleLog); } catch {  }
         }
         if (progressListenerAttached) {
-          try { ffmpeg.off('progress', handleProgress); } catch { /* ignore */ }
+          try { ffmpeg.off('progress', handleProgress); } catch {  }
         }
         await cleanupFiles(ffmpeg, ownedFiles).catch(() => undefined);
         if (inputMounted) {
           await ffmpeg.unmount(mountDirectory).catch(() => undefined);
         }
         await ffmpeg.deleteDir(mountDirectory).catch(() => undefined);
+        terminateFfmpeg(ffmpeg);
       }
     } catch (cleanupError) {
       if (import.meta.env.DEV) {
         console.warn('[VideoSubtitleExporter] Cleanup error:', cleanupError);
+      }
+      if (ffmpeg) {
+        terminateFfmpeg(ffmpeg);
       }
     } finally {
       release();

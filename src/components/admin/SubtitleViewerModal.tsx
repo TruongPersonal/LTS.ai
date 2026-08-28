@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { ModalWrapper } from '../common/ModalWrapper';
 import type { AdminSubtitle } from '../../services/adminService';
 import { formatVttTimestamp } from '../../utils/time';
+import { normalizeLanguageCode } from '../../types/project';
 
 interface SubtitleViewerModalProps {
   isOpen: boolean;
@@ -62,7 +63,7 @@ export const SubtitleViewerModal: React.FC<SubtitleViewerModalProps> = ({
                       index === selectedTrackIndex ? 'ui-button-primary' : 'ui-button-secondary'
                     }`}
                   >
-                    {track.language.toUpperCase()}({track.content?.length || 0})
+                    {normalizeLanguageCode(track.language).toUpperCase()}({track.content?.length || 0})
                   </button>
                 ))}
               </div>

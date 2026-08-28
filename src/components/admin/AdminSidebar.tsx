@@ -55,7 +55,7 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
 
   return (
     <>
-      {/* Mobile Backdrop */}
+      {}
       {mobileOpen && (
         <div
           role="button"
@@ -76,13 +76,13 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
         aria-label={t('admin.tabs.navLabel')}
       >
         <div className="app-sidebar-top">
-          {/* Brand Header */}
+          {}
           <div className="sidebar-brand pointer-events-none select-none">
             <img src="/logo.png" alt="LTS.ai" className="size-8 object-contain shrink-0" />
             <span className="sidebar-label font-extrabold text-base">LTS.ai</span>
           </div>
 
-          {/* Navigation */}
+          {}
           <nav className="sidebar-nav" aria-label={t('admin.tabs.navLabel')}>
             {navItems.map((item) => {
               const isActive = activeTab === item.id;
@@ -102,7 +102,7 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
           </nav>
         </div>
 
-        {/* Bottom Profile dropdown (hidePlan) */}
+        {}
         <div className="app-sidebar-bottom">
           <UserDropdown sidebar compact={false} hidePlan />
         </div>

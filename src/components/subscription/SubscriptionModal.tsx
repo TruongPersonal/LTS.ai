@@ -2,10 +2,11 @@ import React, { useEffect, useState } from 'react';
 import { ArrowUpCircle, Check, Clock3, CreditCard, Crown, FileUp, Loader2, Sparkles, Zap } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../hooks/useAuth';
+import { usePlanLimits } from '../../hooks/usePlanLimits';
 import { fileService } from '../../services/fileService';
 import { stripeCheckoutService, type PaidPlan } from '../../services/stripeCheckoutService';
+import { systemService } from '../../services/systemService';
 import {
-  getPlanLimits,
   normalizePlan,
   PLAN_ORDER,
   type Plan,
@@ -21,8 +22,9 @@ interface SubscriptionModalProps {
 export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, onClose }) => {
   const { t } = useTranslation();
   const { profile } = useAuth();
+  const planLimits = usePlanLimits();
   const currentPlan = normalizePlan(profile?.plan);
-  const currentLimits = getPlanLimits(currentPlan);
+  const currentLimits = planLimits[currentPlan];
   const currentPlanIndex = PLAN_ORDER.indexOf(currentPlan);
   const [todayDuration, setTodayDuration] = useState(0);
   const [pendingPlan, setPendingPlan] = useState<PaidPlan | null>(null);
@@ -33,6 +35,8 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, on
 
   useEffect(() => {
     if (!isOpen) return;
+
+    void systemService.fetchAndApplyQuotas();
 
     let active = true;
     void fileService
@@ -51,10 +55,10 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, on
     return () => {
       active = false;
     };
-  }, [isOpen, t]);
+  }, [isOpen]);
 
   const usagePercent = Math.min(100, Math.max(0, (todayDuration / currentLimits.dailyDurationSeconds) * 100));
-  const pendingLimits = pendingPlan ? getPlanLimits(pendingPlan) : null;
+  const pendingLimits = pendingPlan ? planLimits[pendingPlan] : null;
   const pendingMaxFileSizeMb = pendingLimits ? Math.round(pendingLimits.maxFileSizeBytes / (1024 * 1024)) : 0;
   const pendingDailyMinutes = pendingLimits ? Math.round(pendingLimits.dailyDurationSeconds / 60) : 0;
 
@@ -155,7 +159,7 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, on
           </div>
           <div className="grid gap-3.5 sm:grid-cols-3 items-stretch">
             {PLAN_ORDER.map((plan) => {
-              const limits = getPlanLimits(plan);
+              const limits = planLimits[plan];
               const isCurrent = plan === currentPlan;
               const canUpgrade = PLAN_ORDER.indexOf(plan) > currentPlanIndex;
               const maxFileSizeMb = Math.round(limits.maxFileSizeBytes / (1024 * 1024));

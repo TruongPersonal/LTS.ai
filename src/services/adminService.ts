@@ -24,9 +24,7 @@ export type AdminOverview = {
 export type AdminUser = Pick<
   Profile,
   'id' | 'email' | 'full_name' | 'role' | 'plan' | 'plan_expires_at' | 'daily_processed_seconds' | 'last_processed_date' | 'created_at'
-> & {
-  is_banned?: boolean;
-};
+>;
 
 export type AdminProjectItem = {
   id: string;
@@ -148,20 +146,8 @@ export const adminService = {
     });
   },
 
-  banUser(userId: string): Promise<{ success: boolean; message: string }> {
-    return invokeAdmin({ action: 'ban_user', user_id: userId });
-  },
-
-  unbanUser(userId: string): Promise<{ success: boolean; message: string }> {
-    return invokeAdmin({ action: 'unban_user', user_id: userId });
-  },
-
   setUserRole(userId: string, role: 'admin' | 'user'): Promise<{ success: boolean; message: string }> {
     return invokeAdmin({ action: 'set_user_role', user_id: userId, role });
-  },
-
-  resetUserQuota(userId: string): Promise<{ success: boolean; message: string }> {
-    return invokeAdmin({ action: 'reset_user_quota', user_id: userId });
   },
 
   deleteUser(userId: string): Promise<{ success: boolean; message: string }> {

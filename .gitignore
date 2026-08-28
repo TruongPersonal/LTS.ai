@@ -28,5 +28,6 @@ dist-ssr
 *.sw?
 
 docs/
+.agents/
 
 *.zip

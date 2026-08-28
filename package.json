@@ -8,9 +8,7 @@
     "build": "tsc -b && vite build",
     "lint": "oxlint",
     "preview": "vite preview",
-    "test": "tsc -b",
-    "screenshot": "node scripts/capture-screenshots.mjs",
-    "diagrams": "node scripts/render-diagrams.mjs"
+    "test": "tsc -b"
   },
   "dependencies": {
     "@ffmpeg/ffmpeg": "^0.12.15",

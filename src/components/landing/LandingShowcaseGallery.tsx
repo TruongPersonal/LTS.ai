@@ -84,10 +84,8 @@ export const LandingShowcaseGallery: React.FC = () => {
   const [startX, setStartX] = useState(0);
   const [scrollLeft, setScrollLeft] = useState(0);
 
-  // Triple the items to create a seamless infinite wrapping loop
   const displayItems = [...SHOWCASE_ITEMS, ...SHOWCASE_ITEMS, ...SHOWCASE_ITEMS];
 
-  // Initialize scroll position to the middle set
   useEffect(() => {
     if (!scrollRef.current) return;
     const el = scrollRef.current;
@@ -95,7 +93,6 @@ export const LandingShowcaseGallery: React.FC = () => {
     el.scrollLeft = singleSetWidth;
   }, []);
 
-  // Handle infinite scroll loop seamlessly
   const handleScroll = () => {
     if (!scrollRef.current) return;
     const el = scrollRef.current;
@@ -130,7 +127,7 @@ export const LandingShowcaseGallery: React.FC = () => {
 
   return (
     <section className="landing-showcase-section py-8 overflow-hidden" aria-label="Aesthetic Showcase Gallery">
-      {/* Infinite Manual Scrollable Container without visible scrollbar */}
+      {}
       <div className="relative w-full">
         <div
           ref={scrollRef}
@@ -152,7 +149,7 @@ export const LandingShowcaseGallery: React.FC = () => {
               key={`${item.id}-${index}`}
               className={`showcase-card flex-shrink-0 ${item.widthClass} transition-transform duration-300`}
             >
-              {/* Individual Aspect Ratio Image Box */}
+              {}
               <div
                 className={`relative ${item.aspectClass} w-full rounded-2xl overflow-hidden border border-[var(--ui-border)] bg-[var(--ui-surface)] shadow-xs group`}
               >
@@ -171,10 +168,10 @@ export const LandingShowcaseGallery: React.FC = () => {
                   />
                 </div>
 
-                {/* Subtle gradient for text contrast */}
+                {}
                 <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent pointer-events-none" />
 
-                {/* Clean Floating Category Label ON the Card (Top-Left) */}
+                {}
                 <div className="absolute top-3.5 left-3.5 z-10 pointer-events-none">
                   <span className="px-3 py-1.5 rounded-xl bg-black/60 border border-white/20 text-xs sm:text-[13px] font-bold text-white tracking-wide backdrop-blur-md shadow-md inline-block">
                     {t(item.categoryKey, item.defaultCategory)}

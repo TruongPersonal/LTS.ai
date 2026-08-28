@@ -5,7 +5,7 @@ import type { FileMedia } from '../../types/database';
 import type { ProcessingProgress } from '../../types/processing';
 import { formatMimeTypeLabel } from '../../utils/mediaFormat';
 import { formatDuration } from '../../utils/time';
-import { FileStatusBadge } from './FileStatusBadge';
+import { FileStatusBadge, type DisplayFileStatus } from './FileStatusBadge';
 import { FileProgressBar } from './FileProgressBar';
 
 interface FileRowProps {
@@ -32,12 +32,12 @@ export const FileRow: React.FC<FileRowProps> = ({
   const menuRef = useRef<HTMLDivElement>(null);
 
   const isLiveProcessing = Boolean(progress && !['completed', 'failed'].includes(progress.stage));
-  const effectiveStatus: FileMedia['status'] =
+  const effectiveStatus: DisplayFileStatus =
     progress?.stage === 'completed'
       ? 'completed'
       : progress?.stage === 'failed'
       ? 'failed'
-      : progress?.stage === 'queued' || file.status === 'queued'
+      : progress?.stage === 'queued'
       ? 'queued'
       : isLiveProcessing
       ? 'processing'
@@ -166,4 +166,3 @@ export const FileRow: React.FC<FileRowProps> = ({
     </article>
   );
 };
-

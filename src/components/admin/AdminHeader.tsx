@@ -8,10 +8,18 @@ interface AdminHeaderProps {
   onToggleMobileMenu?: () => void;
 }
 
+const TAB_TITLES: Record<AdminTab, string> = {
+  overview: 'admin.tabs.overview',
+  users: 'admin.tabs.users',
+  projects: 'admin.tabs.projects',
+  system: 'admin.tabs.system',
+  audit_logs: 'admin.tabs.auditLogs',
+};
+
 export const AdminHeader: React.FC<AdminHeaderProps> = ({ activeTab, onToggleMobileMenu }) => {
   const { t } = useTranslation();
 
-  const tabTitle = t(`admin.tabs.${activeTab}`);
+  const tabTitle = t(TAB_TITLES[activeTab]);
 
   return (
     <header className="h-16 shrink-0 bg-[var(--ui-surface)]/80 backdrop-blur-md border-b border-[var(--ui-border)] sticky top-0 z-20">

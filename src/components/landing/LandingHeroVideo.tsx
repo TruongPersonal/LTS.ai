@@ -61,7 +61,7 @@ export const LandingHeroVideo: React.FC<LandingHeroVideoProps> = ({
 
   return (
     <div className="landing-product-proof" aria-label={t('landing.previewAria')}>
-      {/* macOS Window Toolbar */}
+      {}
       <div className="landing-proof-toolbar">
         <span className="size-2.5 rounded-full bg-[var(--ui-danger)]" />
         <span className="size-2.5 rounded-full bg-[var(--ui-warning)]" />
@@ -69,12 +69,12 @@ export const LandingHeroVideo: React.FC<LandingHeroVideoProps> = ({
         <span className="ml-2 text-[11px] ui-muted font-mono font-bold">LTS.ai Editor</span>
       </div>
 
-      {/* Main Video & Poster Stage */}
+      {}
       <div
         onClick={isPlaying ? handlePause : undefined}
         className="landing-proof-video relative overflow-hidden group select-none cursor-pointer"
       >
-        {/* Real HTML5 Video Tag with Loop & Muted */}
+        {}
         <video
           ref={videoRef}
           src={videoSrc}
@@ -90,7 +90,7 @@ export const LandingHeroVideo: React.FC<LandingHeroVideoProps> = ({
           }`}
         />
 
-        {/* Poster Thumbnail Image when paused / idle */}
+        {}
         <img
           src={posterSrc}
           alt="Video Preview"
@@ -99,10 +99,10 @@ export const LandingHeroVideo: React.FC<LandingHeroVideoProps> = ({
           }`}
         />
 
-        {/* Ambient Dark Gradient Layer */}
+        {}
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-black/20 pointer-events-none" />
 
-        {/* Central Play Button: Only clicking this button starts the video */}
+        {}
         {!isPlaying && (
           <div
             onClick={handleStartPlay}
@@ -112,13 +112,13 @@ export const LandingHeroVideo: React.FC<LandingHeroVideoProps> = ({
           </div>
         )}
 
-        {/* Dynamic Timestamp Badge */}
+        {}
         <span className="landing-proof-time z-10 pointer-events-none font-mono">
           {isPlaying ? formatDisplayTime(elapsedSeconds) : `00:00 → ${duration}`}
         </span>
       </div>
 
-      {/* Subtitle Cue Banner */}
+      {}
       <div className="landing-proof-cue">
         <div>
           <p>{t('landing.mock.originalLabel')}</p>

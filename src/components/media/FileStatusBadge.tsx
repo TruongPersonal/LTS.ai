@@ -1,10 +1,12 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { CheckCircle2, Clock, Loader2, XCircle } from 'lucide-react';
-import type { FileMedia } from '../../types/database';
+import type { FileStatus } from '../../types/database';
+
+export type DisplayFileStatus = FileStatus | 'queued';
 
 interface FileStatusBadgeProps {
-  status: FileMedia['status'];
+  status: DisplayFileStatus;
 }
 
 export const FileStatusBadge: React.FC<FileStatusBadgeProps> = ({ status }) => {

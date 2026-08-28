@@ -86,9 +86,6 @@ serve(async (request) => {
       }
     };
 
-    // -------------------------------------------------------------
-    // 1. OVERVIEW & METRICS
-    // -------------------------------------------------------------
     if (action === 'overview') {
       const countUsers = async (plan?: string) => {
         let query = adminClient.from('profiles').select('id', { count: 'exact', head: true }).eq('role', 'user');
@@ -133,7 +130,6 @@ serve(async (request) => {
         0
       );
 
-      // Monthly Recurring Revenue: query live Stripe API if configured, otherwise calculate from regular Pro & Max users
       let revenueAmount = proUsers * 10 + maxUsers * 29;
       let revenueSource = 'plan_estimate';
 
@@ -158,7 +154,8 @@ serve(async (request) => {
         }
       }
 
-      const successRate = totalFiles > 0 ? (completedFiles / totalFiles) * 100 : 100;
+      const processedFiles = completedFiles + failedFiles;
+      const successRate = processedFiles > 0 ? (completedFiles / processedFiles) * 100 : 100;
 
       return jsonResponse({
         revenue: {
@@ -181,9 +178,6 @@ serve(async (request) => {
       });
     }
 
-    // -------------------------------------------------------------
-    // 2. USER MANAGEMENT
-    // -------------------------------------------------------------
     if (action === 'list_users') {
       const page = normalizePage(body?.page, 1, 1000000);
       const pageSize = normalizePage(body?.page_size, 20, 100);
@@ -194,7 +188,7 @@ serve(async (request) => {
       const from = (page - 1) * pageSize;
       let query = adminClient
         .from('profiles')
-        .select('id,email,full_name,role,plan,plan_expires_at,daily_processed_seconds,last_processed_date,created_at,is_banned', { count: 'exact' })
+        .select('id,email,full_name,role,plan,plan_expires_at,daily_processed_seconds,last_processed_date,created_at', { count: 'exact' })
         .order('created_at', { ascending: false })
         .range(from, from + pageSize - 1);
 
@@ -206,96 +200,18 @@ serve(async (request) => {
       if (error) throw error;
 
       return jsonResponse({
-        users: (data || []).map((u: any) => ({
-          ...u,
-          is_banned: Boolean(u.is_banned),
-        })),
+        users: data || [],
         page,
         page_size: pageSize,
         total: count || 0,
       });
     }
 
-    if (action === 'ban_user') {
-      const targetUserId = body?.user_id;
-      if (!isUuid(targetUserId)) return jsonResponse({ error: 'A valid user_id is required.' }, 400);
-      if (targetUserId === callerProfile.id) return jsonResponse({ error: 'You cannot ban yourself.' }, 400);
-
-      const { data: targetProfile } = await adminClient
-        .from('profiles')
-        .select('email, full_name, role, plan')
-        .eq('id', targetUserId)
-        .maybeSingle();
-
-      // Ban in Supabase Auth & update profiles table
-      const { error: banError } = await adminClient.auth.admin.updateUserById(targetUserId, {
-        ban_duration: '876000h',
-        user_metadata: { is_banned: true },
-      });
-      if (banError) throw banError;
-
-      await adminClient.from('profiles').update({ is_banned: true }).eq('id', targetUserId);
-
-      await logAdminAction(
-        'BAN_USER',
-        targetUserId,
-        {
-          target_user_id: targetUserId,
-          target_email: targetProfile?.email,
-          target_name: targetProfile?.full_name,
-          is_banned: true,
-        },
-        {
-          is_banned: false,
-          role: targetProfile?.role,
-        },
-      );
-      return jsonResponse({ success: true, message: 'User has been banned.' });
-    }
-
-    if (action === 'unban_user') {
-      const targetUserId = body?.user_id;
-      if (!isUuid(targetUserId)) return jsonResponse({ error: 'A valid user_id is required.' }, 400);
-
-      const { data: targetProfile } = await adminClient
-        .from('profiles')
-        .select('email, full_name, role, plan')
-        .eq('id', targetUserId)
-        .maybeSingle();
-
-      const { error: unbanError } = await adminClient.auth.admin.updateUserById(targetUserId, {
-        ban_duration: 'none',
-        user_metadata: { is_banned: false },
-      });
-      if (unbanError) throw unbanError;
-
-      await adminClient.from('profiles').update({ is_banned: false }).eq('id', targetUserId);
-
-      await logAdminAction(
-        'UNBAN_USER',
-        targetUserId,
-        {
-          target_user_id: targetUserId,
-          target_email: targetProfile?.email,
-          target_name: targetProfile?.full_name,
-          is_banned: false,
-        },
-        {
-          is_banned: true,
-          role: targetProfile?.role,
-        },
-      );
-      return jsonResponse({ success: true, message: 'User has been unbanned.' });
-    }
-
     if (action === 'set_user_role') {
       const targetUserId = body?.user_id;
       const newRole = body?.role;
       if (!isUuid(targetUserId)) return jsonResponse({ error: 'A valid user_id is required.' }, 400);
-      if (newRole !== 'admin' && newRole !== 'user') return jsonResponse({ error: 'Role must be user or admin.' }, 400);
-      if (targetUserId === callerProfile.id && newRole !== 'admin') {
-        return jsonResponse({ error: 'You cannot remove your own admin role.' }, 400);
-      }
+      if (newRole !== 'admin') return jsonResponse({ error: 'Only promotion to admin is permitted.' }, 400);
 
       const { data: targetProfile } = await adminClient
         .from('profiles')
@@ -303,9 +219,13 @@ serve(async (request) => {
         .eq('id', targetUserId)
         .maybeSingle();
 
+      if (targetProfile?.role === 'admin') {
+        return jsonResponse({ error: 'This user is already an admin.' }, 400);
+      }
+
       const { error: roleError } = await adminClient
         .from('profiles')
-        .update({ role: newRole })
+        .update({ role: 'admin' })
         .eq('id', targetUserId);
       if (roleError) throw roleError;
 
@@ -316,45 +236,13 @@ serve(async (request) => {
           target_user_id: targetUserId,
           target_email: targetProfile?.email,
           target_name: targetProfile?.full_name,
-          role: newRole,
+          new_role: 'admin',
         },
         {
-          role: targetProfile?.role || 'user',
+          role: 'user',
         },
       );
-      return jsonResponse({ success: true, message: 'User role updated.' });
-    }
-
-    if (action === 'reset_user_quota') {
-      const targetUserId = body?.user_id;
-      if (!isUuid(targetUserId)) return jsonResponse({ error: 'A valid user_id is required.' }, 400);
-
-      const { data: targetProfile } = await adminClient
-        .from('profiles')
-        .select('email, full_name, daily_processed_seconds')
-        .eq('id', targetUserId)
-        .maybeSingle();
-
-      const { error: resetError } = await adminClient
-        .from('profiles')
-        .update({ daily_processed_seconds: 0 })
-        .eq('id', targetUserId);
-      if (resetError) throw resetError;
-
-      await logAdminAction(
-        'RESET_QUOTA',
-        targetUserId,
-        {
-          target_user_id: targetUserId,
-          target_email: targetProfile?.email,
-          target_name: targetProfile?.full_name,
-          daily_processed_seconds: 0,
-        },
-        {
-          daily_processed_seconds: targetProfile?.daily_processed_seconds || 0,
-        },
-      );
-      return jsonResponse({ success: true, message: 'User daily quota reset to 0.' });
+      return jsonResponse({ success: true, message: 'User promoted to admin successfully.' });
     }
 
     if (action === 'delete_user') {
@@ -362,14 +250,12 @@ serve(async (request) => {
       if (!isUuid(targetUserId)) return jsonResponse({ error: 'A valid user_id is required.' }, 400);
       if (targetUserId === callerProfile.id) return jsonResponse({ error: 'You cannot delete yourself.' }, 400);
 
-      // Fetch user profile before deletion for audit trail
       const { data: targetProfile } = await adminClient
         .from('profiles')
         .select('email, full_name, role, plan')
         .eq('id', targetUserId)
         .maybeSingle();
 
-      // Log with null target_user_id so foreign key constraint doesn't block auth.users deletion
       await logAdminAction(
         'DELETE_USER',
         null,
@@ -386,19 +272,15 @@ serve(async (request) => {
         },
       );
 
-      // Delete user from auth.users (cascades to profiles, projects, files)
       const { error: deleteError } = await adminClient.auth.admin.deleteUser(targetUserId);
       if (deleteError) {
-        // Fallback explicit delete from profiles
+        
         await adminClient.from('profiles').delete().eq('id', targetUserId);
       }
 
       return jsonResponse({ success: true, message: 'User deleted successfully.' });
     }
 
-    // -------------------------------------------------------------
-    // 3. PROJECTS & FILES MANAGEMENT
-    // -------------------------------------------------------------
     if (action === 'list_projects') {
       const page = normalizePage(body?.page, 1, 1000000);
       const pageSize = normalizePage(body?.page_size, 20, 100);
@@ -558,9 +440,6 @@ serve(async (request) => {
       return jsonResponse({ success: true, message: 'Subtitles deleted.' });
     }
 
-    // -------------------------------------------------------------
-    // 4. SYSTEM LIMITS & AI MODELS CONFIGURATION
-    // -------------------------------------------------------------
     if (action === 'get_system_config') {
       const maskKey = (key: string | undefined, prefixLen = 4, suffixLen = 4) => {
         if (!key || key.length < 8) return '';
@@ -614,7 +493,6 @@ serve(async (request) => {
     if (action === 'update_system_config') {
       const { quotas } = body;
 
-      // 1. Fetch current quotas for old_value
       const { data: existingRow } = await adminClient
         .from('system_settings')
         .select('value')
@@ -623,7 +501,6 @@ serve(async (request) => {
 
       const existingQuotas = (existingRow?.value as Record<string, any>) || {};
 
-      // 2. Persist quotas if provided
       const savedQuotas = {
         free_daily_minutes: Number(quotas?.free_daily_minutes) || 10,
         free_max_file_size_mb: Number(quotas?.free_max_file_size_mb) || 50,
@@ -639,7 +516,6 @@ serve(async (request) => {
         updated_at: new Date().toISOString(),
       });
 
-      // 3. Record Audit Log
       await logAdminAction(
         'UPDATE_SYSTEM_CONFIG',
         null,
@@ -654,9 +530,6 @@ serve(async (request) => {
       return jsonResponse({ success: true, message: 'System configuration updated successfully.' });
     }
 
-    // -------------------------------------------------------------
-    // 5. AUDIT LOGS
-    // -------------------------------------------------------------
     if (action === 'list_audit_logs') {
       const page = normalizePage(body?.page, 1, 1000000);
       const pageSize = normalizePage(body?.page_size, 20, 100);

@@ -64,7 +64,7 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
   return (
     <header className="editor-local-toolbar">
       <div className="editor-toolbar-inner">
-        {/* Main Row: Back Button + Title + Eye & Tool View Controls */}
+        {}
         <div className="editor-toolbar-main-row">
           <div className="editor-toolbar-lead">
             <button
@@ -89,7 +89,7 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
             </div>
           </div>
 
-          {/* Eye & Tool buttons always remain on row 1 to the right */}
+          {}
           <div className="editor-toolbar-view-controls">
             <CueVisibilityMenu
               metadataVisible={globalVisibility.metadata}
@@ -112,7 +112,7 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
           </div>
         </div>
 
-        {/* Save & Export Controls: Same row on desktop, 2nd row aligned with title on mobile */}
+        {}
         <div className="editor-toolbar-action-controls">
           <div className="editor-toolbar-divider" />
 

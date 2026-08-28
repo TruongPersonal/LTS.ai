@@ -33,7 +33,7 @@ export const FileListTabs: React.FC<FileListTabsProps> = ({
   const [renamingFile, setRenamingFile] = useState<FileMedia | null>(null);
 
   const unfinishedFiles = files.filter(
-    (file) => file.status === 'draft' || file.status === 'queued' || file.status === 'processing'
+    (file) => file.status === 'draft' || file.status === 'processing'
   );
   const completedFiles = files.filter(
     (file) => file.status === 'completed' || file.status === 'failed'

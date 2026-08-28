@@ -149,7 +149,7 @@ const CueCardComponent: React.FC<CueCardProps> = ({
           extraEyeMenu={showEyeInTranslation ? visibilityMenu : undefined}
         />
 
-        {/* Bottom bar with prominent Edit pencil and Delete trash buttons on the bottom right */}
+        {}
         {cueActionsVisible && (
           <div className="editor-cue-bottom-bar flex items-center justify-between mt-1 pt-0.5" onClick={(e) => e.stopPropagation()}>
             <div />

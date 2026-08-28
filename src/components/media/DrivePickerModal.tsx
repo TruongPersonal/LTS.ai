@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { AlertCircle, FileText, FolderUp, HardDrive, Loader2, Upload } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { TARGET_LANGUAGES } from '../../types/project';
@@ -6,7 +6,9 @@ import { ModalWrapper } from '../common/ModalWrapper';
 import { openGoogleDrivePicker, type SelectedPickerFile } from '../../utils/googlePicker';
 import { formatMimeTypeLabel } from '../../utils/mediaFormat';
 import { useAuth } from '../../hooks/useAuth';
-import { getPlanLimits } from '../../types/database';
+import { usePlanLimits } from '../../hooks/usePlanLimits';
+import { systemService } from '../../services/systemService';
+import { normalizePlan } from '../../types/database';
 
 interface DrivePickerModalProps {
   isOpen: boolean;
@@ -24,11 +26,11 @@ function stripFileExtension(filename: string): string {
   return filename.replace(/\.[^/.]+$/, '');
 }
 
-
 export const DrivePickerModal: React.FC<DrivePickerModalProps> = ({ isOpen, onClose, onSelectDriveFile }) => {
   const { t } = useTranslation();
   const { profile } = useAuth();
-  const planLimits = getPlanLimits(profile?.plan);
+  const planLimitsMap = usePlanLimits();
+  const planLimits = planLimitsMap[normalizePlan(profile?.plan)];
   const maxFileSizeMb = Math.round(planLimits.maxFileSizeBytes / (1024 * 1024));
   const [selectedFile, setSelectedFile] = useState<SelectedPickerFile | null>(null);
   const [customFileName, setCustomFileName] = useState('');
@@ -39,6 +41,12 @@ export const DrivePickerModal: React.FC<DrivePickerModalProps> = ({ isOpen, onCl
   const [submitting, setSubmitting] = useState(false);
   const [openingPicker, setOpeningPicker] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (isOpen) {
+      void systemService.fetchAndApplyQuotas();
+    }
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -109,7 +117,7 @@ export const DrivePickerModal: React.FC<DrivePickerModalProps> = ({ isOpen, onCl
         includeSubtitle && subtitleContent ? { content: subtitleContent, language: subtitleLang } : undefined
       );
       onClose();
-      // Reset state after successful upload so modal is fresh next time
+      
       setSelectedFile(null);
       setCustomFileName('');
       setIncludeSubtitle(false);

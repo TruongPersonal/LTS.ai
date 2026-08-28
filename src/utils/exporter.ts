@@ -4,16 +4,12 @@ import { exportToSrt, exportToVtt, exportToTxt } from './subtitleParsers';
 export type SubtitleExportFormat = 'srt' | 'vtt' | 'txt';
 export type SubtitleExportTrack = 'target' | 'source' | 'bilingual';
 
-
 export interface FileSubtitleExportPackage {
   fileName: string;
   subtitles: SubtitleItem[];
   sourceSubtitles?: SubtitleItem[];
 }
 
-/**
- * Single subtitle file export
- */
 export const downloadSubtitleFile = async (
   targetSubtitles: SubtitleItem[],
   sourceSubtitles: SubtitleItem[] = [],
@@ -21,7 +17,7 @@ export const downloadSubtitleFile = async (
   format: SubtitleExportFormat,
   track: SubtitleExportTrack = 'target'
 ) => {
-  // Lazily load file-saver so it stays out of the route chunks until an export happens.
+  
   const { saveAs } = await import('file-saver');
   const cleanFileName = fileName;
 
@@ -52,27 +48,24 @@ export const downloadSubtitleFile = async (
   if (track === 'source') {
     exportBlob(effectiveSource, 'original');
   } else if (track === 'bilingual') {
-    // Export BOTH files (both translated file and original file)
+    
     exportBlob(targetSubtitles, 'translation');
     window.setTimeout(() => {
       exportBlob(effectiveSource, 'original');
     }, 250);
   } else {
-    // track === 'target'
+    
     exportBlob(targetSubtitles, '');
   }
 };
 
-/**
- * Batch export whole project as a ZIP package containing all subtitle files
- */
 export const downloadProjectZip = async (
   projectTitle: string,
   items: FileSubtitleExportPackage[],
   format: SubtitleExportFormat,
   track: SubtitleExportTrack = 'target'
 ) => {
-  // Lazily load jszip + file-saver so they stay out of the route chunks until an export happens.
+  
   const [{ default: JSZip }, { saveAs }] = await Promise.all([
     import('jszip'),
     import('file-saver'),

@@ -9,11 +9,6 @@ const CORE_MT_BASE_URL =
 let ffmpegPromise: Promise<FFmpeg> | null = null;
 let ffmpegLockTail = Promise.resolve();
 
-// The multi-thread core needs SharedArrayBuffer, which browsers only expose on
-// crossOriginIsolated pages (COOP + COEP headers). This app cannot enable those
-// headers globally today because the Google Drive Picker iframe would be blocked
-// by COEP, so the single-thread core stays the default. If a deployment ever
-// serves the isolation headers, the faster core is picked up automatically.
 function isCrossOriginIsolated(): boolean {
   return typeof crossOriginIsolated !== 'undefined' && crossOriginIsolated === true;
 }
@@ -48,8 +43,7 @@ export function terminateFfmpeg(ffmpeg: FFmpeg): void {
   try {
     ffmpeg.terminate();
   } finally {
-    // terminate() invalidates this worker. The next export must create and
-    // load a fresh shared instance before using the runtime again.
+    
     ffmpegPromise = null;
   }
 }

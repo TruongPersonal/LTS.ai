@@ -45,13 +45,43 @@ export const NATIVE_LANGUAGE_NAMES: Record<string, string> = {
   indonesian: 'Bahasa Indonesia',
 };
 
-export const getLanguageOption = (code: string): LanguageOption | undefined => {
+export const LANGUAGE_NAME_TO_CODE: Record<string, string> = {
+  vietnamese: 'vi',
+  english: 'en',
+  japanese: 'ja',
+  korean: 'ko',
+  chinese: 'zh',
+  french: 'fr',
+  italian: 'it',
+  spanish: 'es',
+  german: 'de',
+  russian: 'ru',
+  portuguese: 'pt',
+  thai: 'th',
+  indonesian: 'id',
+  arabic: 'ar',
+  hindi: 'hi',
+  dutch: 'nl',
+  polish: 'pl',
+  turkish: 'tr',
+  swedish: 'sv',
+  tagalog: 'tl',
+};
+
+export const normalizeLanguageCode = (code: string | null | undefined): string => {
+  if (!code) return 'vi';
   const c = code.toLowerCase().trim();
+  if (c.length === 2) return c;
+  return LANGUAGE_NAME_TO_CODE[c] || c;
+};
+
+export const getLanguageOption = (code: string): LanguageOption | undefined => {
+  const c = normalizeLanguageCode(code);
   return TARGET_LANGUAGES.find((lang) => lang.code === c);
 };
 
 export const getNativeLanguageName = (code: string | null | undefined): string => {
   if (!code) return 'English';
-  const c = code.toLowerCase().trim();
+  const c = normalizeLanguageCode(code);
   return NATIVE_LANGUAGE_NAMES[c] || code;
 };

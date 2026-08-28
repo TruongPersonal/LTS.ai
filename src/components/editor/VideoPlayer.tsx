@@ -302,12 +302,40 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(
     useEffect(() => () => clearControlsTimeout(), [clearControlsTimeout]);
 
     useEffect(() => {
-      const handleFullscreenChange = () =>
-        setIsFullscreen(document.fullscreenElement === playerRef.current);
+      const video = videoRef.current;
+      const player = playerRef.current;
+
+      const handleFullscreenChange = () => {
+        const isFs = Boolean(
+          document.fullscreenElement === player ||
+          document.fullscreenElement === video ||
+          (document as unknown as { webkitFullscreenElement?: Element }).webkitFullscreenElement === player ||
+          (document as unknown as { webkitFullscreenElement?: Element }).webkitFullscreenElement === video
+        );
+        setIsFullscreen(isFs);
+      };
+
+      const handleWebkitBegin = () => setIsFullscreen(true);
+      const handleWebkitEnd = () => setIsFullscreen(false);
+
       document.addEventListener('fullscreenchange', handleFullscreenChange);
+      document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+
+      if (video) {
+        video.addEventListener('webkitbeginfullscreen', handleWebkitBegin);
+        video.addEventListener('webkitendfullscreen', handleWebkitEnd);
+      }
+
       handleFullscreenChange();
-      return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
-    }, []);
+      return () => {
+        document.removeEventListener('fullscreenchange', handleFullscreenChange);
+        document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
+        if (video) {
+          video.removeEventListener('webkitbeginfullscreen', handleWebkitBegin);
+          video.removeEventListener('webkitendfullscreen', handleWebkitEnd);
+        }
+      };
+    }, [videoUrl]);
 
     const togglePlay = useCallback(() => {
       const video = videoRef.current;
@@ -412,22 +440,55 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(
         }
         setSettingsOpen(false);
       } catch {
-        // Picture-in-picture can be unavailable in embedded or restricted browsers.
+        
       }
     };
 
     const toggleFullscreen = useCallback(async () => {
       const player = playerRef.current;
-      if (!player) return;
+      const video = videoRef.current;
+      if (!player && !video) return;
+
+      const doc = document as unknown as {
+        fullscreenElement?: Element;
+        webkitFullscreenElement?: Element;
+        exitFullscreen?: () => Promise<void>;
+        webkitExitFullscreen?: () => Promise<void>;
+      };
+
+      const playerEl = player as unknown as {
+        requestFullscreen?: () => Promise<void>;
+        webkitRequestFullscreen?: () => Promise<void>;
+      };
+
+      const videoEl = video as unknown as {
+        requestFullscreen?: () => Promise<void>;
+        webkitEnterFullscreen?: () => void;
+        webkitExitFullscreen?: () => void;
+        webkitSupportsFullscreen?: boolean;
+      };
 
       try {
-        if (document.fullscreenElement === player) {
-          await document.exitFullscreen();
-        } else {
-          await player.requestFullscreen();
+        if (doc.fullscreenElement || doc.webkitFullscreenElement) {
+          if (doc.exitFullscreen) await doc.exitFullscreen();
+          else if (doc.webkitExitFullscreen) await doc.webkitExitFullscreen();
+        } else if (playerEl && playerEl.requestFullscreen) {
+          await playerEl.requestFullscreen();
+        } else if (playerEl && playerEl.webkitRequestFullscreen) {
+          await playerEl.webkitRequestFullscreen();
+        } else if (videoEl && videoEl.webkitEnterFullscreen) {
+          videoEl.webkitEnterFullscreen();
+        } else if (videoEl && videoEl.requestFullscreen) {
+          await videoEl.requestFullscreen();
         }
       } catch {
-        // Fullscreen can be unavailable in embedded or restricted browsers.
+        if (videoEl && videoEl.webkitEnterFullscreen) {
+          try {
+            videoEl.webkitEnterFullscreen();
+          } catch {
+            
+          }
+        }
       } finally {
         if (document.activeElement instanceof HTMLElement) {
           document.activeElement.blur();

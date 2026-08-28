@@ -19,7 +19,7 @@ export const getActionBadgeClass = (action: string): string => {
   if (action.includes('UNBAN') || action.includes('RESET')) {
     return 'bg-emerald-500/10 text-emerald-500 border-emerald-500/30';
   }
-  if (action.includes('SET_ROLE') || action.includes('CONFIG')) {
+  if (action.includes('ROLE') || action.includes('CONFIG')) {
     return 'bg-[var(--ui-accent-soft)] text-[var(--ui-accent)] border-[var(--ui-accent)]/30';
   }
   return 'bg-slate-500/10 text-slate-400 border-slate-500/20';

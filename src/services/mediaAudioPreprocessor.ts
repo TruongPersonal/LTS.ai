@@ -55,19 +55,38 @@ export async function* extractFlacChunks(
   mediaDurationSeconds: number
 ): AsyncGenerator<AudioChunk, void, void> {
   const token = safeToken(fileId);
-  const inputName = `input-${token}.${extensionForMimeType(mimeType)}`;
+  const inputFileName = `input-${token}.${extensionForMimeType(mimeType)}`;
+  const mountDirectory = `/mount-audio-${token}`;
   const remainingOutputFiles = new Set<string>();
-  const inputPath = inputName;
   const release = await acquireFfmpegLock();
   let ffmpeg: FFmpeg | null = null;
+  let inputPath = inputFileName;
+  let isMounted = false;
 
   try {
     ffmpeg = await getFfmpeg();
 
-    await ffmpeg.writeFile(
-      inputName,
-      new Uint8Array(await mediaBlob.arrayBuffer())
-    );
+    try {
+      await ffmpeg.createDir(mountDirectory);
+      const workerFsType = 'WORKERFS' as Parameters<FFmpeg['mount']>[0];
+      await ffmpeg.mount(
+        workerFsType,
+        {
+          blobs: [{ name: inputFileName, data: mediaBlob }],
+        },
+        mountDirectory
+      );
+      isMounted = true;
+      inputPath = `${mountDirectory}/${inputFileName}`;
+    } catch {
+      
+      await ffmpeg.writeFile(
+        inputFileName,
+        new Uint8Array(await mediaBlob.arrayBuffer())
+      );
+      inputPath = inputFileName;
+    }
+
     const chunkCount = Math.ceil(mediaDurationSeconds / CHUNK_DURATION_SECONDS);
 
     if (chunkCount > MAX_SEGMENT_SCAN) {
@@ -83,8 +102,6 @@ export async function* extractFlacChunks(
       const outputName = `audio-${token}-${String(index).padStart(3, '0')}.flac`;
       remainingOutputFiles.add(outputName);
 
-      // Encode each time range directly from the source into its final FLAC.
-      // This avoids the previous segment-FLAC -> normalized-FLAC second encode.
       const chunkExit = await ffmpeg.exec([
         '-ss',
         String(startSeconds),
@@ -142,7 +159,12 @@ export async function* extractFlacChunks(
       await Promise.allSettled(
         Array.from(remainingOutputFiles, (outputName) => activeFfmpeg.deleteFile(outputName))
       );
-      await ffmpeg.deleteFile(inputName).catch(() => undefined);
+      if (isMounted) {
+        await ffmpeg.unmount(mountDirectory).catch(() => undefined);
+        await ffmpeg.deleteDir(mountDirectory).catch(() => undefined);
+      } else {
+        await ffmpeg.deleteFile(inputFileName).catch(() => undefined);
+      }
     }
     release();
   }

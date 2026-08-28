@@ -18,7 +18,7 @@ import { AdminSidebar, type AdminTab } from '../components/admin/AdminSidebar';
 import { ConfirmDialog } from '../components/common/ConfirmDialog';
 import { SubtitleViewerModal } from '../components/admin/SubtitleViewerModal';
 import { AuditLogDetailModal } from '../components/admin/AuditLogDetailModal';
-import { AdminToaster, type ToastItem, type ToastType } from '../components/admin/AdminToaster';
+import { Toaster as AdminToaster, type ToastItem, type ToastType } from '../components/common/Toaster';
 import { AdminOverviewTab } from '../components/admin/tabs/AdminOverviewTab';
 import { AdminUsersTab } from '../components/admin/tabs/AdminUsersTab';
 import { AdminProjectsTab } from '../components/admin/tabs/AdminProjectsTab';
@@ -117,7 +117,7 @@ export const AdminPage: React.FC = () => {
     } finally {
       setLoadingOverview(false);
     }
-  }, [showToast, t]);
+  }, [showToast]);
 
   const loadUsers = useCallback(async () => {
     setLoadingUsers(true);
@@ -131,7 +131,7 @@ export const AdminPage: React.FC = () => {
     } finally {
       setLoadingUsers(false);
     }
-  }, [showToast, t, userSubTab, usersPage, usersSearch]);
+  }, [showToast, userSubTab, usersPage, usersSearch]);
 
   const loadProjects = useCallback(async () => {
     setLoadingProjects(true);
@@ -144,7 +144,7 @@ export const AdminPage: React.FC = () => {
     } finally {
       setLoadingProjects(false);
     }
-  }, [projectsPage, projectsSearch, showToast, t]);
+  }, [projectsPage, projectsSearch, showToast]);
 
   const loadProjectFiles = useCallback(
     async (projectId: string, projectTitle: string) => {
@@ -160,7 +160,7 @@ export const AdminPage: React.FC = () => {
         setLoadingProjectFiles(false);
       }
     },
-    [showToast, t]
+    [showToast]
   );
 
   const loadSystemConfig = useCallback(async () => {
@@ -173,7 +173,7 @@ export const AdminPage: React.FC = () => {
     } finally {
       setLoadingSystemConfig(false);
     }
-  }, [showToast, t]);
+  }, [showToast]);
 
   const loadAuditLogs = useCallback(async () => {
     setLoadingAuditLogs(true);
@@ -186,7 +186,7 @@ export const AdminPage: React.FC = () => {
     } finally {
       setLoadingAuditLogs(false);
     }
-  }, [auditLogsPage, showToast, t]);
+  }, [auditLogsPage, showToast]);
 
   useEffect(() => {
     if (activeTab === 'overview') void loadOverview();
@@ -196,93 +196,20 @@ export const AdminPage: React.FC = () => {
     if (activeTab === 'audit_logs') void loadAuditLogs();
   }, [activeTab, loadAuditLogs, loadOverview, loadProjects, loadSystemConfig, loadUsers]);
 
-  const handleBanUser = (user: AdminUser) => {
-    setConfirmModal({
-      isOpen: true,
-      title: t('admin.users.banConfirmTitle'),
-      message: t('admin.users.banConfirmMessage', { email: user.email }),
-      confirmText: t('admin.users.ban'),
-      isDangerous: true,
-      onConfirm: async () => {
-        setConfirmLoading(true);
-        try {
-          await adminService.banUser(user.id);
-          showToast(t('admin.users.banSuccess', 'Đã khoá tài khoản'));
-          void loadUsers();
-          setConfirmModal((prev) => ({ ...prev, isOpen: false }));
-        } catch (err) {
-          showToast(err instanceof Error ? err.message : 'Action failed', 'error');
-        } finally {
-          setConfirmLoading(false);
-        }
-      },
-    });
-  };
-
-  const handleUnbanUser = (user: AdminUser) => {
-    setConfirmModal({
-      isOpen: true,
-      title: t('admin.users.unbanConfirmTitle'),
-      message: t('admin.users.unbanConfirmMessage', { email: user.email }),
-      confirmText: t('admin.users.unban'),
-      isDangerous: false,
-      onConfirm: async () => {
-        setConfirmLoading(true);
-        try {
-          await adminService.unbanUser(user.id);
-          showToast(t('admin.users.unbanSuccess', 'Đã mở khoá tài khoản'));
-          void loadUsers();
-          setConfirmModal((prev) => ({ ...prev, isOpen: false }));
-        } catch (err) {
-          showToast(err instanceof Error ? err.message : 'Action failed', 'error');
-        } finally {
-          setConfirmLoading(false);
-        }
-      },
-    });
-  };
-
-  const handleToggleRole = (user: AdminUser) => {
-    const nextRole = user.role === 'admin' ? 'user' : 'admin';
-    const roleLabel =
-      nextRole === 'admin' ? t('admin.users.adminRole') : t('admin.users.userRole');
+  const handlePromoteAdmin = (user: AdminUser) => {
+    if (user.role === 'admin') return;
 
     setConfirmModal({
       isOpen: true,
       title: t('admin.users.setRoleConfirmTitle'),
-      message: t('admin.users.setRoleConfirmMessage', { email: user.email, role: roleLabel }),
-      confirmText: nextRole === 'admin' ? t('admin.users.makeAdmin') : t('admin.users.makeUser'),
-      isDangerous: nextRole !== 'admin',
-      onConfirm: async () => {
-        setConfirmLoading(true);
-        try {
-          await adminService.setUserRole(user.id, nextRole);
-          showToast(t('admin.users.roleUpdated', 'Đã cập nhật vai trò'));
-          void loadUsers();
-          setConfirmModal((prev) => ({ ...prev, isOpen: false }));
-        } catch (err) {
-          showToast(err instanceof Error ? err.message : 'Action failed', 'error');
-        } finally {
-          setConfirmLoading(false);
-        }
-      },
-    });
-  };
-
-  const handleResetQuota = (user: AdminUser) => {
-    setConfirmModal({
-      isOpen: true,
-      title: t('admin.users.resetQuotaConfirmTitle'),
-      message: t('admin.users.resetQuotaConfirmMessage', { email: user.email }),
-      confirmText: t('admin.users.resetQuota'),
+      message: t('admin.users.setRoleConfirmMessage', { email: user.email }),
+      confirmText: t('admin.users.makeAdmin'),
       isDangerous: false,
       onConfirm: async () => {
         setConfirmLoading(true);
         try {
-          await adminService.resetUserQuota(user.id);
-          showToast(
-            t('admin.users.quotaResetSuccess', 'Đã đặt lại hạn mức sử dụng trong ngày')
-          );
+          await adminService.setUserRole(user.id, 'admin');
+          showToast(t('admin.users.roleUpdated', 'Đã nâng cấp quyền Quản trị viên'));
           void loadUsers();
           setConfirmModal((prev) => ({ ...prev, isOpen: false }));
         } catch (err) {
@@ -452,10 +379,7 @@ export const AdminPage: React.FC = () => {
               onSearchChange={setUsersSearch}
               onSubTabChange={setUserSubTab}
               onRefresh={() => void loadUsers()}
-              onBanUser={handleBanUser}
-              onUnbanUser={handleUnbanUser}
-              onToggleRole={handleToggleRole}
-              onResetQuota={handleResetQuota}
+              onPromoteAdmin={handlePromoteAdmin}
               onDeleteUser={handleDeleteUser}
             />
           )}

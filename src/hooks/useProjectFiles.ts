@@ -34,7 +34,7 @@ export const useProjectFiles = (projectId: string, targetLanguage: string) => {
     } finally {
       setLoading(false);
     }
-  }, [projectId, t]);
+  }, [projectId]);
 
   useEffect(() => {
     void loadFiles();
@@ -134,36 +134,46 @@ export const useProjectFiles = (projectId: string, targetLanguage: string) => {
 
   const exportSingleFile = useCallback(
     async (file: FileMedia, format: SubtitleExportFormat, track: SubtitleExportTrack = 'target') => {
-      const targetSub = await subtitleService.getSubtitleByFile(file.id, targetLanguage);
-      const sourceLang = file.detected_source_lang;
-      const sourceSub = sourceLang ? await subtitleService.getSubtitleByFile(file.id, sourceLang) : null;
-      await downloadSubtitleFile(
-        targetSub?.content || [],
-        sourceSub?.content || [],
-        file.file_name,
-        format,
-        track
-      );
+      try {
+        const targetSub = await subtitleService.getSubtitleByFile(file.id, targetLanguage);
+        const sourceLang = file.detected_source_lang;
+        const sourceSub = sourceLang ? await subtitleService.getSubtitleByFile(file.id, sourceLang) : null;
+        await downloadSubtitleFile(
+          targetSub?.content || [],
+          sourceSub?.content || [],
+          file.file_name,
+          format,
+          track
+        );
+      } catch (error) {
+        console.error('Export single file failed:', error);
+        throw error;
+      }
     },
     [targetLanguage]
   );
 
   const exportProjectZip = useCallback(
     async (projectName: string, format: SubtitleExportFormat, track: SubtitleExportTrack = 'target') => {
-      const completedFiles = files.filter((f) => f.status === 'completed');
-      const items = await Promise.all(
-        completedFiles.map(async (file) => {
-          const targetSub = await subtitleService.getSubtitleByFile(file.id, targetLanguage);
-          const sourceLang = file.detected_source_lang;
-          const sourceSub = sourceLang ? await subtitleService.getSubtitleByFile(file.id, sourceLang) : null;
-          return {
-            fileName: file.file_name,
-            subtitles: targetSub?.content || [],
-            sourceSubtitles: sourceSub?.content || [],
-          };
-        })
-      );
-      await downloadProjectZip(projectName, items, format, track);
+      try {
+        const completedFiles = files.filter((f) => f.status === 'completed');
+        const items = await Promise.all(
+          completedFiles.map(async (file) => {
+            const targetSub = await subtitleService.getSubtitleByFile(file.id, targetLanguage);
+            const sourceLang = file.detected_source_lang;
+            const sourceSub = sourceLang ? await subtitleService.getSubtitleByFile(file.id, sourceLang) : null;
+            return {
+              fileName: file.file_name,
+              subtitles: targetSub?.content || [],
+              sourceSubtitles: sourceSub?.content || [],
+            };
+          })
+        );
+        await downloadProjectZip(projectName, items, format, track);
+      } catch (error) {
+        console.error('Export project ZIP failed:', error);
+        throw error;
+      }
     },
     [files, targetLanguage]
   );

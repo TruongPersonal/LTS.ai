@@ -64,15 +64,19 @@ export const parseTimestampToSeconds = (timestampStr: string): number => {
   const parts = normalized.split(':');
   
   if (parts.length === 3) {
-    const hours = parseFloat(parts[0]);
-    const mins = parseFloat(parts[1]);
-    const secs = parseFloat(parts[2]);
-    return hours * 3600 + mins * 60 + secs;
+    const hours = Number(parts[0]);
+    const mins = Number(parts[1]);
+    const secs = Number(parts[2]);
+    if (Number.isFinite(hours) && Number.isFinite(mins) && Number.isFinite(secs)) {
+      return Math.max(0, hours * 3600 + mins * 60 + secs);
+    }
   } else if (parts.length === 2) {
-    const mins = parseFloat(parts[0]);
-    const secs = parseFloat(parts[1]);
-    return mins * 60 + secs;
+    const mins = Number(parts[0]);
+    const secs = Number(parts[1]);
+    if (Number.isFinite(mins) && Number.isFinite(secs)) {
+      return Math.max(0, mins * 60 + secs);
+    }
   }
-  return parseFloat(normalized) || 0;
+  const rawNum = Number(normalized);
+  return Number.isFinite(rawNum) ? Math.max(0, rawNum) : 0;
 };
-
