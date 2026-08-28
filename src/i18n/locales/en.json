@@ -87,8 +87,7 @@
     },
     "revenue": {
       "title": "Estimated Revenue",
-      "stripeLive": "Stripe Revenue",
-      "stripeEstimate": "Estimated Revenue"
+      "stripeEstimate": "Stripe Revenue"
     },
     "metrics": {
       "users": "Total Users",

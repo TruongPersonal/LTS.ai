@@ -87,8 +87,7 @@
     },
     "revenue": {
       "title": "推定収益",
-      "stripeLive": "Stripe 収益",
-      "stripeEstimate": "推定収益"
+      "stripeEstimate": "Stripe 収益"
     },
     "metrics": {
       "users": "総ユーザー数",

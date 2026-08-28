@@ -87,8 +87,7 @@
     },
     "revenue": {
       "title": "Doanh thu Ước tính",
-      "stripeLive": "Thu nhập Stripe",
-      "stripeEstimate": "Doanh thu ước tính"
+      "stripeEstimate": "Thu nhập Stripe"
     },
     "metrics": {
       "users": "Tổng người dùng",

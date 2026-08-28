@@ -136,7 +136,7 @@ serve(async (request) => {
       if (stripeSecretKey) {
         try {
           const authHeader = `Basic ${btoa(`${stripeSecretKey}:`)}`;
-          const chargesRes = await fetch('https://api.stripe.com/v1/charges?limit=100', {
+          const chargesRes = await fetch('https://api.stripe.com/v1/charges?expand[]=data.balance_transaction&limit=100', {
             headers: { Authorization: authHeader },
           });
           if (chargesRes.ok) {
@@ -148,6 +148,7 @@ serve(async (request) => {
               paid: boolean;
               refunded: boolean;
               description?: string | null;
+              balance_transaction?: { net: number } | null;
             }>;
             const validCharges = charges.filter(
               (c) =>
@@ -156,9 +157,12 @@ serve(async (request) => {
                 !c.refunded &&
                 (!c.description || !c.description.includes('Testing Blueprints'))
             );
-            const totalGrossCents = validCharges.reduce((acc, c) => acc + (c.amount || 0), 0);
-            if (totalGrossCents > 0) {
-              revenueAmount = Number((totalGrossCents / 100).toFixed(2));
+            const totalNetCents = validCharges.reduce(
+              (acc, c) => acc + (c.balance_transaction?.net ?? c.amount),
+              0
+            );
+            if (totalNetCents > 0) {
+              revenueAmount = Number((totalNetCents / 100).toFixed(2));
               revenueSource = 'stripe_balance';
             }
           }

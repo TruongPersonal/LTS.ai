@@ -64,11 +64,7 @@ export const AdminOverviewTab: React.FC<AdminOverviewTabProps> = ({
           </div>
           <div className="text-[11px] ui-muted flex items-center gap-1.5">
             <span className="size-1.5 rounded-full bg-emerald-500" />
-            <span>
-              {overview?.revenue.source === 'stripe_balance'
-                ? t('admin.revenue.stripeLive')
-                : t('admin.revenue.stripeEstimate')}
-            </span>
+            <span>{t('admin.revenue.stripeEstimate')}</span>
           </div>
         </div>
 
