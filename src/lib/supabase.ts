@@ -35,8 +35,25 @@ function removeSessionValue(key: string): void {
   } catch {}
 }
 
+function extractProviderTokensFromUrl(): { providerToken?: string; providerRefreshToken?: string } {
+  if (typeof window === 'undefined') return {};
+  try {
+    const hash = window.location.hash.startsWith('#') ? window.location.hash.slice(1) : window.location.hash;
+    const search = window.location.search.startsWith('?') ? window.location.search.slice(1) : window.location.search;
+    const hashParams = new URLSearchParams(hash);
+    const searchParams = new URLSearchParams(search);
+    const providerToken = hashParams.get('provider_token') || searchParams.get('provider_token') || undefined;
+    const providerRefreshToken =
+      hashParams.get('provider_refresh_token') || searchParams.get('provider_refresh_token') || undefined;
+    return { providerToken, providerRefreshToken };
+  } catch {
+    return {};
+  }
+}
+
 export function persistGoogleProviderToken(session: Session | null): string {
-  const token = session?.provider_token?.trim() || '';
+  const { providerToken: urlToken, providerRefreshToken: urlRefreshToken } = extractProviderTokensFromUrl();
+  const token = session?.provider_token?.trim() || urlToken?.trim() || '';
   if (token) {
     inMemoryGoogleToken = token;
     writeSessionValue(GOOGLE_TOKEN_KEY, token);
@@ -44,7 +61,7 @@ export function persistGoogleProviderToken(session: Session | null): string {
     writeSessionValue(TOKEN_EXPIRES_AT_KEY, String(Date.now() + expiresInMs));
   }
 
-  const refreshToken = (session as any)?.provider_refresh_token?.trim() || '';
+  const refreshToken = (session as any)?.provider_refresh_token?.trim() || urlRefreshToken?.trim() || '';
   if (refreshToken && session?.user?.id) {
     void supabase
       .from('profiles')
