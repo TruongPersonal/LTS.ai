@@ -382,7 +382,25 @@
     "partialCompleted": "{{total}}件中{{failed}}件失敗！",
     "allFailed": "{{count}}件のファイルを完了できませんでした！",
     "progressAria": "処理進行状況 {{processed}}/{{total}}",
-    "doneTitle": "完了"
+    "doneTitle": "完了",
+    "preparingSimple": "準備中...",
+    "completedSimple": "完了",
+    "queued": "順番待ち中...",
+    "waiting": "処理を待機中...",
+    "retryPreparing": "再試行の準備中...",
+    "videoCompleted": "動画の処理が完了しました。",
+    "existingSubPreparing": "インポートした字幕を準備中...",
+    "existingSubCompleted": "字幕の処理が完了しました。",
+    "processingPreparing": "処理を準備中...",
+    "translating": "字幕を翻訳中...",
+    "translatingBatch": "Gemini 2.0 Flashで字幕を翻訳中 · バッチ {{batch}}/{{total}}"
+  },
+  "errors": {
+    "googleSessionExpired": "ファイルをダウンロードできません。Google Driveのセッションが期限切れです。",
+    "fileNotFailed": "このファイルは失敗状態ではありません。",
+    "googleTokenMissing": "Google Driveアクセストークンが見つかりません。Googleで再ログインしてください。",
+    "googleApiLoadFailed": "Google APIスクリプトの読み込みに失敗しました。",
+    "googlePickerInitFailed": "Google Pickerライブラリの初期化に失敗しました。"
   },
   "editor": {
     "export": "書き出し",

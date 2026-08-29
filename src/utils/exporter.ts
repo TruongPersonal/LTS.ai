@@ -10,6 +10,12 @@ export interface FileSubtitleExportPackage {
   sourceSubtitles?: SubtitleItem[];
 }
 
+const MEDIA_EXTENSIONS = /\.(mp4|mkv|avi|mov|webm|flv|wmv|m4v|ts|mts|m2ts|3gp|ogg|ogv|mp3|wav|flac|aac|m4a|wma)$/i;
+
+function stripMediaExtension(fileName: string): string {
+  return fileName.replace(MEDIA_EXTENSIONS, '');
+}
+
 export const downloadSubtitleFile = async (
   targetSubtitles: SubtitleItem[],
   sourceSubtitles: SubtitleItem[] = [],
@@ -19,7 +25,7 @@ export const downloadSubtitleFile = async (
 ) => {
   
   const { saveAs } = await import('file-saver');
-  const cleanFileName = fileName;
+  const cleanFileName = stripMediaExtension(fileName);
 
   const getContent = (items: SubtitleItem[]) => {
     let content = '';
@@ -48,11 +54,15 @@ export const downloadSubtitleFile = async (
   if (track === 'source') {
     exportBlob(effectiveSource, 'original');
   } else if (track === 'bilingual') {
-    
-    exportBlob(targetSubtitles, 'translation');
-    window.setTimeout(() => {
-      exportBlob(effectiveSource, 'original');
-    }, 250);
+    const mergedCues: SubtitleItem[] = targetSubtitles.map((cue) => {
+      const sourceCue = effectiveSource.find((s) => s.id === cue.id);
+      const sourceText = sourceCue?.text || '';
+      const mergedText = sourceText && sourceText !== cue.text
+        ? `${cue.text}\n${sourceText}`
+        : cue.text;
+      return { ...cue, text: mergedText };
+    });
+    exportBlob(mergedCues, 'bilingual');
   } else {
     
     exportBlob(targetSubtitles, '');
@@ -80,14 +90,21 @@ export const downloadProjectZip = async (
   };
 
   items.forEach((item) => {
-    const cleanFileName = item.fileName;
+    const cleanFileName = stripMediaExtension(item.fileName);
     const effectiveSource = (item.sourceSubtitles && item.sourceSubtitles.length > 0) ? item.sourceSubtitles : item.subtitles;
 
     if (track === 'source') {
       folder?.file(`${cleanFileName}_original.${format}`, getContent(effectiveSource));
     } else if (track === 'bilingual') {
-      folder?.file(`${cleanFileName}_translation.${format}`, getContent(item.subtitles));
-      folder?.file(`${cleanFileName}_original.${format}`, getContent(effectiveSource));
+      const mergedCues: SubtitleItem[] = item.subtitles.map((cue) => {
+        const sourceCue = effectiveSource.find((s) => s.id === cue.id);
+        const sourceText = sourceCue?.text || '';
+        const mergedText = sourceText && sourceText !== cue.text
+          ? `${cue.text}\n${sourceText}`
+          : cue.text;
+        return { ...cue, text: mergedText };
+      });
+      folder?.file(`${cleanFileName}_bilingual.${format}`, getContent(mergedCues));
     } else {
       folder?.file(`${cleanFileName}.${format}`, getContent(item.subtitles));
     }

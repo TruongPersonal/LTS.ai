@@ -1,4 +1,5 @@
 import { getGoogleAccessToken } from '../lib/supabase';
+import i18n from '../i18n';
 
 export interface SelectedPickerFile {
   id: string;
@@ -33,13 +34,13 @@ function loadGapiScript(): Promise<void> {
       if (window.gapi) {
         window.gapi.load('picker', {
           callback: () => resolve(),
-          onerror: () => reject(new Error('Không thể khởi tạo Google Picker library.')),
+          onerror: () => reject(new Error(i18n.t('errors.googlePickerInitFailed', 'Không thể khởi tạo Google Picker library.'))),
         });
       } else {
-        reject(new Error('Google API Script chưa tải thành công.'));
+        reject(new Error(i18n.t('errors.googleApiLoadFailed', 'Google API Script chưa tải thành công.')));
       }
     };
-    script.onerror = () => reject(new Error('Không thể tải Google API Script.'));
+    script.onerror = () => reject(new Error(i18n.t('errors.googleApiLoadFailed', 'Không thể tải Google API Script.')));
     document.body.appendChild(script);
   });
 
@@ -51,7 +52,7 @@ export async function openGoogleDrivePicker(): Promise<SelectedPickerFile | null
 
   const accessToken = await getGoogleAccessToken();
   if (!accessToken) {
-    throw new Error('Phiên làm việc Google đã hết hạn. Vui lòng đăng nhập lại.');
+    throw new Error(i18n.t('errors.googleSessionExpired', 'Phiên làm việc Google đã hết hạn. Vui lòng đăng nhập lại.'));
   }
 
   const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';

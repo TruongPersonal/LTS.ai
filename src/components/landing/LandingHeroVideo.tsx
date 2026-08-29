@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 import { Play } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { formatDisplayTime } from '../../utils/time';
@@ -15,19 +15,9 @@ export const LandingHeroVideo: React.FC<LandingHeroVideoProps> = ({
   const { t } = useTranslation();
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState('00:18');
   const [hasVideoError, setHasVideoError] = useState(false);
-
-  useEffect(() => {
-    if (!isPlaying) return;
-
-    const interval = setInterval(() => {
-      setElapsedSeconds((prev) => prev + 1);
-    }, 1000);
-
-    return () => clearInterval(interval);
-  }, [isPlaying]);
 
   const handleStartPlay = (e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
@@ -59,6 +49,11 @@ export const LandingHeroVideo: React.FC<LandingHeroVideoProps> = ({
     setHasVideoError(false);
   };
 
+  const handleTimeUpdate = () => {
+    if (!videoRef.current) return;
+    setCurrentTime(videoRef.current.currentTime);
+  };
+
   return (
     <div className="landing-product-proof" aria-label={t('landing.previewAria')}>
       {}
@@ -84,6 +79,7 @@ export const LandingHeroVideo: React.FC<LandingHeroVideoProps> = ({
           muted
           playsInline
           onLoadedMetadata={handleLoadedMetadata}
+          onTimeUpdate={handleTimeUpdate}
           onError={() => setHasVideoError(true)}
           className={`absolute inset-0 w-full h-full object-cover object-center transition-opacity duration-500 ${
             isPlaying ? 'opacity-100' : 'opacity-0 pointer-events-none'
@@ -114,7 +110,7 @@ export const LandingHeroVideo: React.FC<LandingHeroVideoProps> = ({
 
         {}
         <span className="landing-proof-time z-10 pointer-events-none font-mono">
-          {isPlaying ? formatDisplayTime(elapsedSeconds) : `00:00 → ${duration}`}
+          {isPlaying ? formatDisplayTime(currentTime) : `00:00 → ${duration}`}
         </span>
       </div>
 

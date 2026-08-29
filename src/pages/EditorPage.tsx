@@ -123,9 +123,9 @@ export const EditorPage: React.FC<EditorPageProps> = ({
     document.title = `LTS.ai - ${file.file_name}`;
 
     return () => {
-      document.title = 'LTS.ai - Phụ đề AI';
+      document.title = t('meta.title');
     };
-  }, [file.file_name]);
+  }, [file.file_name, t]);
 
   const handlePlaybackTimeUpdate = useCallback(
     (time: number) => {

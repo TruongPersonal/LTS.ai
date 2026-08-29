@@ -35,7 +35,7 @@ export const useProjectFiles = (projectId: string, targetLanguage: string) => {
     } finally {
       setLoading(false);
     }
-  }, [projectId]);
+  }, [projectId, t]);
 
   useEffect(() => {
     void loadFiles();
@@ -43,14 +43,15 @@ export const useProjectFiles = (projectId: string, targetLanguage: string) => {
 
   useEffect(() => {
     const progressEntries = Object.values(globalProgress);
+    const fileIds = new Set(files.map((f) => f.id));
     let shouldReload = false;
 
     progressEntries.forEach((progress) => {
-      if (progress.stage === 'completed' || progress.stage === 'failed') {
-        const matchingFile = files.find((f) => f.id === progress.fileId);
-        if (matchingFile && matchingFile.status === 'processing') {
-          shouldReload = true;
-        }
+      if (
+        (progress.stage === 'completed' || progress.stage === 'failed') &&
+        fileIds.has(progress.fileId)
+      ) {
+        shouldReload = true;
       }
     });
 
@@ -61,6 +62,7 @@ export const useProjectFiles = (projectId: string, targetLanguage: string) => {
       return () => window.clearTimeout(timer);
     }
   }, [globalProgress, files, loadFiles]);
+
 
   const addDriveFile = useCallback(
     async (
@@ -106,7 +108,7 @@ export const useProjectFiles = (projectId: string, targetLanguage: string) => {
 
       return createdFile;
     },
-    [projectId]
+    [projectId, clearFileProgress]
   );
 
   const processAllDrafts = useCallback(async () => {

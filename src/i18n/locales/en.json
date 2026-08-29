@@ -382,7 +382,25 @@
     "partialCompleted": "Processed {{total}} files ({{failed}} failed)!",
     "allFailed": "Failed to complete {{count}} files!",
     "progressAria": "Processing progress {{processed}}/{{total}}",
-    "doneTitle": "Completed"
+    "doneTitle": "Completed",
+    "preparingSimple": "Preparing...",
+    "completedSimple": "Completed",
+    "queued": "Queued...",
+    "waiting": "Waiting for processing...",
+    "retryPreparing": "Preparing to retry...",
+    "videoCompleted": "Video processing completed.",
+    "existingSubPreparing": "Preparing imported subtitles...",
+    "existingSubCompleted": "Subtitle processing completed.",
+    "processingPreparing": "Preparing to process...",
+    "translating": "Translating subtitles...",
+    "translatingBatch": "Translating subtitles with Gemini 2.0 Flash · batch {{batch}}/{{total}}"
+  },
+  "errors": {
+    "googleSessionExpired": "Cannot download file. Google Drive session has expired.",
+    "fileNotFailed": "This file is no longer in a failed state.",
+    "googleTokenMissing": "Google Drive access token is missing. Please sign in again with Google.",
+    "googleApiLoadFailed": "Failed to load Google API Script.",
+    "googlePickerInitFailed": "Failed to initialize Google Picker library."
   },
   "editor": {
     "export": "Export",

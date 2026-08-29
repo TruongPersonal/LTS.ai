@@ -114,13 +114,13 @@ export const fileService = {
     if (!processableFiles?.length) return;
 
     for (const file of processableFiles as FileMedia[]) {
-      emitProgress(onProgress, file.id, 'queued', 0, 'Đang chờ xử lý...');
+      emitProgress(onProgress, file.id, 'queued', 0, i18n.t('processing.waiting', 'Đang chờ xử lý...'));
     }
 
     const hasMediaFile = processableFiles.some((file) => file.input_source === 'media');
     const accessToken = hasMediaFile ? await getGoogleAccessToken() : '';
     if (hasMediaFile && !accessToken) {
-      const error = new Error('Không thể tải tệp. Phiên Google Drive đã hết hạn.');
+      const error = new Error(i18n.t('errors.googleSessionExpired', 'Không thể tải tệp. Phiên Google Drive đã hết hạn.'));
       for (const file of processableFiles as FileMedia[]) {
         if (file.input_source === 'media') {
           await markFailed(projectId, file.id, null, error);
@@ -173,13 +173,13 @@ export const fileService = {
 
     if (fileError) throw fileError;
     if (file.status !== 'failed') {
-      throw new Error('Tệp này không còn ở trạng thái thất bại.');
+      throw new Error(i18n.t('errors.fileNotFailed', 'Tệp này không còn ở trạng thái thất bại.'));
     }
 
-    emitProgress(onProgress, file.id, 'queued', 0, 'Đang chuẩn bị thử lại...');
+    emitProgress(onProgress, file.id, 'queued', 0, i18n.t('processing.retryPreparing', 'Đang chuẩn bị thử lại...'));
     const accessToken = file.input_source === 'media' ? await getGoogleAccessToken() : '';
     if (file.input_source === 'media' && !accessToken) {
-      const error = new Error('Google Drive access token is missing. Vui lòng đăng nhập lại bằng Google.');
+      const error = new Error(i18n.t('errors.googleTokenMissing', 'Google Drive access token is missing. Vui lòng đăng nhập lại bằng Google.'));
       emitProgress(onProgress, file.id, 'failed', 100, error.message);
       throw error;
     }
@@ -194,7 +194,7 @@ export const fileService = {
   ): Promise<void> {
     const accessToken = file.input_source === 'media' ? await getGoogleAccessToken() : '';
     if (file.input_source === 'media' && !accessToken) {
-      const error = new Error('Không thể tải tệp. Phiên Google Drive đã hết hạn.');
+      const error = new Error(i18n.t('errors.googleSessionExpired', 'Không thể tải tệp. Phiên Google Drive đã hết hạn.'));
       await markFailed(projectId, file.id, null, error);
       emitProgress(onProgress, file.id, 'failed', 100, error.message);
       throw error;

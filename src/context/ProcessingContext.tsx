@@ -3,6 +3,7 @@ import type { FileMedia } from '../types/database';
 import type { ProcessingProgress } from '../types/processing';
 import { fileService } from '../services/fileService';
 import { ProcessingContext, type ProcessingQueueItem } from './processing-context';
+import i18n from '../i18n';
 
 const FILE_PROCESSING_CONCURRENCY = 1;
 
@@ -53,7 +54,7 @@ export const ProcessingProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         setActiveItem(current);
         setQueuedItems([...queueRef.current]);
         setActivePercent(0);
-        setActiveMessage('Đang chuẩn bị...');
+        setActiveMessage(i18n.t('processing.preparingSimple', 'Đang chuẩn bị...'));
 
         try {
           await fileService.processSingleDraftFile(
@@ -85,7 +86,7 @@ export const ProcessingProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
     setActiveItem(null);
     setActivePercent(100);
-    setActiveMessage('Hoàn thành');
+    setActiveMessage(i18n.t('processing.completedSimple', 'Hoàn thành'));
     isProcessingRef.current = false;
     setIsProcessing(false);
 
@@ -123,7 +124,7 @@ export const ProcessingProvider: React.FC<{ children: React.ReactNode }> = ({ ch
           fileId: file.id,
           stage: 'queued',
           percent: 0,
-          message: 'Đang xếp hàng...',
+          message: i18n.t('processing.queued', 'Đang xếp hàng...'),
         };
       });
 

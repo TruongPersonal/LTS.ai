@@ -382,7 +382,25 @@
     "partialCompleted": "Xử lý {{total}} tệp ({{failed}} tệp lỗi)!",
     "allFailed": "Không hoàn thành {{count}} tệp!",
     "progressAria": "Tiến trình xử lý {{processed}}/{{total}}",
-    "doneTitle": "Đã hoàn thành"
+    "doneTitle": "Đã hoàn thành",
+    "preparingSimple": "Đang chuẩn bị...",
+    "completedSimple": "Hoàn thành",
+    "queued": "Đang xếp hàng...",
+    "waiting": "Đang chờ xử lý...",
+    "retryPreparing": "Đang chuẩn bị thử lại...",
+    "videoCompleted": "Hoàn thành xử lý video.",
+    "existingSubPreparing": "Đang chuẩn bị phụ đề đã nhập...",
+    "existingSubCompleted": "Hoàn thành xử lý phụ đề.",
+    "processingPreparing": "Đang chuẩn bị xử lý...",
+    "translating": "Đang dịch phụ đề...",
+    "translatingBatch": "Đang dịch phụ đề với Gemini 2.0 Flash · lô {{batch}}/{{total}}"
+  },
+  "errors": {
+    "googleSessionExpired": "Không thể tải tệp. Phiên Google Drive đã hết hạn.",
+    "fileNotFailed": "Tệp này không còn ở trạng thái thất bại.",
+    "googleTokenMissing": "Google Drive access token is missing. Vui lòng đăng nhập lại bằng Google.",
+    "googleApiLoadFailed": "Không thể tải Google API Script.",
+    "googlePickerInitFailed": "Không thể khởi tạo Google Picker library."
   },
   "editor": {
     "export": "Xuất",

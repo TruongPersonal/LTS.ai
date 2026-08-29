@@ -117,7 +117,7 @@ export const AdminPage: React.FC = () => {
     } finally {
       setLoadingOverview(false);
     }
-  }, [showToast]);
+  }, [showToast, t]);
 
   const loadUsers = useCallback(async () => {
     setLoadingUsers(true);
@@ -131,7 +131,7 @@ export const AdminPage: React.FC = () => {
     } finally {
       setLoadingUsers(false);
     }
-  }, [showToast, userSubTab, usersPage, usersSearch]);
+  }, [showToast, userSubTab, usersPage, usersSearch, t]);
 
   const loadProjects = useCallback(async () => {
     setLoadingProjects(true);
@@ -144,7 +144,7 @@ export const AdminPage: React.FC = () => {
     } finally {
       setLoadingProjects(false);
     }
-  }, [projectsPage, projectsSearch, showToast]);
+  }, [projectsPage, projectsSearch, showToast, t]);
 
   const loadProjectFiles = useCallback(
     async (projectId: string, projectTitle: string) => {
@@ -160,7 +160,7 @@ export const AdminPage: React.FC = () => {
         setLoadingProjectFiles(false);
       }
     },
-    [showToast]
+    [showToast, t]
   );
 
   const loadSystemConfig = useCallback(async () => {
@@ -173,7 +173,7 @@ export const AdminPage: React.FC = () => {
     } finally {
       setLoadingSystemConfig(false);
     }
-  }, [showToast]);
+  }, [showToast, t]);
 
   const loadAuditLogs = useCallback(async () => {
     setLoadingAuditLogs(true);
@@ -186,7 +186,7 @@ export const AdminPage: React.FC = () => {
     } finally {
       setLoadingAuditLogs(false);
     }
-  }, [auditLogsPage, showToast]);
+  }, [auditLogsPage, showToast, t]);
 
   useEffect(() => {
     if (activeTab === 'overview') void loadOverview();

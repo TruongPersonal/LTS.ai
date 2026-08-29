@@ -53,7 +53,7 @@ export const useEditorSubtitles = ({
     } finally {
       setLoading(false);
     }
-  }, [fileId, detectedSourceLang, targetLanguage, markDirty]);
+  }, [fileId, detectedSourceLang, targetLanguage, markDirty, t]);
 
   useEffect(() => {
     void loadSubtitles();
@@ -90,7 +90,7 @@ export const useEditorSubtitles = ({
     } finally {
       setSaving(false);
     }
-  }, [fileId, saving, targetLanguage, subtitles, sourceLanguage, sourceSubtitles, markDirty]);
+  }, [fileId, saving, targetLanguage, subtitles, sourceLanguage, sourceSubtitles, markDirty, t]);
 
   const updateCueText = useCallback(
     (cueId: number, targetText?: string, sourceText?: string) => {
@@ -125,7 +125,28 @@ export const useEditorSubtitles = ({
   const addCue = useCallback(
     (afterId?: number) => {
       const nextTarget = insertCueAfter(subtitles, afterId);
-      const nextSource = insertCueAfter(sourceSubtitles, afterId);
+      const insertedCue = nextTarget.find(
+        (c) => !subtitles.some((s) => s.id === c.id)
+      );
+
+      let nextSource: SubtitleItem[];
+      if (insertedCue && sourceSubtitles.length > 0) {
+        const sourceIndex = afterId !== undefined
+          ? sourceSubtitles.findIndex((s) => s.id === afterId)
+          : sourceSubtitles.length - 1;
+        const insertAt = sourceIndex >= 0 ? sourceIndex + 1 : sourceSubtitles.length;
+        const newSourceCue: SubtitleItem = { id: insertedCue.id, start: insertedCue.start, end: insertedCue.end, text: '' };
+        nextSource = [
+          ...sourceSubtitles.slice(0, insertAt),
+          newSourceCue,
+          ...sourceSubtitles.slice(insertAt),
+        ];
+      } else if (insertedCue) {
+        nextSource = [{ id: insertedCue.id, start: insertedCue.start, end: insertedCue.end, text: '' }];
+      } else {
+        nextSource = insertCueAfter(sourceSubtitles, afterId);
+      }
+
       setSubtitles(nextTarget);
       setSourceSubtitles(nextSource);
       markDirty(true);

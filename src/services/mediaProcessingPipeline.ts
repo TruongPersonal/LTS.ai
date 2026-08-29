@@ -302,7 +302,10 @@ export async function translateSubtitlesClientSide(
       fileId,
       'finalizing',
       progressPercent,
-      `Đang dịch phụ đề với Gemini 2.0 Flash · lô ${batchIndex}/${totalBatches}`,
+      i18n.t('processing.translatingBatch', 'Đang dịch phụ đề với Gemini 2.0 Flash · lô {{batch}}/{{total}}', {
+        batch: batchIndex,
+        total: totalBatches,
+      }),
       batchIndex,
       totalBatches
     );
@@ -466,7 +469,7 @@ export async function processMediaFile(
       attempt_id: attemptId,
       source_language: merged.sourceLanguage,
     });
-    emitProgress(onProgress, file.id, 'completed', 100, 'Hoàn thành xử lý video.');
+    emitProgress(onProgress, file.id, 'completed', 100, i18n.t('processing.videoCompleted', 'Hoàn thành xử lý video.'));
   } catch (error) {
     const message = sanitizeErrorMessage(error);
     await markFailed(projectId, file.id, attemptId || null, message);
@@ -486,7 +489,7 @@ export async function processExistingSubtitleFile(
       project_id: projectId,
       file_id: file.id,
     });
-    emitProgress(onProgress, file.id, 'preparing', 20, 'Đang chuẩn bị phụ đề đã nhập...');
+    emitProgress(onProgress, file.id, 'preparing', 20, i18n.t('processing.existingSubPreparing', 'Đang chuẩn bị phụ đề đã nhập...'));
     
     const sourceLanguage = file.detected_source_lang || 'en';
     const { data: existing, error: existingError } = await supabase
@@ -506,7 +509,7 @@ export async function processExistingSubtitleFile(
       .single();
     const targetLanguage = projectData?.target_language || 'vi';
 
-    emitProgress(onProgress, file.id, 'finalizing', 75, 'Đang dịch phụ đề...');
+    emitProgress(onProgress, file.id, 'finalizing', 75, i18n.t('processing.translating', 'Đang dịch phụ đề...'));
 
     const translatedSubtitles = await translateSubtitlesClientSide(
       projectId,
@@ -533,7 +536,7 @@ export async function processExistingSubtitleFile(
       project_id: projectId,
       file_id: file.id,
     });
-    emitProgress(onProgress, file.id, 'completed', 100, 'Hoàn thành xử lý phụ đề.');
+    emitProgress(onProgress, file.id, 'completed', 100, i18n.t('processing.existingSubCompleted', 'Hoàn thành xử lý phụ đề.'));
   } catch (error) {
     const message = sanitizeErrorMessage(error);
     await markFailed(projectId, file.id, null, message);
@@ -548,7 +551,7 @@ export async function processSingleFile(
   accessToken: string,
   onProgress?: ProcessingProgressCallback
 ): Promise<void> {
-  emitProgress(onProgress, file.id, 'preparing', 5, 'Đang chuẩn bị xử lý...');
+  emitProgress(onProgress, file.id, 'preparing', 5, i18n.t('processing.processingPreparing', 'Đang chuẩn bị xử lý...'));
   if (file.input_source === 'existing_subtitle') {
     await processExistingSubtitleFile(projectId, file, onProgress);
     return;

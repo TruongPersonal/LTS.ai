@@ -42,10 +42,12 @@ export const formatDuration = (seconds?: number | null): string => {
 };
 
 export const formatSrtTimestamp = (seconds: number): string => {
-  const hours = Math.floor(seconds / 3600);
-  const mins = Math.floor((seconds % 3600) / 60);
-  const secs = Math.floor(seconds % 60);
-  const millis = Math.floor((seconds % 1) * 1000);
+  const totalMs = Math.round(seconds * 1000);
+  const millis = totalMs % 1000;
+  const totalSecs = Math.floor(totalMs / 1000);
+  const hours = Math.floor(totalSecs / 3600);
+  const mins = Math.floor((totalSecs % 3600) / 60);
+  const secs = totalSecs % 60;
 
   return `${hours.toString().padStart(2, '0')}:${mins
     .toString()

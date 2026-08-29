@@ -1,4 +1,4 @@
-import React, { Suspense, lazy, useEffect, useRef, useState } from 'react';
+import React, { Suspense, lazy, useCallback, useEffect, useRef, useState } from 'react';
 import {
   Routes,
   Route,
@@ -169,14 +169,14 @@ const DashboardRoute: React.FC = () => {
   const [toasts, setToasts] = useState<ToastItem[]>([]);
   const handledCheckoutRef = useRef<string | null>(null);
 
-  const showToast = (message: string, type: ToastItem['type'] = 'success') => {
+  const showToast = useCallback((message: string, type: ToastItem['type'] = 'success') => {
     const id = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
     setToasts((prev) => [...prev, { id, type, message }]);
-  };
+  }, []);
 
-  const dismissToast = (id: string) => {
+  const dismissToast = useCallback((id: string) => {
     setToasts((prev) => prev.filter((t) => t.id !== id));
-  };
+  }, []);
 
   useEffect(() => {
     if (intentType) setIntentId((id) => id + 1);
@@ -216,7 +216,7 @@ const DashboardRoute: React.FC = () => {
         showToast(t('subscription.checkoutFailed'), 'error');
         clearCheckoutParams();
       });
-  }, [checkoutSessionId, checkoutStatus, navigate, refreshProfile]);
+  }, [checkoutSessionId, checkoutStatus, navigate, refreshProfile, showToast, t]);
 
   if (isPageLoading) return <PulseLoadingScreen />;
 
@@ -279,7 +279,7 @@ const ProjectDetailRoute: React.FC = () => {
     return () => {
       mounted = false;
     };
-  }, [projectId]);
+  }, [projectId, t]);
 
   if (isPageLoading) return <PulseLoadingScreen />;
 
@@ -358,7 +358,7 @@ const EditorRoute: React.FC = () => {
     return () => {
       mounted = false;
     };
-  }, [fileId, projectId]);
+  }, [fileId, projectId, t]);
 
   if (isPageLoading) return <PulseLoadingScreen />;
 

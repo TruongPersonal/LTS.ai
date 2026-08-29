@@ -16,6 +16,8 @@
 
     --ui-border: rgba(0, 0, 0, 0.08);
     --ui-border-strong: rgba(0, 0, 0, 0.16);
+    --ui-border-subtle: rgba(0, 0, 0, 0.05);
+    --ui-border-hover: rgba(0, 0, 0, 0.14);
 
     --ui-text: #09090b;
     --ui-text-muted: #71717a;
@@ -37,6 +39,8 @@
     --ui-danger: #ef4444;
     --ui-danger-soft: rgba(239, 68, 68, 0.10);
 
+    --ui-bg: var(--ui-canvas);
+    --ui-muted: #71717a;
     --ui-video: #f4f4f5;
     --ui-shadow: 0 1px 2px rgba(0, 0, 0, 0.05), 0 8px 16px -4px rgba(0, 0, 0, 0.06);
     --ui-shadow-modal: 0 20px 40px -8px rgba(0, 0, 0, 0.12), 0 0 0 1px rgba(0, 0, 0, 0.08);
@@ -63,6 +67,8 @@
 
     --ui-border: rgba(255, 255, 255, 0.08);
     --ui-border-strong: rgba(255, 255, 255, 0.16);
+    --ui-border-subtle: rgba(255, 255, 255, 0.05);
+    --ui-border-hover: rgba(255, 255, 255, 0.14);
 
     --ui-text: #f4f4f5;
     --ui-text-muted: #a1a1aa;
@@ -84,6 +90,8 @@
     --ui-danger: #f87171;
     --ui-danger-soft: rgba(248, 113, 113, 0.12);
 
+    --ui-bg: var(--ui-canvas);
+    --ui-muted: #a1a1aa;
     --ui-video: #050506;
     --ui-shadow: 0 4px 20px rgba(0, 0, 0, 0.4), 0 1px 2px rgba(255, 255, 255, 0.04);
     --ui-shadow-modal: 0 24px 60px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(255, 255, 255, 0.08);
@@ -130,24 +138,7 @@
     transition: background-color .2s ease, color .2s ease;
   }
 
-  @media (pointer: fine) and (prefers-reduced-motion: no-preference) {
 
-    *,
-    *::before,
-    *::after,
-    html,
-    body,
-    #root,
-    button,
-    a,
-    input,
-    textarea,
-    select,
-    [role="button"],
-    label {
-      cursor: none !important;
-    }
-  }
 
   @media (pointer: fine) {
 
