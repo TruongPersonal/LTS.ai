@@ -66,7 +66,7 @@ export async function downloadDriveMedia(file: FileMedia, accessToken: string): 
 
   if (!response.ok && (response.status === 401 || response.status === 403)) {
     try {
-      currentToken = await getGoogleAccessToken();
+      currentToken = await getGoogleAccessToken(true);
       response = await fetch(
         `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(file.drive_file_id)}?alt=media`,
         { headers: { Authorization: `Bearer ${currentToken}` } }

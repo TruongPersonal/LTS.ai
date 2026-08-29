@@ -27,6 +27,7 @@ CREATE TABLE lts_ai.profiles (
         CHECK (daily_processed_seconds >= 0),
     last_processed_date DATE NOT NULL
         DEFAULT ((NOW() AT TIME ZONE 'UTC')::DATE),
+    google_refresh_token TEXT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 

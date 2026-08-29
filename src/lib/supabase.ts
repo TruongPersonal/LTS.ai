@@ -10,36 +10,7 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
 });
 
 let inMemoryGoogleToken = '';
-let gisScriptPromise: Promise<void> | null = null;
-
-function loadGisScript(): Promise<void> {
-  if (typeof window === 'undefined') return Promise.reject(new Error('Window unavailable'));
-  if (window.google?.accounts?.oauth2) return Promise.resolve();
-  if (gisScriptPromise) return gisScriptPromise;
-
-  gisScriptPromise = new Promise((resolve, reject) => {
-    const existing = document.querySelector('script[src="https://accounts.google.com/gsi/client"]');
-    if (existing) {
-      if (window.google?.accounts?.oauth2) {
-        resolve();
-        return;
-      }
-      existing.addEventListener('load', () => resolve());
-      existing.addEventListener('error', () => reject(new Error('Failed to load Google GIS script.')));
-      return;
-    }
-
-    const script = document.createElement('script');
-    script.src = 'https://accounts.google.com/gsi/client';
-    script.async = true;
-    script.defer = true;
-    script.onload = () => resolve();
-    script.onerror = () => reject(new Error('Failed to load Google GIS script.'));
-    document.head.appendChild(script);
-  });
-
-  return gisScriptPromise;
-}
+let refreshPromise: Promise<string> | null = null;
 
 function readSessionValue(key: string): string {
   if (typeof window === 'undefined') return '';
@@ -72,6 +43,15 @@ export function persistGoogleProviderToken(session: Session | null): string {
     const expiresInMs = (session?.expires_in || 3600) * 1000;
     writeSessionValue(TOKEN_EXPIRES_AT_KEY, String(Date.now() + expiresInMs));
   }
+
+  const refreshToken = (session as any)?.provider_refresh_token?.trim() || '';
+  if (refreshToken && session?.user?.id) {
+    void supabase
+      .from('profiles')
+      .update({ google_refresh_token: refreshToken })
+      .eq('id', session.user.id);
+  }
+
   return token;
 }
 
@@ -88,56 +68,45 @@ export function isGoogleTokenExpired(): boolean {
   return Date.now() >= expiresAt - 5 * 60 * 1000;
 }
 
-export async function refreshGoogleAccessToken(forcePrompt = false): Promise<string> {
-  const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
-  if (!clientId) {
-    throw new Error('VITE_GOOGLE_CLIENT_ID is not configured.');
-  }
+export async function refreshGoogleAccessToken(): Promise<string> {
+  if (refreshPromise) return refreshPromise;
 
-  await loadGisScript();
-
-  return new Promise((resolve, reject) => {
+  refreshPromise = (async () => {
     try {
-      const client = window.google.accounts.oauth2.initTokenClient({
-        client_id: clientId,
-        scope:
-          'https://www.googleapis.com/auth/drive.readonly https://www.googleapis.com/auth/drive.file email profile',
-        prompt: forcePrompt ? 'consent' : '',
-        callback: (response: { access_token?: string; error?: string; expires_in?: number }) => {
-          if (response.error || !response.access_token) {
-            reject(new Error(response.error || 'Failed to obtain Google access token.'));
-            return;
-          }
-          const token = response.access_token;
-          inMemoryGoogleToken = token;
-          writeSessionValue(GOOGLE_TOKEN_KEY, token);
-          const expiresInMs = (Number(response.expires_in) || 3600) * 1000;
-          writeSessionValue(TOKEN_EXPIRES_AT_KEY, String(Date.now() + expiresInMs));
-          resolve(token);
-        },
-        error_callback: (error: unknown) => {
-          reject(error instanceof Error ? error : new Error(String(error || 'Google token client error')));
-        },
+      const { data, error } = await supabase.functions.invoke('process-media', {
+        body: { action: 'get_google_access_token' },
       });
 
-      client.requestAccessToken({ prompt: forcePrompt ? 'consent' : '' });
-    } catch (err) {
-      reject(err);
+      if (error || !data?.access_token) {
+        throw new Error(data?.error || error?.message || 'Unable to refresh Google access token.');
+      }
+
+      const freshToken = String(data.access_token);
+      inMemoryGoogleToken = freshToken;
+      writeSessionValue(GOOGLE_TOKEN_KEY, freshToken);
+      const expiresInMs = (Number(data.expires_in) || 3600) * 1000;
+      writeSessionValue(TOKEN_EXPIRES_AT_KEY, String(Date.now() + expiresInMs));
+
+      return freshToken;
+    } finally {
+      refreshPromise = null;
     }
-  });
+  })();
+
+  return refreshPromise;
 }
 
-export async function getGoogleAccessToken(): Promise<string> {
+export async function getGoogleAccessToken(forceRefresh = false): Promise<string> {
   const token = getStoredGoogleAccessToken();
-  if (token && !isGoogleTokenExpired()) {
+  if (token && !isGoogleTokenExpired() && !forceRefresh) {
     return token;
   }
 
   try {
-    const refreshedToken = await refreshGoogleAccessToken(false);
+    const refreshedToken = await refreshGoogleAccessToken();
     if (refreshedToken) return refreshedToken;
-  } catch (gisError) {
-    console.warn('Silent Google token refresh via GIS encountered an error, using fallback:', gisError);
+  } catch (err) {
+    console.warn('Backend Google token refresh fallback error:', err);
   }
 
   const {
@@ -149,7 +118,7 @@ export async function getGoogleAccessToken(): Promise<string> {
     return sessionToken;
   }
 
-  if (token) {
+  if (token && !forceRefresh) {
     return token;
   }
 

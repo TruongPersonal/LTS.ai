@@ -140,7 +140,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         scopes:
           'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.readonly email profile',
         queryParams: {
-          prompt: 'select_account',
+          prompt: 'consent',
           access_type: 'offline',
         },
         redirectTo: `${window.location.origin}/projects`,
