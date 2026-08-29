@@ -19,6 +19,7 @@ export const useProjectFiles = (projectId: string, targetLanguage: string) => {
     isProcessing: isGlobalProcessing,
     progressByFile: globalProgress,
     startProcessingProject,
+    clearFileProgress,
   } = useGlobalProcessing();
 
   const loadFiles = useCallback(async () => {
@@ -47,7 +48,7 @@ export const useProjectFiles = (projectId: string, targetLanguage: string) => {
     progressEntries.forEach((progress) => {
       if (progress.stage === 'completed' || progress.stage === 'failed') {
         const matchingFile = files.find((f) => f.id === progress.fileId);
-        if (matchingFile && matchingFile.status !== progress.stage) {
+        if (matchingFile && matchingFile.status === 'processing') {
           shouldReload = true;
         }
       }
@@ -100,6 +101,8 @@ export const useProjectFiles = (projectId: string, targetLanguage: string) => {
         delete next[createdFile.id];
         return next;
       });
+
+      clearFileProgress(createdFile.id);
 
       return createdFile;
     },

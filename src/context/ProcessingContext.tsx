@@ -146,6 +146,15 @@ export const ProcessingProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     [runQueue]
   );
 
+  const clearFileProgress = useCallback((fileId: string) => {
+    setProgressByFile((prev) => {
+      if (!prev[fileId]) return prev;
+      const next = { ...prev };
+      delete next[fileId];
+      return next;
+    });
+  }, []);
+
   return (
     <ProcessingContext.Provider
       value={{
@@ -161,6 +170,7 @@ export const ProcessingProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         isWidgetVisible,
         startProcessingProject,
         dismissWidget,
+        clearFileProgress,
       }}
     >
       {children}

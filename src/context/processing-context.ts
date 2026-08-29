@@ -20,6 +20,7 @@ export interface GlobalProcessingContextType {
   isWidgetVisible: boolean;
   startProcessingProject: (projectId: string, files: FileMedia[]) => Promise<void>;
   dismissWidget: () => void;
+  clearFileProgress: (fileId: string) => void;
 }
 
 export const ProcessingContext = createContext<GlobalProcessingContextType | null>(null);
