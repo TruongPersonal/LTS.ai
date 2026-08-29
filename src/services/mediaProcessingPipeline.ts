@@ -1,4 +1,4 @@
-import { supabase } from '../lib/supabase';
+import { getGoogleAccessToken, supabase } from '../lib/supabase';
 import { DEFAULT_PLAN, normalizePlan, PLAN_LIMITS, type FileMedia, type Plan } from '../types/database';
 import type { ProcessingProgressCallback, ProcessingStage } from '../types/processing';
 import { extractFlacChunks, type AudioChunk } from './mediaAudioPreprocessor';
@@ -25,12 +25,12 @@ export class EdgeInvocationError extends Error {
   readonly retryable?: boolean;
   readonly providerStatus?: number;
 
-  constructor(payload: EdgeResult) {
-    super(String(payload.error || 'Edge Function request failed.'));
+  constructor(res: EdgeResult) {
+    super(res.error || 'Edge Function Invocation Error');
     this.name = 'EdgeInvocationError';
-    this.code = payload.code;
-    this.retryable = payload.retryable;
-    this.providerStatus = payload.provider_status;
+    this.code = res.code;
+    this.retryable = res.retryable;
+    this.providerStatus = res.provider_status;
   }
 }
 
@@ -42,11 +42,11 @@ export const emitProgress = (
   message: string,
   chunkIndex?: number,
   chunkCount?: number
-) => {
+): void => {
   onProgress?.({
     fileId,
     stage,
-    percent: Math.min(100, Math.max(0, Math.round(percent))),
+    percent,
     message,
     ...(chunkIndex === undefined ? {} : { chunkIndex }),
     ...(chunkCount === undefined ? {} : { chunkCount }),
@@ -54,14 +54,27 @@ export const emitProgress = (
 };
 
 export async function downloadDriveMedia(file: FileMedia, accessToken: string): Promise<Blob> {
-  if (!accessToken) {
+  let currentToken = accessToken || (await getGoogleAccessToken());
+  if (!currentToken) {
     throw new Error('Session expired or Google Drive access denied.');
   }
 
-  const response = await fetch(
+  let response = await fetch(
     `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(file.drive_file_id)}?alt=media`,
-    { headers: { Authorization: `Bearer ${accessToken}` } }
+    { headers: { Authorization: `Bearer ${currentToken}` } }
   );
+
+  if (!response.ok && (response.status === 401 || response.status === 403)) {
+    try {
+      currentToken = await getGoogleAccessToken();
+      response = await fetch(
+        `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(file.drive_file_id)}?alt=media`,
+        { headers: { Authorization: `Bearer ${currentToken}` } }
+      );
+    } catch {
+      // Continue to error check below
+    }
+  }
 
   if (!response.ok) {
     if (response.status === 401 || response.status === 403) {
