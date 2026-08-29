@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { FileMedia } from '../types/database';
 import type { ProcessingProgress } from '../types/processing';
@@ -22,6 +22,8 @@ export const useProjectFiles = (projectId: string, targetLanguage: string) => {
     clearFileProgress,
   } = useGlobalProcessing();
 
+  const wasProcessingRef = useRef(false);
+
   const loadFiles = useCallback(async () => {
     if (!projectId) return;
     setLoading(true);
@@ -42,26 +44,11 @@ export const useProjectFiles = (projectId: string, targetLanguage: string) => {
   }, [loadFiles]);
 
   useEffect(() => {
-    const progressEntries = Object.values(globalProgress);
-    const fileIds = new Set(files.map((f) => f.id));
-    let shouldReload = false;
-
-    progressEntries.forEach((progress) => {
-      if (
-        (progress.stage === 'completed' || progress.stage === 'failed') &&
-        fileIds.has(progress.fileId)
-      ) {
-        shouldReload = true;
-      }
-    });
-
-    if (shouldReload) {
-      const timer = window.setTimeout(() => {
-        void loadFiles();
-      }, 1000);
-      return () => window.clearTimeout(timer);
+    if (wasProcessingRef.current && !isGlobalProcessing) {
+      void loadFiles();
     }
-  }, [globalProgress, files, loadFiles]);
+    wasProcessingRef.current = isGlobalProcessing;
+  }, [isGlobalProcessing, loadFiles]);
 
 
   const addDriveFile = useCallback(
