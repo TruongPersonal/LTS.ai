@@ -24,9 +24,9 @@ export const useProjectFiles = (projectId: string, targetLanguage: string) => {
 
   const wasProcessingRef = useRef(false);
 
-  const loadFiles = useCallback(async () => {
+  const loadFiles = useCallback(async (silent = false) => {
     if (!projectId) return;
-    setLoading(true);
+    if (!silent) setLoading(true);
     setLoadError(null);
     try {
       const data = await fileService.getFilesByProject(projectId);
@@ -35,17 +35,17 @@ export const useProjectFiles = (projectId: string, targetLanguage: string) => {
       console.error('Error fetching project files:', error);
       setLoadError(t('project.loadError'));
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, [projectId, t]);
 
   useEffect(() => {
-    void loadFiles();
+    void loadFiles(false);
   }, [loadFiles]);
 
   useEffect(() => {
     if (wasProcessingRef.current && !isGlobalProcessing) {
-      void loadFiles();
+      void loadFiles(true);
     }
     wasProcessingRef.current = isGlobalProcessing;
   }, [isGlobalProcessing, loadFiles]);

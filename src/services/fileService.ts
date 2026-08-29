@@ -17,10 +17,10 @@ export const fileService = {
   getTodayProcessedDurationSeconds,
 
   async getFilesByProject(projectId: string): Promise<FileMedia[]> {
-    await invokeJson({
+    void invokeJson({
       action: 'recover_stale_files',
       project_id: projectId,
-    });
+    }).catch(() => undefined);
 
     const { data, error } = await supabase
       .from('files_media')
