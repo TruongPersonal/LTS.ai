@@ -82,9 +82,9 @@ export const FileRow: React.FC<FileRowProps> = ({
               ? ` • ${formatDuration(file.duration_seconds)}`
               : ''}
           </p>
-          {file.status === 'failed' && file.error_message && (
+          {(effectiveStatus === 'failed' || file.status === 'failed') && (progress?.message || file.error_message) && (
             <p className="mt-1.5 text-[10px] text-[var(--ui-danger)] line-clamp-2">
-              {file.error_message}
+              {progress?.message || file.error_message}
             </p>
           )}
           {!completed && <FileProgressBar progress={progress} />}

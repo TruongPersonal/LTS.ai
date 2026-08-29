@@ -557,26 +557,22 @@ serve(async (req) => {
     }
 
     if (action === 'mark_failed') {
+      const fileId = String(jsonBody.file_id || '').trim();
       const attemptId = String(jsonBody.attempt_id || '').trim();
-      if (
-        !attemptId &&
-        !(
-          file.input_source === 'existing_subtitle' ||
-          (file.input_source === 'media' && file.status === 'draft')
-        )
-      ) {
-        return jsonResponse({ error: 'Missing processing attempt.' }, 400);
-      }
       if (file.status !== 'completed') {
         const message = String(jsonBody.error_message || 'Unknown processing error').slice(0, 1000);
-        const { error } = attemptId
-          ? await internalClient.rpc('fail_processing_attempt', {
+        let updateError = null;
+        if (attemptId) {
+          const { error } = await internalClient.rpc('fail_processing_attempt', {
             p_user_id: authData.user.id,
             p_file_id: fileId,
             p_attempt_id: attemptId,
             p_error_message: message,
-          })
-          : await internalClient
+          });
+          updateError = error;
+        }
+        if (!attemptId || updateError) {
+          const { error } = await internalClient
             .from('files_media')
             .update({
               status: 'failed',
@@ -585,10 +581,11 @@ serve(async (req) => {
               error_message: message,
             })
             .eq('id', fileId);
-        if (error) {
-          const response = errorResponse(error);
-          if (response) return response;
-          throw error;
+          if (error) {
+            const response = errorResponse(error);
+            if (response) return response;
+            throw error;
+          }
         }
       }
       return jsonResponse({ success: true });
