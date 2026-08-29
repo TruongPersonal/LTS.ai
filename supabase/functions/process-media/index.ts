@@ -405,61 +405,6 @@ serve(async (req) => {
 
     if (!action) return jsonResponse({ error: 'Missing action.' }, 400);
 
-    if (action === 'get_google_access_token') {
-      const { data: profile } = await internalClient
-        .from('profiles')
-        .select('google_refresh_token')
-        .eq('id', authData.user.id)
-        .maybeSingle();
-
-      const refreshToken = profile?.google_refresh_token;
-      if (!refreshToken) {
-        return jsonResponse({ error: 'No Google refresh token found. Please reconnect Google Drive.' }, 400);
-      }
-
-      const clientId = Deno.env.get('GOOGLE_CLIENT_ID') || '';
-      const clientSecret = Deno.env.get('GOOGLE_CLIENT_SECRET') || '';
-
-      if (!clientId || !clientSecret) {
-        return jsonResponse({ error: 'Google OAuth credentials not configured on server.' }, 500);
-      }
-
-      const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: new URLSearchParams({
-          client_id: clientId,
-          client_secret: clientSecret,
-          refresh_token: refreshToken,
-          grant_type: 'refresh_token',
-        }),
-      });
-
-      const tokenData = await tokenRes.json();
-      if (!tokenRes.ok || !tokenData.access_token) {
-        return jsonResponse(
-          { error: tokenData.error_description || tokenData.error || 'Failed to refresh Google token.' },
-          400
-        );
-      }
-
-      return jsonResponse({
-        access_token: tokenData.access_token,
-        expires_in: tokenData.expires_in || 3600,
-      });
-    }
-
-    if (action === 'save_google_refresh_token') {
-      const refreshToken = String(jsonBody.refresh_token || '').trim();
-      if (refreshToken) {
-        await internalClient
-          .from('profiles')
-          .update({ google_refresh_token: refreshToken })
-          .eq('id', authData.user.id);
-      }
-      return jsonResponse({ success: true });
-    }
-
     if (!projectId || (!fileId && action !== 'recover_stale_files')) {
       return jsonResponse({ error: 'Missing project_id or file_id.' }, 400);
     }

@@ -54,31 +54,19 @@ export const emitProgress = (
 };
 
 export async function downloadDriveMedia(file: FileMedia, accessToken: string): Promise<Blob> {
-  let currentToken = accessToken || (await getGoogleAccessToken());
-  if (!currentToken) {
-    throw new Error('Session expired or Google Drive access denied.');
+  const token = accessToken || (await getGoogleAccessToken());
+  if (!token) {
+    throw new Error('Phiên làm việc Google Drive đã hết hạn (1 tiếng). Vui lòng đăng nhập lại.');
   }
 
-  let response = await fetch(
+  const response = await fetch(
     `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(file.drive_file_id)}?alt=media`,
-    { headers: { Authorization: `Bearer ${currentToken}` } }
+    { headers: { Authorization: `Bearer ${token}` } }
   );
-
-  if (!response.ok && (response.status === 401 || response.status === 403)) {
-    try {
-      currentToken = await getGoogleAccessToken(true);
-      response = await fetch(
-        `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(file.drive_file_id)}?alt=media`,
-        { headers: { Authorization: `Bearer ${currentToken}` } }
-      );
-    } catch {
-      // Continue to error check below
-    }
-  }
 
   if (!response.ok) {
     if (response.status === 401 || response.status === 403) {
-      throw new Error('Session expired or Google Drive access denied.');
+      throw new Error('Phiên làm việc Google Drive đã hết hạn (1 tiếng). Vui lòng đăng nhập lại.');
     }
     throw new Error(`Failed to download file from Google Drive (Status: ${response.status})`);
   }

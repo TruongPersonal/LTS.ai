@@ -10,7 +10,6 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
 });
 
 let inMemoryGoogleToken = '';
-let refreshPromise: Promise<string> | null = null;
 
 function readSessionValue(key: string): string {
   if (typeof window === 'undefined') return '';
@@ -35,40 +34,14 @@ function removeSessionValue(key: string): void {
   } catch {}
 }
 
-function extractProviderTokensFromUrl(): { providerToken?: string; providerRefreshToken?: string } {
-  if (typeof window === 'undefined') return {};
-  try {
-    const hash = window.location.hash.startsWith('#') ? window.location.hash.slice(1) : window.location.hash;
-    const search = window.location.search.startsWith('?') ? window.location.search.slice(1) : window.location.search;
-    const hashParams = new URLSearchParams(hash);
-    const searchParams = new URLSearchParams(search);
-    const providerToken = hashParams.get('provider_token') || searchParams.get('provider_token') || undefined;
-    const providerRefreshToken =
-      hashParams.get('provider_refresh_token') || searchParams.get('provider_refresh_token') || undefined;
-    return { providerToken, providerRefreshToken };
-  } catch {
-    return {};
-  }
-}
-
 export function persistGoogleProviderToken(session: Session | null): string {
-  const { providerToken: urlToken, providerRefreshToken: urlRefreshToken } = extractProviderTokensFromUrl();
-  const token = session?.provider_token?.trim() || urlToken?.trim() || '';
+  const token = session?.provider_token?.trim() || '';
   if (token) {
     inMemoryGoogleToken = token;
     writeSessionValue(GOOGLE_TOKEN_KEY, token);
     const expiresInMs = (session?.expires_in || 3600) * 1000;
     writeSessionValue(TOKEN_EXPIRES_AT_KEY, String(Date.now() + expiresInMs));
   }
-
-  const refreshToken = (session as any)?.provider_refresh_token?.trim() || urlRefreshToken?.trim() || '';
-  if (refreshToken && session?.user?.id) {
-    void supabase
-      .from('profiles')
-      .update({ google_refresh_token: refreshToken })
-      .eq('id', session.user.id);
-  }
-
   return token;
 }
 
@@ -82,48 +55,19 @@ export function getStoredGoogleAccessToken(): string {
 export function isGoogleTokenExpired(): boolean {
   const expiresAt = Number(readSessionValue(TOKEN_EXPIRES_AT_KEY) || '0');
   if (!expiresAt) return false;
-  return Date.now() >= expiresAt - 5 * 60 * 1000;
+  return Date.now() >= expiresAt;
 }
 
-export async function refreshGoogleAccessToken(): Promise<string> {
-  if (refreshPromise) return refreshPromise;
-
-  refreshPromise = (async () => {
-    try {
-      const { data, error } = await supabase.functions.invoke('process-media', {
-        body: { action: 'get_google_access_token' },
-      });
-
-      if (error || !data?.access_token) {
-        throw new Error(data?.error || error?.message || 'Unable to refresh Google access token.');
-      }
-
-      const freshToken = String(data.access_token);
-      inMemoryGoogleToken = freshToken;
-      writeSessionValue(GOOGLE_TOKEN_KEY, freshToken);
-      const expiresInMs = (Number(data.expires_in) || 3600) * 1000;
-      writeSessionValue(TOKEN_EXPIRES_AT_KEY, String(Date.now() + expiresInMs));
-
-      return freshToken;
-    } finally {
-      refreshPromise = null;
-    }
-  })();
-
-  return refreshPromise;
-}
-
-export async function getGoogleAccessToken(forceRefresh = false): Promise<string> {
-  const token = getStoredGoogleAccessToken();
-  if (token && !isGoogleTokenExpired() && !forceRefresh) {
-    return token;
+export async function getGoogleAccessToken(): Promise<string> {
+  if (isGoogleTokenExpired()) {
+    clearGoogleAccessToken();
+    void supabase.auth.signOut();
+    throw new Error('Phiên làm việc Google Drive đã hết hạn (1 tiếng). Vui lòng đăng nhập lại.');
   }
 
-  try {
-    const refreshedToken = await refreshGoogleAccessToken();
-    if (refreshedToken) return refreshedToken;
-  } catch (err) {
-    console.warn('Backend Google token refresh fallback error:', err);
+  const token = getStoredGoogleAccessToken();
+  if (token) {
+    return token;
   }
 
   const {
@@ -131,15 +75,11 @@ export async function getGoogleAccessToken(forceRefresh = false): Promise<string
   } = await supabase.auth.getSession();
   const sessionToken = persistGoogleProviderToken(session);
 
-  if (sessionToken) {
+  if (sessionToken && !isGoogleTokenExpired()) {
     return sessionToken;
   }
 
-  if (token && !forceRefresh) {
-    return token;
-  }
-
-  throw new Error('Google provider access token is unavailable.');
+  throw new Error('Phiên làm việc Google Drive không khả dụng. Vui lòng đăng nhập lại.');
 }
 
 export function clearGoogleAccessToken(): void {
