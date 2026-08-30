@@ -49,7 +49,7 @@ export const CueVisibilityMenu: React.FC<CueVisibilityMenuProps> = ({
         aria-label={labelText}
         onClick={() => setOpen((value) => !value)}
       >
-        <Eye className="size-4" />
+        <Eye className="size-4.5" />
       </button>
 
       {open && (

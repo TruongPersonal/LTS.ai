@@ -64,7 +64,6 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
   return (
     <header className="editor-local-toolbar">
       <div className="editor-toolbar-inner">
-        {}
         <div className="editor-toolbar-main-row">
           <div className="editor-toolbar-lead">
             <button
@@ -73,11 +72,11 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
               className="ui-button ui-button-ghost ui-icon-button shrink-0"
               aria-label={t('editor.backToProject')}
             >
-              <ArrowLeft className="size-4" />
+              <ArrowLeft className="size-4.5" />
             </button>
 
             <div className="min-w-0 flex-1">
-              <h1 className="text-sm sm:text-base font-extrabold tracking-tight truncate max-w-sm sm:max-w-md md:max-w-xl">
+              <h1 className="text-sm sm:text-base font-extrabold tracking-tight truncate max-w-xs sm:max-w-md md:max-w-xl">
                 {fileName}
               </h1>
               <div className="flex items-center gap-1.5 text-[11px] ui-muted mt-0.5">
@@ -88,7 +87,6 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
             </div>
           </div>
 
-          {}
           <div className="editor-toolbar-view-controls">
             <CueVisibilityMenu
               metadataVisible={globalVisibility.metadata}
@@ -105,61 +103,68 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
               } ui-icon-button`}
               aria-label={cueActionsVisible ? t('editor.visibility.actions') : t('editor.visibility.actionsHint')}
             >
-              {cueActionsVisible ? <Wrench className="size-4" /> : <ToolOffIcon className="size-4" />}
+              {cueActionsVisible ? <Wrench className="size-4.5" /> : <ToolOffIcon className="size-4.5" />}
             </button>
           </div>
         </div>
 
-        {}
         <div className="editor-toolbar-action-controls">
-          <div className="editor-toolbar-divider" />
+          <div className="editor-toolbar-divider hidden md:block" />
 
           {saveError && (
-            <span className="text-xs font-semibold text-[var(--ui-danger)]">
+            <span className="text-xs font-semibold text-[var(--ui-danger)] hidden md:inline">
               {saveError}
             </span>
           )}
 
-          <button
-            type="button"
-            onClick={onSave}
-            disabled={(!isDirty && !saveSuccess) || saving}
-            className={`ui-button ui-button-secondary transition-all ${
-              saveSuccess ? 'border-emerald-500/40 text-emerald-400 bg-emerald-500/10' : ''
-            }`}
-          >
-            {saving ? (
-              <>
-                <Loader2 className="size-3.5 animate-spin" />
-                <span>{t('common.saving')}</span>
-              </>
-            ) : saveSuccess ? (
-              <>
-                <Check className="size-3.5 text-emerald-400" />
-                <span>{t('common.saved')}</span>
-              </>
-            ) : (
-              <span>{t('common.save')}</span>
-            )}
-          </button>
+          <div className="flex items-center gap-2 w-full md:w-auto">
+            <button
+              type="button"
+              onClick={onSave}
+              disabled={(!isDirty && !saveSuccess) || saving}
+              className={`ui-button ui-button-secondary flex-1 md:flex-initial transition-all ${
+                saveSuccess ? 'border-emerald-500/40 text-emerald-400 bg-emerald-500/10' : ''
+              }`}
+              title={t('common.save')}
+              aria-label={t('common.save')}
+            >
+              {saving ? (
+                <>
+                  <Loader2 className="size-4 animate-spin" />
+                  <span>{t('common.saving')}</span>
+                </>
+              ) : saveSuccess ? (
+                <>
+                  <Check className="size-4 text-emerald-400" />
+                  <span>{t('common.saved')}</span>
+                </>
+              ) : (
+                <span>{t('common.save')}</span>
+              )}
+            </button>
 
-          <button
-            type="button"
-            onClick={onExport}
-            className="ui-button ui-button-primary"
-          >
-            <Download className="size-4" />
-            <span>{t('editor.export')}</span>
-          </button>
+            <button
+              type="button"
+              onClick={onExport}
+              className="ui-button ui-button-primary flex-1 md:flex-initial"
+              title={t('editor.export')}
+              aria-label={t('editor.export')}
+            >
+              <Download className="size-4.5" />
+              <span>{t('editor.export')}</span>
+            </button>
+          </div>
 
           {showExportVideo && (
             <button
               type="button"
               onClick={onExportVideo}
               disabled={exportVideoDisabled}
-              className="ui-button ui-button-secondary"
+              className="ui-button ui-button-secondary w-full md:w-auto"
+              title={t('editor.exportVideo')}
+              aria-label={t('editor.exportVideo')}
             >
-              <FileVideo className="size-4" />
+              <FileVideo className="size-4.5" />
               <span>{t('editor.exportVideo')}</span>
             </button>
           )}
