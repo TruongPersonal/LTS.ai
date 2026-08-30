@@ -582,7 +582,7 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(
               src={videoUrl}
               preload="metadata"
               playsInline
-              className={`editor-video ${isPictureInPicture ? 'editor-video-pip' : ''}`}
+              className="editor-video"
               onClick={togglePlay}
               onError={() => setPlaybackError(t('editor.video.codecError'))}
             >
@@ -610,7 +610,7 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(
             </video>
 
             {isPictureInPicture && (
-              <div className="absolute inset-0 bg-[var(--ui-bg)]/95 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center z-20 animate-in fade-in zoom-in-95 duration-200">
+              <div className="absolute inset-0 bg-[var(--ui-surface)] flex flex-col items-center justify-center p-6 text-center z-20 animate-in fade-in zoom-in-95 duration-200">
                 <div className="size-14 rounded-2xl bg-[var(--ui-accent-soft)] border border-[var(--ui-accent)]/30 text-[var(--ui-accent)] flex items-center justify-center shadow-lg mb-3">
                   <PictureInPicture2 className="size-7" />
                 </div>

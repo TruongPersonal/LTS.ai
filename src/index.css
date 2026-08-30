@@ -799,12 +799,6 @@ a:focus-visible {
   font-family: system-ui, -apple-system, 'Noto Sans CJK JP', 'Plus Jakarta Sans', sans-serif;
 }
 
-.editor-video-pip::cue {
-  display: none !important;
-  opacity: 0 !important;
-  visibility: hidden !important;
-}
-
 .editor-video-center-play {
   position: absolute;
   top: 50%;
@@ -1589,13 +1583,33 @@ div[aria-label*="Google Drive"],
   }
 
   .ui-icon-button {
-    width: 40px;
-    height: 40px;
+    width: 42px;
+    height: 42px;
+    min-width: 42px;
+    min-height: 42px;
+    border-radius: 12px;
+  }
+
+  .ui-icon-button svg {
+    width: 1.25rem !important;
+    height: 1.25rem !important;
   }
 
   .ui-icon-button-sm {
-    width: 34px;
-    height: 34px;
+    width: 36px;
+    height: 36px;
+    min-width: 36px;
+    min-height: 36px;
+  }
+
+  .sidebar-edge-toggle {
+    width: 32px;
+    height: 46px;
+  }
+
+  .sidebar-edge-toggle svg {
+    width: 1.15rem !important;
+    height: 1.15rem !important;
   }
 }
 
@@ -2815,10 +2829,17 @@ div[aria-label*="Google Drive"],
     width: 100%;
     display: flex;
     align-items: center;
-    justify-content: flex-start;
+    justify-content: stretch;
     gap: 8px;
-    padding-left: 44px;
+    padding-left: 0;
     border-top: none;
+  }
+
+  .editor-toolbar-action-controls .ui-button {
+    flex: 1 1 0;
+    justify-content: center;
+    padding: .6rem .8rem;
+    font-size: .84rem;
   }
 
   .editor-toolbar-divider {

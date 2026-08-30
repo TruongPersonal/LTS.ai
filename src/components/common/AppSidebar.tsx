@@ -64,7 +64,7 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({ onHome, onCreateProject,
           className="sidebar-edge-toggle"
           aria-label={collapsed ? t('navigation.expandSidebar') : t('navigation.collapseSidebar')}
         >
-          {collapsed ? <ChevronRight className="size-3 stroke-[2.5]" /> : <ChevronLeft className="size-3 stroke-[2.5]" />}
+          {collapsed ? <ChevronRight className="size-4 stroke-[2.5]" /> : <ChevronLeft className="size-4 stroke-[2.5]" />}
         </button>
       )}
     </aside>
