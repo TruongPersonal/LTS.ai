@@ -72,10 +72,28 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({ onHome, onCreateProject,
 
   return (
     <>
-      {!mobileOpen && (
-        <button type="button" className="sidebar-mobile-trigger ui-icon-button" onClick={() => setMobileOpen(true)} aria-label={t('navigation.openSidebar')}>
-          <Menu className="size-4.5" />
-        </button>
+      {!editorActive && (
+        <header className="mobile-app-header">
+          <div className="mobile-app-header-inner">
+            <button
+              type="button"
+              className="ui-button ui-button-ghost ui-icon-button"
+              onClick={() => setMobileOpen(true)}
+              aria-label={t('navigation.openSidebar')}
+            >
+              <Menu className="size-4.5" />
+            </button>
+            <button
+              type="button"
+              onClick={() => run(onHome)}
+              className="flex items-center gap-2 select-none hover:opacity-80 transition-opacity"
+              aria-label="LTS.ai"
+            >
+              <img src="/logo.png" alt="LTS.ai" className="size-6 object-contain" />
+              <span className="font-extrabold text-sm tracking-tight text-[var(--ui-text)]">LTS.ai</span>
+            </button>
+          </div>
+        </header>
       )}
       {mobileOpen && <button className="sidebar-mobile-backdrop" type="button" aria-label={t('common.close')} onClick={() => setMobileOpen(false)} />}
       {sidebar}

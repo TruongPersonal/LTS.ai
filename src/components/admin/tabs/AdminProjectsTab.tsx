@@ -57,7 +57,7 @@ export const AdminProjectsTab: React.FC<AdminProjectsTabProps> = ({
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
         <div>
           <h2 className="text-xl font-extrabold tracking-tight">
             {t('admin.projects.headerTitle')}
@@ -69,7 +69,7 @@ export const AdminProjectsTab: React.FC<AdminProjectsTabProps> = ({
           type="button"
           onClick={onRefresh}
           disabled={loading}
-          className="ui-button ui-button-secondary ui-button-compact self-start sm:self-auto"
+          className="ui-button ui-button-secondary ui-button-compact w-full sm:w-auto justify-center"
         >
           <RefreshCw className={`size-3.5 ${loading ? 'animate-spin' : ''}`} />
           <span>{t('admin.refresh')}</span>

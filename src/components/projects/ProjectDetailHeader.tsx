@@ -31,7 +31,7 @@ export const ProjectDetailHeader: React.FC<ProjectDetailHeaderProps> = ({
           className="ui-button ui-button-secondary ui-icon-button shrink-0"
           aria-label={t('common.back')}
         >
-          <ArrowLeft className="size-4" />
+          <ArrowLeft className="size-4.5" />
         </button>
 
         <div className="min-w-0 flex-1">
@@ -53,13 +53,13 @@ export const ProjectDetailHeader: React.FC<ProjectDetailHeaderProps> = ({
         </div>
       </div>
 
-      <div className="flex items-center gap-2 shrink-0">
+      <div className="flex items-center gap-2.5 w-full sm:w-auto shrink-0">
         <button
           type="button"
           onClick={onOpenDrivePicker}
-          className="ui-button ui-button-primary"
+          className="ui-button ui-button-primary flex-1 sm:flex-initial justify-center"
         >
-          <HardDrive className="size-4" />
+          <HardDrive className="size-4.5" />
           <span>{t('media.addDrive')}</span>
         </button>
 
@@ -67,9 +67,9 @@ export const ProjectDetailHeader: React.FC<ProjectDetailHeaderProps> = ({
           <button
             type="button"
             onClick={onOpenZipExport}
-            className="ui-button ui-button-secondary"
+            className="ui-button ui-button-secondary flex-1 sm:flex-initial justify-center"
           >
-            <Archive className="size-4" />
+            <Archive className="size-4.5" />
             <span>{t('project.exportZip')}</span>
           </button>
         )}

@@ -73,7 +73,7 @@ export const AdminSystemConfigTab: React.FC<AdminSystemConfigTabProps> = ({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
         <div>
           <h2 className="text-xl font-extrabold tracking-tight">{t('admin.system.title')}</h2>
           <p className="text-xs ui-muted mt-0.5">{t('admin.system.quotasDesc')}</p>
@@ -82,7 +82,7 @@ export const AdminSystemConfigTab: React.FC<AdminSystemConfigTabProps> = ({
         <button
           type="submit"
           disabled={!isConfigDirty || saving || loading}
-          className={`ui-button ui-button-compact self-start sm:self-auto transition-all ${
+          className={`ui-button ui-button-compact w-full sm:w-auto justify-center transition-all ${
             isConfigDirty && !saving
               ? 'ui-button-primary shadow-md'
               : 'ui-button-secondary opacity-50 cursor-not-allowed'

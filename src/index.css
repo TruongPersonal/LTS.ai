@@ -1783,12 +1783,8 @@ div[aria-label*="Google Drive"],
   max-width: calc(100vw - 84px);
 }
 
-.sidebar-mobile-trigger {
+.mobile-app-header {
   display: none;
-  position: fixed;
-  left: 10px;
-  top: 10px;
-  z-index: 75;
 }
 
 .sidebar-mobile-backdrop {
@@ -2719,12 +2715,31 @@ div[aria-label*="Google Drive"],
     padding: 0 11px;
   }
 
-  .sidebar-mobile-trigger {
-    display: inline-flex;
+  .mobile-app-header {
+    display: block;
+    position: sticky;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 40;
+    height: 52px;
+    background: color-mix(in srgb, var(--ui-canvas) 92%, transparent);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border-bottom: 1px solid var(--ui-border);
   }
 
-  body:has(.editor-workspace) .sidebar-mobile-trigger,
-  :root:has(.editor-workspace) .sidebar-mobile-trigger {
+  .mobile-app-header-inner {
+    height: 100%;
+    width: min(calc(100% - 24px), 1320px);
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  body:has(.editor-workspace) .mobile-app-header,
+  :root:has(.editor-workspace) .mobile-app-header {
     display: none !important;
   }
 
@@ -2749,7 +2764,7 @@ div[aria-label*="Google Drive"],
 
   .workspace-page {
     width: min(calc(100% - 24px), 1320px);
-    padding-top: 64px !important;
+    padding-top: 18px !important;
   }
 
   .workspace-page-header,

@@ -113,7 +113,7 @@ export const FileRow: React.FC<FileRowProps> = ({
             aria-expanded={menuOpen}
             aria-label={t('common.more')}
           >
-            <MoreHorizontal className="size-4" />
+            <MoreHorizontal className="size-4.5" />
           </button>
 
           {menuOpen && (
