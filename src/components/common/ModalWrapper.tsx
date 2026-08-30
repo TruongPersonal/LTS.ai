@@ -113,7 +113,7 @@ export const ModalWrapper: React.FC<ModalWrapperProps> = ({
             </div>
           </div>
           {showCloseButton && (
-            <button onClick={onClose} className="ui-icon-button ui-icon-button-md" title={t('dialog.close')} aria-label={t('accessibility.closeDialog')}>
+            <button onClick={onClose} className="ui-icon-button ui-icon-button-md" aria-label={t('accessibility.closeDialog')}>
               <X className="size-4" />
             </button>
           )}

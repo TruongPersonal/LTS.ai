@@ -71,7 +71,7 @@ export const FileRow: React.FC<FileRowProps> = ({
         </div>
         <div className="min-w-0 flex-1 w-full">
           <div className="flex flex-wrap items-center gap-2 min-w-0 w-full">
-            <h4 className="text-sm font-bold truncate max-w-full" title={file.file_name}>
+            <h4 className="text-sm font-bold truncate max-w-full">
               {file.file_name}
             </h4>
             <FileStatusBadge status={effectiveStatus} />
@@ -112,7 +112,6 @@ export const FileRow: React.FC<FileRowProps> = ({
             aria-haspopup="menu"
             aria-expanded={menuOpen}
             aria-label={t('common.more')}
-            title={t('common.more')}
           >
             <MoreHorizontal className="size-4" />
           </button>

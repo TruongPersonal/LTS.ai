@@ -71,7 +71,6 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
               type="button"
               onClick={onBack}
               className="ui-button ui-button-ghost ui-icon-button shrink-0"
-              title={t('editor.backToProject')}
               aria-label={t('editor.backToProject')}
             >
               <ArrowLeft className="size-4" />
@@ -104,7 +103,6 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
               className={`ui-button ${
                 cueActionsVisible ? 'ui-button-secondary' : 'ui-button-ghost opacity-80'
               } ui-icon-button`}
-              title={cueActionsVisible ? t('editor.visibility.actions') : t('editor.visibility.actionsHint')}
               aria-label={cueActionsVisible ? t('editor.visibility.actions') : t('editor.visibility.actionsHint')}
             >
               {cueActionsVisible ? <Wrench className="size-4" /> : <ToolOffIcon className="size-4" />}

@@ -7,7 +7,6 @@ import {
   emitProgress,
   getTodayProcessedDurationSeconds,
   invokeJson,
-  markFailed,
   processSingleFile,
 } from './mediaProcessingPipeline';
 
@@ -60,19 +59,6 @@ export const fileService = {
       .maybeSingle();
 
     if (existing) {
-      if (existing.status === 'failed') {
-        const resetResult = await invokeJson({
-          action: 'reset_failed_file',
-          project_id: projectId,
-          file_id: existing.id,
-          file_name: fileName,
-          mime_type: mimeType,
-          input_source: inputSource,
-          detected_source_lang: detectedSourceLang,
-        });
-        if (!resetResult.file) throw new Error('Failed file could not be reset.');
-        return resetResult.file as FileMedia;
-      }
       throw new Error(i18n.t('media.drive.duplicateFile'));
     }
 
@@ -119,16 +105,6 @@ export const fileService = {
 
     const hasMediaFile = processableFiles.some((file) => file.input_source === 'media');
     const accessToken = hasMediaFile ? await getGoogleAccessToken() : '';
-    if (hasMediaFile && !accessToken) {
-      const error = new Error(i18n.t('errors.googleSessionExpired', 'Không thể tải tệp. Phiên Google Drive đã hết hạn.'));
-      for (const file of processableFiles as FileMedia[]) {
-        if (file.input_source === 'media') {
-          await markFailed(projectId, file.id, null, error);
-          emitProgress(onProgress, file.id, 'failed', 100, error.message);
-        }
-      }
-      throw error;
-    }
 
     const files = processableFiles as FileMedia[];
     const failures: string[] = [];
@@ -172,17 +148,10 @@ export const fileService = {
       .single();
 
     if (fileError) throw fileError;
-    if (file.status !== 'failed') {
-      throw new Error(i18n.t('errors.fileNotFailed', 'Tệp này không còn ở trạng thái thất bại.'));
-    }
+    if (!file || file.status !== 'failed') return;
 
     emitProgress(onProgress, file.id, 'queued', 0, i18n.t('processing.retryPreparing', 'Đang chuẩn bị thử lại...'));
     const accessToken = file.input_source === 'media' ? await getGoogleAccessToken() : '';
-    if (file.input_source === 'media' && !accessToken) {
-      const error = new Error(i18n.t('errors.googleTokenMissing', 'Google Drive access token is missing. Vui lòng đăng nhập lại bằng Google.'));
-      emitProgress(onProgress, file.id, 'failed', 100, error.message);
-      throw error;
-    }
 
     await processSingleFile(projectId, file as FileMedia, accessToken, onProgress);
   },
@@ -193,12 +162,6 @@ export const fileService = {
     onProgress?: ProcessingProgressCallback
   ): Promise<void> {
     const accessToken = file.input_source === 'media' ? await getGoogleAccessToken() : '';
-    if (file.input_source === 'media' && !accessToken) {
-      const error = new Error(i18n.t('errors.googleSessionExpired', 'Không thể tải tệp. Phiên Google Drive đã hết hạn.'));
-      await markFailed(projectId, file.id, null, error);
-      emitProgress(onProgress, file.id, 'failed', 100, error.message);
-      throw error;
-    }
     await processSingleFile(projectId, file, accessToken, onProgress);
   },
 
@@ -210,5 +173,12 @@ export const fileService = {
   async deleteFile(fileId: string): Promise<void> {
     const { error } = await supabase.from('files_media').delete().eq('id', fileId);
     if (error) throw error;
+  },
+
+  async resetFailedFiles(projectId: string): Promise<void> {
+    await invokeJson({
+      action: 'reset_failed_files',
+      project_id: projectId,
+    });
   },
 };

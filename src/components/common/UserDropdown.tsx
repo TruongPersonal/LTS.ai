@@ -81,7 +81,6 @@ export const UserDropdown: React.FC<UserDropdownProps> = ({ sidebar = false, com
         aria-expanded={isOpen}
         aria-haspopup="menu"
         aria-label={t('accessibility.openUserMenu')}
-        title={compact ? displayName : undefined}
       >
         <span className="size-8 rounded-full bg-[var(--ui-surface-subtle)] border border-[var(--ui-border)] text-[var(--ui-text-muted)] grid place-items-center shrink-0 shadow-xs">
           <User className="size-4" />
@@ -109,7 +108,6 @@ export const UserDropdown: React.FC<UserDropdownProps> = ({ sidebar = false, com
                   type="submit"
                   disabled={savingName}
                   className="ui-icon-button ui-icon-button-sm text-[var(--ui-success)] shrink-0"
-                  title={t('common.save')}
                   aria-label={t('common.save')}
                 >
                   {savingName ? <Loader2 className="size-3.5 animate-spin" /> : <Check className="size-3.5" />}
@@ -119,7 +117,6 @@ export const UserDropdown: React.FC<UserDropdownProps> = ({ sidebar = false, com
                   onClick={() => setIsEditingName(false)}
                   disabled={savingName}
                   className="ui-icon-button ui-icon-button-sm ui-muted shrink-0"
-                  title={t('common.cancel')}
                   aria-label={t('common.cancel')}
                 >
                   <X className="size-3.5" />
@@ -132,7 +129,6 @@ export const UserDropdown: React.FC<UserDropdownProps> = ({ sidebar = false, com
                   type="button"
                   onClick={handleStartEdit}
                   className="ui-icon-button ui-icon-button-sm ui-muted opacity-70 group-hover:opacity-100 shrink-0"
-                  title={t('common.edit')}
                   aria-label={t('common.edit')}
                 >
                   <Pencil className="size-3.5" />

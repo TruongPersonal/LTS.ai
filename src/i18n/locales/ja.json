@@ -76,7 +76,8 @@
     "title": "システム管理",
     "description": "ユーザー、プロジェクト、ファイル、システム収益を管理します。",
     "refresh": "更新",
-    "loadError": "データを読み込めませんでした。",
+    "loadError": "データを読み込めませんでした",
+    "actionFailed": "操作に失敗しました",
     "tabs": {
       "navLabel": "管理ナビゲーション",
       "overview": "概要",
@@ -147,11 +148,12 @@
       "deleteConfirmMessage": "ファイル「{{name}}」と字幕を削除しますか？"
     },
     "subtitles": {
-      "viewerTitle": "字幕プレビュー",
+      "viewerTitle": "字幕内容の確認",
       "loading": "読み込み中",
-      "noSubtitles": "このファイルには字幕がありません。",
+      "noSubtitles": "字幕データがありません。",
       "emptyTrack": "この字幕トラックは空です。",
-      "deleteSubtitles": "字幕を削除"
+      "deleteSubtitles": "字幕を削除",
+      "subtitlesDeleted": "字幕を削除しました。"
     },
     "system": {
       "title": "システム設定",
@@ -170,7 +172,8 @@
       "apiMissing": "未設定",
       "saveConfig": "設定を保存",
       "saving": "保存中...",
-      "configSaved": "システム設定を保存しました。"
+      "configSaved": "システム設定を保存しました。",
+      "saveFailed": "設定を保存できませんでした"
     },
     "logs": {
       "title": "操作ログ",
@@ -208,7 +211,8 @@
     "badge": "システムに参加",
     "secure": "便利",
     "fastAi": "安全",
-    "driveSync": "高速"
+    "driveSync": "高速",
+    "sessionExpiredToast": "Google Driveセッションの有効期限が切れました。もう一度ログインしてください。"
   },
   "landing": {
     "eyebrow": "Subtitle AI Workspace",
@@ -301,7 +305,7 @@
     "updateAction": "変更を保存",
     "fileCount": "{{count}} ファイル",
     "loadError": "プロジェクト内のファイルを読み込めませんでした。",
-    "retryLoad": "ファイルを再読み込み",
+    "retryLoad": "再読み込み",
     "exportZip": "エクスポート",
     "deleteProjectTitle": "プロジェクトを削除しますか？",
     "deleteProjectMessage": "「{{name}}」と中のすべてのファイルを完全に削除しますか？",
@@ -322,6 +326,7 @@
     },
     "addDrive": "ファイル追加",
     "startAll": "処理 ({{count}})",
+    "retryFailed": "失敗したファイルを再試行 ({{count}})",
     "edit": "編集",
     "renameFile": "ファイルを編集",
     "renameModalTitle": "ファイルを編集",
@@ -361,17 +366,17 @@
     }
   },
   "errorBoundary": {
-    "title": "予期しないエラーが発生しました。",
-    "description": "このページの表示中に問題が発生しました。ページを再読み込みして続行してください。",
-    "reload": "ページを再読み込み"
+    "title": "アプリでエラーが発生しました",
+    "description": "ページの表示中に問題が発生しました。ページを再読み込みしてください。",
+    "reload": "再読み込み"
   },
   "routes": {
-    "projectNotFound": "プロジェクトが見つかりません。",
+    "projectNotFound": "該当するプロジェクトが見つかりません。",
     "projectLoadError": "プロジェクト情報を読み込めませんでした。",
     "editorDataNotFound": "ファイルまたはプロジェクトが見つかりません。",
     "editorDataLoadError": "エディターデータを読み込めませんでした。",
-    "backToProjects": "プロジェクト一覧に戻る",
-    "backToProject": "プロジェクトに戻る"
+    "backToProjects": "戻る",
+    "backToProject": "戻る"
   },
   "processing": {
     "downloading": "ファイルをダウンロード中...",
@@ -382,7 +387,6 @@
     "partialCompleted": "{{total}}件中{{failed}}件失敗！",
     "allFailed": "{{count}}件のファイルを完了できませんでした！",
     "progressAria": "処理進行状況 {{processed}}/{{total}}",
-    "doneTitle": "完了",
     "preparingSimple": "準備中...",
     "completedSimple": "完了",
     "queued": "順番待ち中...",
@@ -396,11 +400,7 @@
     "translatingBatch": "Gemini 2.0 Flashで字幕を翻訳中 · バッチ {{batch}}/{{total}}"
   },
   "errors": {
-    "googleSessionExpired": "ファイルをダウンロードできません。Google Driveのセッションが期限切れです。",
-    "fileNotFailed": "このファイルは失敗状態ではありません。",
-    "googleTokenMissing": "Google Driveアクセストークンが見つかりません。Googleで再ログインしてください。",
-    "googleApiLoadFailed": "Google APIスクリプトの読み込みに失敗しました。",
-    "googlePickerInitFailed": "Google Pickerライブラリの初期化に失敗しました。"
+    "googlePickerError": "Google Driveに接続できませんでした。もう一度お試しください。"
   },
   "editor": {
     "export": "書き出し",
@@ -412,11 +412,8 @@
       "preparing": "準備中...",
       "exporting": "処理中...",
       "completed": "ファイルの書き出しが完了しました。",
-      "loadError": "処理できませんでした。",
-      "unsupportedError": "この動画形式では字幕の焼き付けに対応していません。",
-      "av1UnsupportedError": "現在の動画形式はサポートされていません。対応するにはAV1をH264/H265に変換してください。",
-      "executionError": "処理できませんでした。",
-      "outputError": "書き出したファイルを読み込めませんでした。",
+      "unsupportedError": "この動画形式は字幕付き書き出しに対応していません。",
+      "exportError": "動画を書き出せませんでした。もう一度お試しください。",
       "confirm": "次へ",
       "cancel": "キャンセル",
       "close": "閉じる"
@@ -424,8 +421,8 @@
     "subtitleList": "字幕一覧",
     "noTargetSubtitle": "字幕がまだありません",
     "createFirstCue": "新しい行を作成",
-    "loadError": "字幕を読み込めませんでした。",
-    "retryLoad": "字幕を再読み込み",
+    "loadError": "字幕一覧を読み込めませんでした",
+    "retryLoad": "再読み込み",
     "saveError": "字幕を保存できませんでした。もう一度お試しください。",
     "timing": {
       "start": "開始",
@@ -437,19 +434,14 @@
       "confirm": "行を削除"
     },
     "video": {
-      "cannotOpen": "ファイルを開けません。",
-      "empty": "再生するファイルがありません。",
-      "codecError": "未対応のファイル形式です。",
-      "sessionExpired": "セッションの期限が切れました。Googleで再ログインしてください。",
-      "downloadFailed": "セッションの期限が切れました。Googleで再ログインしてください。"
+      "cannotPlay": "この動画を再生できません。"
     },
     "backToProject": "プロジェクトに戻る",
     "visibility": {
       "title": "表示方法",
       "metadata": "情報",
       "source": "原文",
-      "actions": "ボタン",
-      "actionsHint": "編集・追加・削除"
+      "actions": "ボタン"
     }
   },
   "export": {

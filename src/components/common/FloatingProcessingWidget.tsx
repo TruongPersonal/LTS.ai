@@ -62,7 +62,6 @@ export const FloatingProcessingWidget: React.FC = () => {
               <div className="flex items-center justify-between gap-2">
                 <p
                   className="text-xs font-semibold text-[var(--ui-text)] truncate flex-1"
-                  title={activeItem.file.file_name}
                 >
                   {activeItem.file.file_name}
                 </p>
@@ -110,7 +109,6 @@ export const FloatingProcessingWidget: React.FC = () => {
         type="button"
         onClick={() => setExpanded((prev) => !prev)}
         className="group relative flex items-center justify-center size-14 rounded-full border border-[var(--ui-border-strong)] bg-[var(--ui-surface)]/95 backdrop-blur-xl shadow-2xl transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer"
-        title={isAllDone ? t('processing.doneTitle') : `${processedCount}/${totalCount}`}
         aria-label={t('processing.progressAria', { processed: processedCount, total: totalCount })}
       >
         {}

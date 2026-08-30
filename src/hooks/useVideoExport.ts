@@ -72,17 +72,9 @@ export const useVideoExport = ({ fileName, loadVideoBlob }: UseVideoExportParams
       setVideoExportStatus('completed');
     } catch (error) {
       const message =
-        error instanceof VideoSubtitleExportError
-          ? error.reason === 'av1'
-            ? t('editor.videoExport.av1UnsupportedError')
-            : error.kind === 'load'
-              ? t('editor.videoExport.loadError')
-              : error.kind === 'unsupported'
-                ? t('editor.videoExport.unsupportedError')
-                : error.kind === 'output'
-                  ? t('editor.videoExport.outputError')
-                  : t('editor.videoExport.executionError')
-          : t('editor.videoExport.executionError');
+        error instanceof VideoSubtitleExportError && (error.reason === 'av1' || error.kind === 'unsupported')
+          ? t('editor.videoExport.unsupportedError', 'Định dạng video này chưa được hỗ trợ xuất phụ đề.')
+          : t('editor.videoExport.exportError', 'Không thể xuất video. Vui lòng thử lại.');
       setVideoExportError(message);
       setVideoExportStatus('error');
     }

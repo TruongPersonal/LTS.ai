@@ -164,7 +164,7 @@ const DashboardRoute: React.FC = () => {
   const intentType = searchParams.get('intent');
   const checkoutStatus = searchParams.get('checkout');
   const checkoutSessionId = searchParams.get('session_id');
-  const [intentId, setIntentId] = useState(0);
+  const [activeIntent, setActiveIntent] = useState<{ type: 'create' | 'search'; id: number } | null>(null);
   const [successPlan, setSuccessPlan] = useState<Plan | null>(null);
   const [toasts, setToasts] = useState<ToastItem[]>([]);
   const handledCheckoutRef = useRef<string | null>(null);
@@ -179,8 +179,11 @@ const DashboardRoute: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    if (intentType) setIntentId((id) => id + 1);
-  }, [intentType]);
+    if (intentType === 'create' || intentType === 'search') {
+      setActiveIntent({ type: intentType as 'create' | 'search', id: Date.now() });
+      navigate('/projects', { replace: true });
+    }
+  }, [intentType, navigate]);
 
   useEffect(() => {
     if (!checkoutStatus) return;
@@ -220,15 +223,10 @@ const DashboardRoute: React.FC = () => {
 
   if (isPageLoading) return <PulseLoadingScreen />;
 
-  const intent =
-    intentType === 'create' || intentType === 'search'
-      ? { type: intentType as 'create' | 'search', id: intentId }
-      : null;
-
   return (
     <>
       <DashboardPage
-        intent={intent}
+        intent={activeIntent}
         onSelectProject={(project) => navigate(`/projects/${project.id}`)}
       />
 

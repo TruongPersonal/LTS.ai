@@ -50,7 +50,79 @@ export const AdminAuditLogsTab: React.FC<AdminAuditLogsTabProps> = ({
       </div>
 
       <div className="ui-card overflow-hidden">
-        <div className="overflow-x-auto">
+        {/* Mobile Card List View (< 768px) */}
+        <div className="md:hidden divide-y divide-[var(--ui-border)]">
+          {loading ? (
+            <div className="p-8 text-center ui-muted">
+              <Loader2 className="size-5 animate-spin mx-auto text-[var(--ui-accent)]" />
+            </div>
+          ) : logs.length === 0 ? (
+            <div className="p-8 text-center ui-muted text-xs">
+              {t('admin.logs.noLogs')}
+            </div>
+          ) : (
+            logs.map((log) => {
+              const actorEmail = String(
+                (log.new_value as Record<string, unknown> | null)?.actor_email ||
+                  log.actor_user_id ||
+                  '—'
+              );
+
+              const getTargetDisplay = () => {
+                const details = (log.new_value || log.old_value || {}) as Record<
+                  string,
+                  unknown
+                >;
+                if (details.target_email) return String(details.target_email);
+                if (details.project_title) return `Dự án: ${details.project_title}`;
+                if (details.file_name) return `Tệp: ${details.file_name}`;
+                if (log.target_user_id)
+                  return `User ID: ${log.target_user_id.slice(0, 8)}...`;
+                return t('admin.logs.systemTarget', 'Toàn hệ thống');
+              };
+
+              return (
+                <div key={log.id} className="p-4 space-y-2.5">
+                  <div className="flex items-center justify-between gap-2">
+                    <span
+                      className={`text-[11px] font-bold px-2 py-0.5 rounded border font-mono ${getActionBadgeClass(log.action)}`}
+                    >
+                      {log.action}
+                    </span>
+                    <span className="text-[11px] font-mono ui-muted">
+                      {formatDateTime(log.created_at)}
+                    </span>
+                  </div>
+
+                  <div className="text-xs space-y-1">
+                    <div>
+                      <span className="ui-muted text-[10px] uppercase font-semibold block">{t('admin.logs.actor')}</span>
+                      <span className="font-mono font-medium text-[var(--ui-text)]">{actorEmail}</span>
+                    </div>
+                    <div>
+                      <span className="ui-muted text-[10px] uppercase font-semibold block">{t('admin.logs.target')}</span>
+                      <span className="font-medium text-[var(--ui-text)]">{getTargetDisplay()}</span>
+                    </div>
+                  </div>
+
+                  <div className="pt-1.5 flex justify-end border-t border-[var(--ui-border)]/40">
+                    <button
+                      type="button"
+                      onClick={() => onSelectLog(log)}
+                      className="ui-button ui-button-secondary ui-button-compact text-xs flex items-center gap-1.5"
+                    >
+                      <Eye className="size-3.5" />
+                      <span>{t('admin.logs.viewDetails', 'Xem chi tiết')}</span>
+                    </button>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+
+        {/* Desktop Table View (>= 768px) */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full min-w-[760px] text-left text-sm">
             <thead className="bg-[var(--ui-surface-subtle)] text-xs ui-muted">
               <tr>

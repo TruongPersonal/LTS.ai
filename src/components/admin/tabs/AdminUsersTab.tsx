@@ -139,7 +139,86 @@ export const AdminUsersTab: React.FC<AdminUsersTabProps> = ({
       </div>
 
       <div className="ui-card overflow-hidden">
-        <div className="overflow-x-auto">
+        {/* Mobile Card List View (< 768px) */}
+        <div className="md:hidden divide-y divide-[var(--ui-border)]">
+          {loading ? (
+            <div className="p-8 text-center ui-muted">
+              <Loader2 className="size-5 animate-spin mx-auto text-[var(--ui-accent)]" />
+            </div>
+          ) : users.length === 0 ? (
+            <div className="p-8 text-center ui-muted text-xs">
+              {subTab === 'admins'
+                ? t('admin.users.noAdmins')
+                : t('admin.users.noUsers')}
+            </div>
+          ) : (
+            users.map((user) => (
+              <div key={user.id} className="p-4 space-y-3">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <div className="font-bold text-sm text-[var(--ui-text)] truncate">
+                      {user.full_name || '—'}
+                    </div>
+                    <div className="text-xs ui-muted font-mono truncate">{user.email}</div>
+                  </div>
+                  {subTab === 'users' && (
+                    <span
+                      className={`ui-badge ui-badge-compact font-bold shrink-0 ${
+                        user.plan === 'max'
+                          ? 'bg-amber-500/10 text-amber-500 border-amber-500/20'
+                          : user.plan === 'pro'
+                            ? 'ui-badge-accent'
+                            : ''
+                      }`}
+                    >
+                      {planNames[user.plan]}
+                    </span>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-2 gap-2 text-xs pt-1 border-t border-[var(--ui-border)]/50">
+                  <div>
+                    <span className="ui-muted block text-[10px] uppercase font-semibold">{t('admin.users.createdAt')}</span>
+                    <span className="font-mono text-xs">{formatDate(user.created_at)}</span>
+                  </div>
+                  {subTab === 'users' && (
+                    <div>
+                      <span className="ui-muted block text-[10px] uppercase font-semibold">{t('admin.users.dailyUsage')}</span>
+                      <span className="font-mono text-xs">{formatAdminDuration(user.daily_processed_seconds)}</span>
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex items-center justify-end gap-2 pt-1 border-t border-[var(--ui-border)]/40">
+                  {subTab === 'users' && (
+                    <button
+                      type="button"
+                      onClick={() => onPromoteAdmin(user)}
+                      className="ui-button ui-button-secondary ui-button-compact text-purple-400 hover:bg-purple-500/10 flex items-center gap-1.5"
+                    >
+                      <UserCheck className="size-3.5" />
+                      <span>{t('admin.users.makeAdmin')}</span>
+                    </button>
+                  )}
+
+                  {user.id !== currentAdminId && (
+                    <button
+                      type="button"
+                      onClick={() => onDeleteUser(user)}
+                      className="ui-button ui-button-secondary ui-button-compact text-[var(--ui-danger)] hover:bg-[var(--ui-danger-soft)] flex items-center gap-1.5"
+                    >
+                      <Trash2 className="size-3.5" />
+                      <span>{t('admin.users.deleteUser')}</span>
+                    </button>
+                  )}
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+
+        {/* Desktop Table View (>= 768px) */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full min-w-[650px] text-left text-sm">
             <thead className="bg-[var(--ui-surface-subtle)] text-xs ui-muted">
               <tr>
@@ -215,7 +294,7 @@ export const AdminUsersTab: React.FC<AdminUsersTabProps> = ({
                             type="button"
                             onClick={() => onPromoteAdmin(user)}
                             className="ui-icon-button ui-icon-button-sm text-purple-400 hover:bg-purple-500/10"
-                            title={t('admin.users.makeAdmin')}
+                            aria-label={t('admin.users.makeAdmin')}
                           >
                             <UserCheck className="size-3.5" />
                           </button>
@@ -226,7 +305,7 @@ export const AdminUsersTab: React.FC<AdminUsersTabProps> = ({
                             type="button"
                             onClick={() => onDeleteUser(user)}
                             className="ui-icon-button ui-icon-button-sm text-[var(--ui-danger)] hover:bg-[var(--ui-danger-soft)]"
-                            title={t('admin.users.deleteUser')}
+                            aria-label={t('admin.users.deleteUser')}
                           >
                             <Trash2 className="size-3.5" />
                           </button>

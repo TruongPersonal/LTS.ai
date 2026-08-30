@@ -40,7 +40,6 @@ export const PublicNavbar: React.FC<PublicNavbarProps> = ({ onBack, onNext }) =>
               onClick={onBack}
               className="ui-button ui-button-ghost"
               aria-label={t('common.close')}
-              title={t('common.close')}
             >
               <ArrowLeft className="size-4" />
             </button>
@@ -50,7 +49,6 @@ export const PublicNavbar: React.FC<PublicNavbarProps> = ({ onBack, onNext }) =>
               onClick={onNext}
               className="ui-button ui-button-primary ui-icon-button"
               aria-label={t('common.open')}
-              title={t('common.open')}
             >
               <ArrowRight className="size-4" />
             </button>

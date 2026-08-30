@@ -36,14 +36,14 @@ function extensionForMimeType(mimeType: string): string {
 
 function safeToken(value: string): string {
   const token = value.replace(/[^a-zA-Z0-9_-]/g, '-');
-  if (!token) throw new Error('ID tệp không hợp lệ để xử lý audio.');
+  if (!token) throw new Error('Invalid file ID for audio processing.');
   return token;
 }
 
 async function readBinary(ffmpeg: FFmpeg, fileName: string): Promise<Uint8Array> {
   const data = await ffmpeg.readFile(fileName, 'binary');
   if (typeof data === 'string') {
-    throw new Error('FFmpeg trả về audio không hợp lệ.');
+    throw new Error('FFmpeg returned invalid audio data.');
   }
   return data;
 }
@@ -90,7 +90,7 @@ export async function* extractFlacChunks(
     const chunkCount = Math.ceil(mediaDurationSeconds / CHUNK_DURATION_SECONDS);
 
     if (chunkCount > MAX_SEGMENT_SCAN) {
-      throw new Error('Media tạo ra quá nhiều FLAC chunk cho bản submission.');
+      throw new Error('Media generated too many FLAC chunks for submission.');
     }
 
     for (let index = 0; index < chunkCount; index += 1) {
@@ -126,17 +126,17 @@ export async function* extractFlacChunks(
       ]);
 
       if (chunkExit !== 0) {
-        throw new Error(`FFmpeg không thể tạo FLAC chunk ${index + 1} (mã ${chunkExit}).`);
+        throw new Error(`FFmpeg could not create FLAC chunk ${index + 1} (exit code ${chunkExit}).`);
       }
 
       const data = await readBinary(ffmpeg, outputName);
       const metadata = inspectFlacMetadata(data);
 
       if (!metadata.hasAudioFrames || metadata.totalSamples <= 0) {
-        throw new Error(`FLAC chunk ${index + 1} không chứa dữ liệu audio hợp lệ.`);
+        throw new Error(`FLAC chunk ${index + 1} contains no valid audio data.`);
       }
       if (data.byteLength > MAX_SAFE_CHUNK_BYTES) {
-        throw new Error(`FLAC chunk ${index + 1} vượt giới hạn 19.5 MB.`);
+        throw new Error(`FLAC chunk ${index + 1} exceeds 19.5 MB size limit.`);
       }
 
       try {

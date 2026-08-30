@@ -112,8 +112,8 @@ export const AdminPage: React.FC = () => {
     setLoadingOverview(true);
     try {
       setOverview(await adminService.getOverview());
-    } catch (err) {
-      showToast(err instanceof Error ? err.message : t('admin.loadError'), 'error');
+    } catch {
+      showToast(t('admin.loadError'), 'error');
     } finally {
       setLoadingOverview(false);
     }
@@ -126,8 +126,8 @@ export const AdminPage: React.FC = () => {
       const res = await adminService.listUsers(usersSearch, usersPage, PAGE_SIZE, '', role);
       setUsers(res.users);
       setTotalUsers(res.total);
-    } catch (err) {
-      showToast(err instanceof Error ? err.message : t('admin.loadError'), 'error');
+    } catch {
+      showToast(t('admin.loadError'), 'error');
     } finally {
       setLoadingUsers(false);
     }
@@ -139,8 +139,8 @@ export const AdminPage: React.FC = () => {
       const res = await adminService.listProjects(projectsSearch, projectsPage, PAGE_SIZE);
       setProjects(res.projects);
       setTotalProjects(res.total);
-    } catch (err) {
-      showToast(err instanceof Error ? err.message : t('admin.loadError'), 'error');
+    } catch {
+      showToast(t('admin.loadError'), 'error');
     } finally {
       setLoadingProjects(false);
     }
@@ -154,8 +154,8 @@ export const AdminPage: React.FC = () => {
       try {
         const res = await adminService.getProjectFiles(projectId);
         setProjectFiles(res.files);
-      } catch (err) {
-        showToast(err instanceof Error ? err.message : t('admin.loadError'), 'error');
+      } catch {
+        showToast(t('admin.loadError'), 'error');
       } finally {
         setLoadingProjectFiles(false);
       }
@@ -168,8 +168,8 @@ export const AdminPage: React.FC = () => {
     try {
       const cfg = await adminService.getSystemConfig();
       setSystemConfig(cfg);
-    } catch (err) {
-      showToast(err instanceof Error ? err.message : t('admin.loadError'), 'error');
+    } catch {
+      showToast(t('admin.loadError'), 'error');
     } finally {
       setLoadingSystemConfig(false);
     }
@@ -181,8 +181,8 @@ export const AdminPage: React.FC = () => {
       const res = await adminService.listAuditLogs(auditLogsPage, PAGE_SIZE);
       setAuditLogs(res.logs);
       setTotalAuditLogs(res.total);
-    } catch (err) {
-      showToast(err instanceof Error ? err.message : t('admin.loadError'), 'error');
+    } catch {
+      showToast(t('admin.loadError'), 'error');
     } finally {
       setLoadingAuditLogs(false);
     }
@@ -212,8 +212,8 @@ export const AdminPage: React.FC = () => {
           showToast(t('admin.users.roleUpdated', 'Đã nâng cấp quyền Quản trị viên'));
           void loadUsers();
           setConfirmModal((prev) => ({ ...prev, isOpen: false }));
-        } catch (err) {
-          showToast(err instanceof Error ? err.message : 'Action failed', 'error');
+        } catch {
+          showToast(t('admin.actionFailed'), 'error');
         } finally {
           setConfirmLoading(false);
         }
@@ -235,8 +235,8 @@ export const AdminPage: React.FC = () => {
           showToast(t('admin.users.userDeleted', 'Đã xóa tài khoản người dùng'));
           void loadUsers();
           setConfirmModal((prev) => ({ ...prev, isOpen: false }));
-        } catch (err) {
-          showToast(err instanceof Error ? err.message : 'Action failed', 'error');
+        } catch {
+          showToast(t('admin.actionFailed'), 'error');
         } finally {
           setConfirmLoading(false);
         }
@@ -265,8 +265,8 @@ export const AdminPage: React.FC = () => {
           showToast(t('admin.projects.projectDeleted', 'Đã xóa dự án'));
           void loadProjects();
           setConfirmModal((prev) => ({ ...prev, isOpen: false }));
-        } catch (err) {
-          showToast(err instanceof Error ? err.message : 'Action failed', 'error');
+        } catch {
+          showToast(t('admin.actionFailed'), 'error');
         } finally {
           setConfirmLoading(false);
         }
@@ -290,8 +290,8 @@ export const AdminPage: React.FC = () => {
           }
           showToast(t('admin.files.fileDeleted', 'Đã xoá tệp'));
           setConfirmModal((prev) => ({ ...prev, isOpen: false }));
-        } catch (err) {
-          showToast(err instanceof Error ? err.message : 'Action failed', 'error');
+        } catch {
+          showToast(t('admin.actionFailed'), 'error');
         } finally {
           setConfirmLoading(false);
         }
@@ -305,8 +305,8 @@ export const AdminPage: React.FC = () => {
     try {
       const res = await adminService.getFileSubtitles(file.id);
       setFileSubtitles(res.subtitles);
-    } catch (err) {
-      showToast(err instanceof Error ? err.message : t('admin.loadError'), 'error');
+    } catch {
+      showToast(t('admin.loadError'), 'error');
     } finally {
       setLoadingSubtitles(false);
     }
@@ -318,9 +318,9 @@ export const AdminPage: React.FC = () => {
     try {
       await adminService.deleteSubtitles(selectedFileForSubtitles.id);
       setFileSubtitles([]);
-      showToast(t('admin.subtitles.deleteSubtitles'));
-    } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Action failed', 'error');
+      showToast(t('admin.subtitles.subtitlesDeleted', 'Đã xóa phụ đề'));
+    } catch {
+      showToast(t('admin.actionFailed'), 'error');
     } finally {
       setDeletingSubtitles(false);
     }
@@ -333,8 +333,8 @@ export const AdminPage: React.FC = () => {
       updatePlanLimitsFromQuotas(quotas);
       showToast(t('admin.system.configSaved'));
       void loadSystemConfig();
-    } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Failed to save config', 'error');
+    } catch {
+      showToast(t('admin.system.saveFailed'), 'error');
     } finally {
       setSavingSystemConfig(false);
     }

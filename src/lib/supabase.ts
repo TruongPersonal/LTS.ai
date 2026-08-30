@@ -58,11 +58,22 @@ export function isGoogleTokenExpired(): boolean {
   return Date.now() >= expiresAt;
 }
 
+export async function forceExpireGoogleSession(): Promise<never> {
+  clearGoogleAccessToken();
+  try {
+    await supabase.auth.signOut();
+  } catch {
+    // Ignore sign out errors if already unauthenticated
+  }
+  if (!window.location.pathname.startsWith('/login')) {
+    window.location.href = '/login?reason=session_expired';
+  }
+  throw new Error('Google session expired');
+}
+
 export async function getGoogleAccessToken(): Promise<string> {
   if (isGoogleTokenExpired()) {
-    clearGoogleAccessToken();
-    void supabase.auth.signOut();
-    throw new Error('Phiên làm việc Google Drive đã hết hạn (1 tiếng). Vui lòng đăng nhập lại.');
+    return await forceExpireGoogleSession();
   }
 
   const token = getStoredGoogleAccessToken();
@@ -79,7 +90,7 @@ export async function getGoogleAccessToken(): Promise<string> {
     return sessionToken;
   }
 
-  throw new Error('Phiên làm việc Google Drive không khả dụng. Vui lòng đăng nhập lại.');
+  return await forceExpireGoogleSession();
 }
 
 export function clearGoogleAccessToken(): void {

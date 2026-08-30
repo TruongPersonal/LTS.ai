@@ -60,7 +60,6 @@ export const CueHeader: React.FC<CueHeaderProps> = ({
                 type="button"
                 onClick={onStartTimingEdit}
                 className="editor-timing-badge"
-                title={t('accessibility.editTiming')}
                 aria-label={t('accessibility.editTiming')}
               >
                 <span>{formatDisplayTime(item.start)}</span>
@@ -76,7 +75,6 @@ export const CueHeader: React.FC<CueHeaderProps> = ({
                   type="button"
                   onClick={onStartTimingEdit}
                   className="editor-icon-button !size-5.5 text-[var(--ui-muted)] hover:text-[var(--ui-accent)]"
-                  title={t('accessibility.editTiming')}
                   aria-label={t('accessibility.editTiming')}
                 >
                   <Pencil className="size-2.5" />
@@ -95,7 +93,6 @@ export const CueHeader: React.FC<CueHeaderProps> = ({
             type="button"
             onClick={onAddCueAfter}
             className="editor-icon-button"
-            title={t('accessibility.addCueAfter')}
             aria-label={t('accessibility.addCueAfter')}
           >
             <Plus className="size-3.5" />

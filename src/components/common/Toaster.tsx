@@ -24,12 +24,12 @@ export const Toaster: React.FC<ToasterProps> = ({
 
   const positionClass =
     position === 'bottom-right'
-      ? 'bottom-6 right-6 flex-col-reverse'
-      : 'top-6 right-6 flex-col';
+      ? 'bottom-4 right-4 left-4 sm:left-auto sm:right-6 sm:bottom-6 flex-col-reverse'
+      : 'top-4 right-4 left-4 sm:left-auto sm:right-6 sm:top-6 flex-col';
 
   return (
     <div
-      className={`fixed z-[100] flex gap-2.5 pointer-events-none max-w-md w-full sm:w-auto ${positionClass}`}
+      className={`fixed z-[100] flex gap-2.5 pointer-events-none max-w-full sm:max-w-md sm:w-auto ${positionClass}`}
     >
       {toasts.map((toast) => (
         <ToastCard key={toast.id} toast={toast} onDismiss={() => onDismiss(toast.id)} />

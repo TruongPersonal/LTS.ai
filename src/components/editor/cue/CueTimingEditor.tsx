@@ -57,7 +57,6 @@ export const CueTimingEditor: React.FC<CueTimingEditorProps> = ({
           type="button"
           onClick={onConfirm}
           className="editor-icon-button editor-icon-button-success !size-5.5"
-          title={t('common.confirm')}
           aria-label={t('common.confirm')}
         >
           <Check className="size-3" />
@@ -66,7 +65,6 @@ export const CueTimingEditor: React.FC<CueTimingEditorProps> = ({
           type="button"
           onClick={onCancel}
           className="editor-icon-button !size-5.5"
-          title={t('common.cancel')}
           aria-label={t('common.cancel')}
         >
           <X className="size-3" />

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { LogIn, Loader2, ShieldCheck, Sparkles, Zap } from 'lucide-react';
+import { AlertCircle, LogIn, Loader2, ShieldCheck, Sparkles, Zap } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { PublicNavbar } from '../components/common/PublicNavbar';
 
@@ -10,9 +11,11 @@ interface LoginPageProps {
 
 export const LoginPage: React.FC<LoginPageProps> = ({ onViewLanding }) => {
   const { t } = useTranslation();
+  const [searchParams] = useSearchParams();
   const { signInWithGoogle } = useAuth();
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const isSessionExpired = searchParams.get('reason') === 'session_expired';
 
   const handleGoogleLogin = async () => {
     setErrorMsg(null);
@@ -46,10 +49,21 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onViewLanding }) => {
           <h1 className="text-2xl font-black tracking-tight">{t('auth.welcomeBack')}</h1>
           <p className="text-xs ui-muted mt-2 max-w-xs mx-auto leading-relaxed">{t('auth.subtitle')}</p>
 
+          {isSessionExpired && !errorMsg && (
+            <div
+              role="alert"
+              className="p-3 text-xs mt-5 text-left rounded-xl border border-amber-500/30 bg-amber-500/10 text-amber-500 flex items-center gap-2"
+            >
+              <AlertCircle className="size-4 shrink-0" />
+              <span>{t('auth.sessionExpiredToast', 'Phiên làm việc Google Drive đã hết hạn. Vui lòng đăng nhập lại.')}</span>
+            </div>
+          )}
+
           {errorMsg && (
-            <p role="alert" className="ui-status-error p-3 text-xs mt-5 text-left rounded-xl">
-              {errorMsg}
-            </p>
+            <div role="alert" className="ui-status-error p-3 text-xs mt-5 text-left rounded-xl flex items-center gap-2">
+              <AlertCircle className="size-4 shrink-0" />
+              <span>{errorMsg}</span>
+            </div>
           )}
 
           <button

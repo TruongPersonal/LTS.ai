@@ -60,7 +60,6 @@ export const LanguageSelector: React.FC<LanguageSelectorProps> = ({ compact = fa
         aria-label={t('accessibility.languageSelector')}
         aria-haspopup="listbox"
         aria-expanded={isOpen}
-        title={`${currentLang.nativeName} (${currentLang.shortLabel})`}
       >
         <span className="flex items-center gap-1.5">
           <span className="text-sm leading-none">{currentLang.flag}</span>

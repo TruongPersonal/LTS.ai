@@ -30,7 +30,6 @@ export const ProjectDetailHeader: React.FC<ProjectDetailHeaderProps> = ({
           onClick={onBack}
           className="ui-button ui-button-secondary ui-icon-button shrink-0"
           aria-label={t('common.back')}
-          title={t('common.back')}
         >
           <ArrowLeft className="size-4" />
         </button>
@@ -69,7 +68,6 @@ export const ProjectDetailHeader: React.FC<ProjectDetailHeaderProps> = ({
             type="button"
             onClick={onOpenZipExport}
             className="ui-button ui-button-secondary"
-            title={t('project.exportZip')}
           >
             <Archive className="size-4" />
             <span>{t('project.exportZip')}</span>

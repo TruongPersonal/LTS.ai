@@ -1,10 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import i18n from '../i18n';
-import { getGoogleAccessToken } from '../lib/supabase';
+import { forceExpireGoogleSession, getGoogleAccessToken } from '../lib/supabase';
 
 const pendingDriveMediaFetches = new Map<string, Promise<Blob>>();
-
-class GoogleDriveSessionError extends Error {}
 
 interface UseEditorVideoParams {
   driveFileId: string;
@@ -59,10 +57,6 @@ async function fetchDriveMediaBlob(
   const fetchPromise = (async () => {
     const accessToken = await getGoogleAccessToken();
 
-    if (!accessToken) {
-      throw new GoogleDriveSessionError();
-    }
-
     const response = await fetch(
       `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(driveFileId)}?alt=media`,
       {
@@ -75,7 +69,7 @@ async function fetchDriveMediaBlob(
 
     if (!response.ok) {
       if (response.status === 401 || response.status === 403) {
-        throw new GoogleDriveSessionError();
+        await forceExpireGoogleSession();
       }
 
       throw new Error(
@@ -169,7 +163,7 @@ export const useEditorVideo = ({
       releaseObjectUrl();
       setVideoBlob(null);
       setVideoUrl('');
-      setVideoError(i18n.t('editor.video.empty'));
+      setVideoError(i18n.t('editor.video.cannotPlay', 'Không thể phát video này.'));
       setVideoLoading(false);
       return;
     }
@@ -199,11 +193,7 @@ export const useEditorVideo = ({
     } catch (error) {
       console.error('Error preparing video source:', error);
 
-      setVideoError(
-        error instanceof GoogleDriveSessionError
-          ? i18n.t('editor.video.sessionExpired')
-          : i18n.t('editor.video.cannotOpen'),
-      );
+      setVideoError(i18n.t('editor.video.cannotPlay', 'Không thể phát video này.'));
     } finally {
       setVideoLoading(false);
     }

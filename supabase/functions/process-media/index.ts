@@ -405,7 +405,7 @@ serve(async (req) => {
 
     if (!action) return jsonResponse({ error: 'Missing action.' }, 400);
 
-    if (!projectId || (!fileId && action !== 'recover_stale_files')) {
+    if (!projectId || (!fileId && action !== 'recover_stale_files' && action !== 'reset_failed_files')) {
       return jsonResponse({ error: 'Missing project_id or file_id.' }, 400);
     }
 
@@ -429,6 +429,21 @@ serve(async (req) => {
         })
         .eq('project_id', projectId)
         .eq('status', 'processing');
+      if (error) throw error;
+      return jsonResponse({ success: true });
+    }
+
+    if (action === 'reset_failed_files') {
+      const { error } = await internalClient
+        .from('files_media')
+        .update({
+          status: 'draft',
+          processing_attempt_id: null,
+          processing_last_activity_at: null,
+          error_message: null,
+        })
+        .eq('project_id', projectId)
+        .eq('status', 'failed');
       if (error) throw error;
       return jsonResponse({ success: true });
     }

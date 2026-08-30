@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { CheckCircle2, Clock, Loader2, Zap } from 'lucide-react';
+import { CheckCircle2, Clock, Loader2, RotateCcw, Zap } from 'lucide-react';
 import type { FileMedia } from '../../types/database';
 import type { ProcessingProgress } from '../../types/processing';
 import { FileRow } from './FileRow';
@@ -10,6 +10,7 @@ interface FileListTabsProps {
   files: FileMedia[];
   processingProgressByFile: Record<string, ProcessingProgress>;
   onStartProcessAll: () => Promise<void>;
+  onResetFailedFiles?: () => Promise<void> | void;
   onOpenFileEditor: (file: FileMedia) => void;
   onExportFile: (file: FileMedia) => void;
   onDeleteFile: (fileId: string) => Promise<void>;
@@ -21,6 +22,7 @@ export const FileListTabs: React.FC<FileListTabsProps> = ({
   files,
   processingProgressByFile,
   onStartProcessAll,
+  onResetFailedFiles,
   onOpenFileEditor,
   onExportFile,
   onDeleteFile,
@@ -30,6 +32,7 @@ export const FileListTabs: React.FC<FileListTabsProps> = ({
   const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<'unfinished' | 'completed'>('unfinished');
   const [processing, setProcessing] = useState(false);
+  const [resetting, setResetting] = useState(false);
   const [renamingFile, setRenamingFile] = useState<FileMedia | null>(null);
 
   const unfinishedFiles = files.filter(
@@ -39,6 +42,7 @@ export const FileListTabs: React.FC<FileListTabsProps> = ({
     (file) => file.status === 'completed' || file.status === 'failed'
   );
   const processableFiles = unfinishedFiles.filter((file) => file.status === 'draft');
+  const failedFiles = completedFiles.filter((file) => file.status === 'failed');
 
   const handleStartProcess = async () => {
     setProcessing(true);
@@ -46,6 +50,16 @@ export const FileListTabs: React.FC<FileListTabsProps> = ({
       await onStartProcessAll();
     } finally {
       setProcessing(false);
+    }
+  };
+
+  const handleResetFailed = async () => {
+    if (!onResetFailedFiles || resetting) return;
+    setResetting(true);
+    try {
+      await onResetFailedFiles();
+    } finally {
+      setResetting(false);
     }
   };
 
@@ -59,7 +73,6 @@ export const FileListTabs: React.FC<FileListTabsProps> = ({
             type="button"
             onClick={() => setActiveTab('unfinished')}
             className={`attached-tab ${activeTab === 'unfinished' ? 'attached-tab-active' : ''}`}
-            title={t('media.tabs.unfinished')}
             aria-label={t('media.tabs.unfinished')}
           >
             <Clock className="size-4" />
@@ -70,7 +83,6 @@ export const FileListTabs: React.FC<FileListTabsProps> = ({
             type="button"
             onClick={() => setActiveTab('completed')}
             className={`attached-tab ${activeTab === 'completed' ? 'attached-tab-active' : ''}`}
-            title={t('media.tabs.completed')}
             aria-label={t('media.tabs.completed')}
           >
             <CheckCircle2 className="size-4" />
@@ -84,15 +96,26 @@ export const FileListTabs: React.FC<FileListTabsProps> = ({
             onClick={handleStartProcess}
             disabled={processing || isProcessing}
             className="ui-button ui-button-secondary mb-1.5"
-            title={t('media.startAll', { count: processableFiles.length })}
             aria-label={t('media.startAll', { count: processableFiles.length })}
           >
             {processing ? <Loader2 className="size-4 animate-spin" /> : <Zap className="size-4" />}
           </button>
         )}
+
+        {activeTab === 'completed' && failedFiles.length > 0 && (
+          <button
+            type="button"
+            onClick={handleResetFailed}
+            disabled={resetting}
+            className="ui-button ui-button-secondary mb-1.5"
+            aria-label={t('media.retryFailed', { count: failedFiles.length })}
+          >
+            {resetting ? <Loader2 className="size-4 animate-spin" /> : <RotateCcw className="size-4" />}
+          </button>
+        )}
       </div>
 
-      <div className="media-container-box">
+      <div key={activeTab} className="media-container-box animate-in fade-in duration-200">
         {shownFiles.length === 0 ? (
           <div className="workspace-empty-container">
             {activeTab === 'unfinished' ? t('media.emptyUnfinished') : t('media.emptyCompleted')}

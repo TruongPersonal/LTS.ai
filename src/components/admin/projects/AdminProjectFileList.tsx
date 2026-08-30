@@ -102,7 +102,7 @@ export const AdminProjectFileList: React.FC<AdminProjectFileListProps> = ({
                   type="button"
                   onClick={() => onDeleteFile(file)}
                   className="ui-icon-button ui-icon-button-sm text-[var(--ui-danger)] hover:bg-[var(--ui-danger-soft)]"
-                  title={t('admin.files.deleteFile')}
+                  aria-label={t('admin.files.deleteFile')}
                 >
                   <Trash2 className="size-3.5" />
                 </button>

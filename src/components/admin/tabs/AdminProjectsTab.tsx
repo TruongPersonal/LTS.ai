@@ -103,7 +103,79 @@ export const AdminProjectsTab: React.FC<AdminProjectsTabProps> = ({
       </div>
 
       <div className="ui-card overflow-hidden">
-        <div className="overflow-x-auto">
+        {/* Mobile Card List View (< 768px) */}
+        <div className="md:hidden divide-y divide-[var(--ui-border)]">
+          {loading ? (
+            <div className="p-8 text-center ui-muted">
+              <Loader2 className="size-5 animate-spin mx-auto text-[var(--ui-accent)]" />
+            </div>
+          ) : projects.length === 0 ? (
+            <div className="p-8 text-center ui-muted text-xs">
+              {t('admin.projects.noProjects')}
+            </div>
+          ) : (
+            projects.map((proj) => {
+              const isSelected = selectedProjectId === proj.id;
+              return (
+                <div
+                  key={proj.id}
+                  className={`p-4 space-y-3 transition-colors ${
+                    isSelected ? 'bg-[var(--ui-accent-soft)]/40' : ''
+                  }`}
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <div className="font-bold text-sm text-[var(--ui-text)] truncate">
+                        {proj.title}
+                      </div>
+                      <div className="text-xs ui-muted font-mono truncate">{proj.user_email || proj.user_name}</div>
+                    </div>
+                    <span className="ui-badge ui-badge-accent font-mono text-[10px] uppercase font-bold shrink-0">
+                      {proj.target_language}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2 text-xs pt-1 border-t border-[var(--ui-border)]/50">
+                    <div>
+                      <span className="ui-muted block text-[10px] uppercase font-semibold">{t('admin.projects.createdAt')}</span>
+                      <span className="font-mono text-xs">{formatDate(proj.created_at)}</span>
+                    </div>
+                    <div>
+                      <span className="ui-muted block text-[10px] uppercase font-semibold">{t('admin.projects.filesCount')}</span>
+                      <span className="font-bold text-xs">{proj.files_count} {t('common.files', 'tệp')}</span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-end gap-2 pt-1 border-t border-[var(--ui-border)]/40">
+                    <button
+                      type="button"
+                      onClick={() => onSelectProject(proj.id, proj.title)}
+                      className={`ui-button ui-button-compact text-xs flex items-center gap-1.5 ${
+                        isSelected ? 'ui-button-primary' : 'ui-button-secondary'
+                      }`}
+                    >
+                      <FolderKanban className="size-3.5" />
+                      <span>{t('admin.projects.viewFiles')}</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => onDeleteProject(proj)}
+                      className="ui-button ui-button-secondary ui-button-compact text-[var(--ui-danger)] hover:bg-[var(--ui-danger-soft)] flex items-center gap-1.5"
+                      aria-label={t('admin.projects.deleteProject')}
+                    >
+                      <Trash2 className="size-3.5" />
+                      <span>{t('common.delete', 'Xóa')}</span>
+                    </button>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+
+        {/* Desktop Table View (>= 768px) */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full min-w-[760px] text-left text-sm">
             <thead className="bg-[var(--ui-surface-subtle)] text-xs ui-muted">
               <tr>
@@ -173,7 +245,7 @@ export const AdminProjectsTab: React.FC<AdminProjectsTabProps> = ({
                             type="button"
                             onClick={() => onDeleteProject(proj)}
                             className="ui-icon-button ui-icon-button-sm text-[var(--ui-danger)] hover:bg-[var(--ui-danger-soft)]"
-                            title={t('admin.projects.deleteProject')}
+                            aria-label={t('admin.projects.deleteProject')}
                           >
                             <Trash2 className="size-3.5" />
                           </button>

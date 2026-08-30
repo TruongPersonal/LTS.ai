@@ -170,6 +170,19 @@ export const useProjectFiles = (projectId: string, targetLanguage: string) => {
     [files, targetLanguage]
   );
 
+  const resetFailedFiles = useCallback(async () => {
+    if (!projectId) return;
+    setLoading(true);
+    try {
+      await fileService.resetFailedFiles(projectId);
+      await loadFiles(true);
+    } catch (error) {
+      console.error('Error resetting failed files:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, [projectId, loadFiles]);
+
   return {
     files,
     loading,
@@ -179,6 +192,7 @@ export const useProjectFiles = (projectId: string, targetLanguage: string) => {
     loadFiles,
     addDriveFile,
     processAllDrafts,
+    resetFailedFiles,
     renameFile,
     deleteFile,
     exportSingleFile,

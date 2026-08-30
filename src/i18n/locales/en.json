@@ -76,7 +76,8 @@
     "title": "System Administration",
     "description": "Monitor users, projects, files, and system revenue.",
     "refresh": "Refresh",
-    "loadError": "Unable to load data.",
+    "loadError": "Unable to load data",
+    "actionFailed": "Action failed",
     "tabs": {
       "navLabel": "Admin Navigation",
       "overview": "Overview",
@@ -151,7 +152,8 @@
       "loading": "Loading",
       "noSubtitles": "No subtitles found for this file.",
       "emptyTrack": "This subtitle track is empty.",
-      "deleteSubtitles": "Delete Subtitles"
+      "deleteSubtitles": "Delete Subtitles",
+      "subtitlesDeleted": "Subtitles deleted successfully."
     },
     "system": {
       "title": "System Configuration",
@@ -170,7 +172,8 @@
       "apiMissing": "Not Configured",
       "saveConfig": "Save Configuration",
       "saving": "Saving...",
-      "configSaved": "System configuration saved successfully."
+      "configSaved": "System configuration saved successfully.",
+      "saveFailed": "Failed to save configuration"
     },
     "logs": {
       "title": "Activity Logs",
@@ -208,7 +211,8 @@
     "badge": "Join system",
     "secure": "Convenient",
     "fastAi": "Secure",
-    "driveSync": "Fast"
+    "driveSync": "Fast",
+    "sessionExpiredToast": "Google Drive session has expired. Please sign in again."
   },
   "landing": {
     "eyebrow": "Subtitle AI Workspace",
@@ -272,8 +276,8 @@
     "title": "Projects",
     "description": "Continue where you left off or start a new subtitle project.",
     "searchPlaceholder": "Search projects...",
-    "loadError": "Could not load your projects.",
-    "retryLoad": "Reload projects",
+    "loadError": "Unable to load projects",
+    "retryLoad": "Reload",
     "empty": {
       "title": "No projects yet",
       "description": "Create your first subtitle project now",
@@ -301,7 +305,7 @@
     "updateAction": "Save changes",
     "fileCount": "{{count}} files",
     "loadError": "Could not load project files.",
-    "retryLoad": "Reload files",
+    "retryLoad": "Reload",
     "exportZip": "Export",
     "deleteProjectTitle": "Delete project?",
     "deleteProjectMessage": "Permanently delete \"{{name}}\" and all files inside it?",
@@ -322,6 +326,7 @@
     },
     "addDrive": "Add file",
     "startAll": "Process ({{count}})",
+    "retryFailed": "Retry failed files ({{count}})",
     "edit": "Edit",
     "renameFile": "Edit file",
     "renameModalTitle": "Edit file",
@@ -361,17 +366,17 @@
     }
   },
   "errorBoundary": {
-    "title": "An unexpected error occurred.",
-    "description": "The app ran into a problem while rendering this page. Please reload the page to continue.",
-    "reload": "Reload page"
+    "title": "Application error",
+    "description": "A problem occurred while displaying this page. Please reload the page.",
+    "reload": "Reload"
   },
   "routes": {
-    "projectNotFound": "Project not found.",
+    "projectNotFound": "No matching project found.",
     "projectLoadError": "Failed to load project details.",
     "editorDataNotFound": "File or project not found.",
     "editorDataLoadError": "Failed to load editor data.",
-    "backToProjects": "Back to projects",
-    "backToProject": "Back to project"
+    "backToProjects": "Back",
+    "backToProject": "Back"
   },
   "processing": {
     "downloading": "Downloading file...",
@@ -380,53 +385,44 @@
     "saving": "Saving data...",
     "allCompleted": "Completed {{count}} files!",
     "partialCompleted": "Processed {{total}} files ({{failed}} failed)!",
-    "allFailed": "Failed to complete {{count}} files!",
     "progressAria": "Processing progress {{processed}}/{{total}}",
-    "doneTitle": "Completed",
     "preparingSimple": "Preparing...",
     "completedSimple": "Completed",
     "queued": "Queued...",
-    "waiting": "Waiting for processing...",
+    "waiting": "Waiting to process...",
     "retryPreparing": "Preparing to retry...",
     "videoCompleted": "Video processing completed.",
     "existingSubPreparing": "Preparing imported subtitles...",
     "existingSubCompleted": "Subtitle processing completed.",
-    "processingPreparing": "Preparing to process...",
+    "processingPreparing": "Preparing for processing...",
     "translating": "Translating subtitles...",
     "translatingBatch": "Translating subtitles with Gemini 2.0 Flash · batch {{batch}}/{{total}}"
   },
   "errors": {
-    "googleSessionExpired": "Cannot download file. Google Drive session has expired.",
-    "fileNotFailed": "This file is no longer in a failed state.",
-    "googleTokenMissing": "Google Drive access token is missing. Please sign in again with Google.",
-    "googleApiLoadFailed": "Failed to load Google API Script.",
-    "googlePickerInitFailed": "Failed to initialize Google Picker library."
+    "googlePickerError": "Could not connect to Google Drive. Please try again."
   },
   "editor": {
     "export": "Export",
     "exportVideo": "Download",
     "videoExport": {
       "title": "Export file with subtitles",
-      "confirmMessage": "Do you want to export the file?",
-      "confirmDescription": "This may take a few minutes.",
+      "confirmMessage": "Do you want to export this file?",
+      "confirmDescription": "This process may take a few minutes.",
       "preparing": "Preparing...",
       "exporting": "Processing...",
       "completed": "File exported successfully.",
-      "loadError": "Unable to process.",
-      "unsupportedError": "This video format is not supported for burned-in export.",
-      "av1UnsupportedError": "The current video format is not supported. Please convert AV1 to H264/H265 to continue.",
-      "executionError": "Unable to process.",
-      "outputError": "Could not read exported file.",
+      "unsupportedError": "This video format is not supported for subtitle export.",
+      "exportError": "Could not export video. Please try again.",
       "confirm": "Continue",
       "cancel": "Cancel",
       "close": "Close"
     },
-    "subtitleList": "Subtitle list",
+    "subtitleList": "Subtitle List",
     "noTargetSubtitle": "No subtitles yet",
-    "createFirstCue": "Add new line",
-    "loadError": "Could not load subtitles.",
-    "retryLoad": "Reload subtitles",
-    "saveError": "Could not save subtitles. Please try again.",
+    "createFirstCue": "Create new line",
+    "loadError": "Unable to load subtitles",
+    "retryLoad": "Reload",
+    "saveError": "Cannot save subtitles. Please try again.",
     "timing": {
       "start": "Start",
       "end": "End"
@@ -437,19 +433,14 @@
       "confirm": "Delete line"
     },
     "video": {
-      "cannotOpen": "Could not open file.",
-      "empty": "No file to play.",
-      "codecError": "Unsupported file format.",
-      "sessionExpired": "Session expired. Please log in with Google again.",
-      "downloadFailed": "Session expired. Please log in with Google again."
+      "cannotPlay": "Cannot play this video."
     },
     "backToProject": "Back to project",
     "visibility": {
-      "title": "Display",
-      "metadata": "Info",
-      "source": "Source text",
-      "actions": "Buttons",
-      "actionsHint": "Edit, add and delete cues"
+      "title": "Display mode",
+      "metadata": "Details",
+      "source": "Original",
+      "actions": "Actions"
     }
   },
   "export": {

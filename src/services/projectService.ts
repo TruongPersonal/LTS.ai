@@ -40,11 +40,7 @@ export const projectService = {
       .select()
       .single();
 
-    if (error) {
-      console.error('Supabase Error creating project:', error);
-      throw new Error(error.message || 'Không thể tạo dự án trên Supabase Database');
-    }
-
+    if (error) throw error;
     return data;
   },
 

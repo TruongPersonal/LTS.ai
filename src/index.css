@@ -795,21 +795,8 @@ a:focus-visible {
 }
 
 .editor-video::cue {
-  background-color: rgba(0, 0, 0, 0.76);
   color: #ffffff;
-  font-family: 'Noto Sans CJK JP', 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
-  font-size: 1rem;
-  line-height: 1.4;
-  padding: 0.22rem 0.6rem;
-  border-radius: 5px;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
-}
-
-.editor-player:fullscreen .editor-video::cue {
-  font-size: 1.4rem;
-  line-height: 1.45;
-  padding: 0.35rem 0.85rem;
-  border-radius: 6px;
+  font-family: system-ui, -apple-system, 'Noto Sans CJK JP', 'Plus Jakarta Sans', sans-serif;
 }
 
 .editor-video-center-play {
@@ -971,71 +958,6 @@ a:focus-visible {
 .editor-video-control-button {
   width: 32px;
   padding-inline: 0;
-}
-
-.editor-video-tooltip__content {
-  position: absolute;
-  bottom: calc(100% + 8px);
-  left: 50%;
-  z-index: 8;
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  min-height: 25px;
-  padding: 4px 7px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 7px;
-  background: rgba(7, 8, 11, 0.94);
-  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.28);
-  color: #fff;
-  font-size: 10px;
-  font-weight: 700;
-  line-height: 1;
-  opacity: 0;
-  pointer-events: none;
-  transform: translate(-50%, 4px);
-  transition: opacity 140ms ease, transform 140ms ease;
-  white-space: nowrap;
-}
-
-.editor-video-tooltip--end .editor-video-tooltip__content {
-  right: 0;
-  left: auto;
-  transform: translateY(4px);
-}
-
-.editor-video-tooltip:hover .editor-video-tooltip__content,
-.editor-video-tooltip:focus-visible .editor-video-tooltip__content {
-  opacity: 1;
-  transform: translate(-50%, 0);
-}
-
-.editor-video-tooltip--end:hover .editor-video-tooltip__content,
-.editor-video-tooltip--end:focus-visible .editor-video-tooltip__content {
-  transform: translateY(0);
-}
-
-.editor-video-tooltip--start .editor-video-tooltip__content {
-  left: 0;
-  transform: translateY(4px);
-}
-
-.editor-video-tooltip--start:hover .editor-video-tooltip__content,
-.editor-video-tooltip--start:focus-visible .editor-video-tooltip__content {
-  transform: translateY(0);
-}
-
-.editor-video-tooltip__content kbd {
-  min-width: 18px;
-  padding: 3px 4px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 4px;
-  background: rgba(255, 255, 255, 0.1);
-  color: rgba(255, 255, 255, 0.92);
-  font-family: var(--font-heading);
-  font-size: 9px;
-  font-weight: 800;
-  text-align: center;
 }
 
 .editor-video-rate-button {
@@ -1646,6 +1568,28 @@ div[aria-label*="Google Drive"],
   .ui-select-compact {
     min-width: 64px;
     max-width: 92px;
+  }
+
+  .ui-button {
+    min-height: 40px;
+    padding: .55rem .95rem;
+    font-size: .82rem;
+  }
+
+  .ui-button-compact {
+    min-height: 34px;
+    padding: .35rem .7rem;
+    font-size: .75rem;
+  }
+
+  .ui-icon-button {
+    width: 40px;
+    height: 40px;
+  }
+
+  .ui-icon-button-sm {
+    width: 34px;
+    height: 34px;
   }
 }
 

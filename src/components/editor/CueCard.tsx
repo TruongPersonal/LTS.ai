@@ -159,7 +159,6 @@ const CueCardComponent: React.FC<CueCardProps> = ({
                   type="button"
                   onClick={onCancelTextEdit}
                   className="ui-button ui-button-ghost !h-6.5 !px-2 !text-xs"
-                  title={t('common.cancel')}
                   aria-label={t('common.cancel')}
                 >
                   <X className="size-3" />
@@ -169,7 +168,6 @@ const CueCardComponent: React.FC<CueCardProps> = ({
                   type="button"
                   onClick={() => onConfirmTextEdit(item.id)}
                   className="ui-button ui-button-primary !h-6.5 !px-2.5 !text-xs"
-                  title={t('common.save')}
                   aria-label={t('common.save')}
                 >
                   <Check className="size-3" />
@@ -182,7 +180,6 @@ const CueCardComponent: React.FC<CueCardProps> = ({
                   type="button"
                   onClick={() => onStartTextEdit(item)}
                   className="editor-card-bottom-edit-btn"
-                  title={t('common.edit')}
                   aria-label={t('common.edit')}
                 >
                   <Pencil className="size-3.5" />
@@ -191,7 +188,6 @@ const CueCardComponent: React.FC<CueCardProps> = ({
                   type="button"
                   onClick={() => onSetCuePendingDelete(item.id)}
                   className="editor-card-bottom-delete-btn"
-                  title={t('accessibility.deleteCue')}
                   aria-label={t('accessibility.deleteCue')}
                 >
                   <Trash2 className="size-3.5" />

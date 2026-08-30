@@ -35,6 +35,7 @@ export const ProjectDetailPage: React.FC<ProjectDetailPageProps> = ({
     loadFiles,
     addDriveFile,
     processAllDrafts,
+    resetFailedFiles,
     renameFile,
     deleteFile,
     exportSingleFile,
@@ -103,6 +104,7 @@ export const ProjectDetailPage: React.FC<ProjectDetailPageProps> = ({
           files={files}
           processingProgressByFile={processingProgressByFile}
           onStartProcessAll={processAllDrafts}
+          onResetFailedFiles={resetFailedFiles}
           onOpenFileEditor={onOpenFileEditor}
           onExportFile={setExportFileTarget}
           onRenameFile={renameFile}

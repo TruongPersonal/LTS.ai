@@ -30,7 +30,7 @@ export const CueVisibilityMenu: React.FC<CueVisibilityMenuProps> = ({
     if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setOpen(false);
   };
 
-  const tooltipText = label || t('editor.visibility.title');
+  const labelText = label || t('editor.visibility.title');
 
   return (
     <div
@@ -46,8 +46,7 @@ export const CueVisibilityMenu: React.FC<CueVisibilityMenuProps> = ({
         }
         aria-haspopup="menu"
         aria-expanded={open}
-        aria-label={tooltipText}
-        title={tooltipText}
+        aria-label={labelText}
         onClick={() => setOpen((value) => !value)}
       >
         <Eye className="size-4" />

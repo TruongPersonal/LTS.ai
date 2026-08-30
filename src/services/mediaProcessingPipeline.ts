@@ -1,9 +1,8 @@
-import { getGoogleAccessToken, supabase } from '../lib/supabase';
+import { forceExpireGoogleSession, getGoogleAccessToken, supabase } from '../lib/supabase';
 import { DEFAULT_PLAN, normalizePlan, PLAN_LIMITS, type FileMedia, type Plan } from '../types/database';
 import type { ProcessingProgressCallback, ProcessingStage } from '../types/processing';
 import { extractFlacChunks, type AudioChunk } from './mediaAudioPreprocessor';
 import {
-  getTranscriptionProgressPercent,
   mergeTranscriptionChunks,
   type TranscriptionChunkResult,
 } from '../utils/mediaProcessing';
@@ -53,11 +52,12 @@ export const emitProgress = (
   });
 };
 
-export async function downloadDriveMedia(file: FileMedia, accessToken: string): Promise<Blob> {
+export async function downloadDriveMedia(
+  file: FileMedia,
+  accessToken: string,
+  onDownloadProgress?: (percent: number) => void
+): Promise<Blob> {
   const token = accessToken || (await getGoogleAccessToken());
-  if (!token) {
-    throw new Error('Phiên làm việc Google Drive đã hết hạn (1 tiếng). Vui lòng đăng nhập lại.');
-  }
 
   const response = await fetch(
     `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(file.drive_file_id)}?alt=media`,
@@ -66,14 +66,75 @@ export async function downloadDriveMedia(file: FileMedia, accessToken: string): 
 
   if (!response.ok) {
     if (response.status === 401 || response.status === 403) {
-      throw new Error('Phiên làm việc Google Drive đã hết hạn (1 tiếng). Vui lòng đăng nhập lại.');
+      await forceExpireGoogleSession();
     }
     throw new Error(`Failed to download file from Google Drive (Status: ${response.status})`);
   }
 
-  const blob = await response.blob();
+  const contentLengthHeader = response.headers.get('Content-Length');
+  const totalBytes = contentLengthHeader ? parseInt(contentLengthHeader, 10) : 0;
+
+  if (!response.body || !totalBytes || totalBytes <= 0) {
+    const blob = await response.blob();
+    if (blob.size === 0) throw new Error('The Google Drive file contains no data.');
+    onDownloadProgress?.(25);
+    return blob;
+  }
+
+  const reader = response.body.getReader();
+  const chunks: BlobPart[] = [];
+  let receivedBytes = 0;
+  let lastReported = 0;
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    if (value) {
+      chunks.push(value);
+      receivedBytes += value.length;
+      const pct = Math.min(25, Math.max(1, Math.round((receivedBytes / totalBytes) * 25)));
+      if (pct > lastReported) {
+        lastReported = pct;
+        onDownloadProgress?.(pct);
+      }
+    }
+  }
+
+  const mimeType = file.mime_type || response.headers.get('Content-Type') || 'video/mp4';
+  const blob = new Blob(chunks, { type: mimeType });
   if (blob.size === 0) throw new Error('The Google Drive file contains no data.');
+  onDownloadProgress?.(25);
   return blob;
+}
+
+export async function runWithSmoothProgress<T>(
+  asyncTask: () => Promise<T>,
+  startPercent: number,
+  targetPercent: number,
+  onTick: (percent: number) => void,
+  intervalMs = 280
+): Promise<T> {
+  let current = startPercent;
+  onTick(Math.round(current));
+
+  const ceiling = Math.max(startPercent, targetPercent - 1);
+  const timer = setInterval(() => {
+    const remaining = ceiling - current;
+    if (remaining > 0.4) {
+      current += Math.max(0.25, remaining * 0.08);
+      onTick(Math.min(ceiling, Math.round(current)));
+    }
+  }, intervalMs);
+
+  try {
+    const result = await asyncTask();
+    clearInterval(timer);
+    onTick(targetPercent);
+    return result;
+  } catch (err) {
+    clearInterval(timer);
+    throw err;
+  }
 }
 
 export async function handleInvokeError(error: unknown): Promise<never> {
@@ -128,56 +189,20 @@ export async function transcribeChunk(
 }
 
 export function sanitizeErrorMessage(rawError: unknown): string {
-  if (rawError instanceof EdgeInvocationError) {
-    if (rawError.code === 'DAILY_QUOTA_EXCEEDED') {
-      return 'You have reached your daily processing limit.';
-    }
-    if (rawError.code === 'TRANSCRIPTION_PROVIDER_UNAVAILABLE') {
-      return 'System processing quota has been reached. Please try again later.';
-    }
-    if (rawError.code === 'TRANSCRIPTION_PROVIDER_REQUEST_FAILED') {
-      return 'Unable to process media file. Please try again.';
-    }
+  if (rawError instanceof EdgeInvocationError && rawError.code === 'DAILY_QUOTA_EXCEEDED') {
+    return 'Daily processing quota exceeded.';
   }
 
   const rawMessage = rawError instanceof Error ? rawError.message : String(rawError || '');
-  
   if (
-    !rawMessage ||
-    rawMessage.includes('Failed to fetch') ||
-    rawMessage.includes('NetworkError') ||
-    rawMessage.includes('Failed to send a request') ||
-    rawMessage.includes('FunctionsFetchError') ||
-    rawMessage.includes('Relay Error') ||
-    rawMessage.toLowerCase().includes('load failed') ||
-    rawMessage.toLowerCase().includes('ffmpeg') ||
-    rawMessage.toLowerCase().includes('unexpected number of subtitle cues') ||
-    rawMessage.toLowerCase().includes('returned invalid json') ||
-    rawMessage.toLowerCase().includes('returned an empty response') ||
-    rawMessage.toLowerCase().includes('duplicate subtitle ids') ||
-    rawMessage.toLowerCase().includes('all translation models failed') ||
-    rawMessage.toLowerCase().includes('all transcription models failed')
+    rawMessage.toLowerCase().includes('quota') ||
+    rawMessage.toLowerCase().includes('limit') ||
+    rawMessage.includes('429')
   ) {
-    return 'Unable to process media file. Please try again.';
+    return 'Daily processing quota exceeded.';
   }
 
-  if (rawMessage.includes('429') || rawMessage.toLowerCase().includes('rate limit')) {
-    return 'System processing quota has been reached. Please try again later.';
-  }
-
-  if (
-    rawMessage.includes('non-2xx status code') ||
-    rawMessage.includes('FunctionsHttpError') ||
-    rawMessage.includes('500') ||
-    rawMessage.includes('502') ||
-    rawMessage.includes('503') ||
-    rawMessage.includes('504') ||
-    rawMessage.includes('model_decommissioned')
-  ) {
-    return 'Processing server encountered a temporary issue. Please try again.';
-  }
-
-  return rawMessage;
+  return 'Unable to process media file. Please try again.';
 }
 
 export async function markFailed(projectId: string, fileId: string, attemptId: string | null, error: unknown): Promise<void> {
@@ -296,28 +321,36 @@ export async function translateSubtitlesClientSide(
     const batchIndex = Math.floor(i / BATCH_SIZE) + 1;
     const batch = sourceSubtitles.slice(i, i + BATCH_SIZE);
 
-    const progressPercent = 90 + Math.floor((batchIndex / totalBatches) * 8);
-    emitProgress(
-      onProgress,
-      fileId,
-      'finalizing',
-      progressPercent,
-      i18n.t('processing.translatingBatch', 'Đang dịch phụ đề với Gemini 2.0 Flash · lô {{batch}}/{{total}}', {
-        batch: batchIndex,
-        total: totalBatches,
-      }),
-      batchIndex,
-      totalBatches
-    );
+    const batchStart = 82 + Math.round(((batchIndex - 1) / totalBatches) * 15);
+    const batchTarget = 82 + Math.round((batchIndex / totalBatches) * 15);
 
-    const res = await invokeJson({
-      action: 'translate-batch',
-      project_id: projectId,
-      file_id: fileId,
-      subtitles: batch,
-      source_language: sourceLanguage,
-      target_language: targetLanguage,
-    });
+    const res = await runWithSmoothProgress(
+      () =>
+        invokeJson({
+          action: 'translate-batch',
+          project_id: projectId,
+          file_id: fileId,
+          subtitles: batch,
+          source_language: sourceLanguage,
+          target_language: targetLanguage,
+        }),
+      batchStart,
+      batchTarget,
+      (pct) => {
+        emitProgress(
+          onProgress,
+          fileId,
+          'finalizing',
+          pct,
+          i18n.t('processing.translatingBatch', 'Đang dịch phụ đề với Gemini 2.0 Flash · lô {{batch}}/{{total}}', {
+            batch: batchIndex,
+            total: totalBatches,
+          }),
+          batchIndex,
+          totalBatches
+        );
+      }
+    );
 
     const batchTranslated = res.subtitles || [];
     translatedAll.push(...batchTranslated);
@@ -350,8 +383,10 @@ export async function processMediaFile(
     attemptId = String(started.attempt_id || '');
     if (!attemptId) throw new Error('Processing attempt was not created.');
 
-    emitProgress(onProgress, file.id, 'downloading', 10, i18n.t('processing.downloading'));
-    const mediaBlob = await downloadDriveMedia(file, accessToken);
+    emitProgress(onProgress, file.id, 'downloading', 2, i18n.t('processing.downloading'));
+    const mediaBlob = await downloadDriveMedia(file, accessToken, (pct) => {
+      emitProgress(onProgress, file.id, 'downloading', pct, i18n.t('processing.downloading'));
+    });
 
     let effectiveDuration = file.duration_seconds || 0;
     const exactDuration = await getBlobDurationSeconds(mediaBlob);
@@ -360,11 +395,9 @@ export async function processMediaFile(
     }
     await assertDailyDurationAvailable(effectiveDuration);
 
-    emitProgress(onProgress, file.id, 'preprocessing', 25, i18n.t('processing.preprocessing'));
+    emitProgress(onProgress, file.id, 'preprocessing', 26, i18n.t('processing.preprocessing'));
 
     const chunkResults: TranscriptionChunkResult[] = [];
-    let sawChunk = false;
-
     const chunkIterator = extractFlacChunks(
       mediaBlob,
       file.mime_type || mediaBlob.type,
@@ -389,30 +422,27 @@ export async function processMediaFile(
         const chunk = nextChunk.value;
         nextChunkPromise = requestNextChunk();
 
-        if (!sawChunk) {
-          emitProgress(
-            onProgress,
-            file.id,
-            'preprocessing',
-            45,
-            i18n.t('processing.preprocessing'),
-            0,
-            chunk.chunkCount
-          );
-          sawChunk = true;
-        }
+        const totalChunks = Math.max(1, chunk.chunkCount);
+        const chunkStart = 45 + Math.round((35 * chunk.index) / totalChunks);
+        const chunkTarget = 45 + Math.round((35 * (chunk.index + 1)) / totalChunks);
 
-        const transcriptionPercent = getTranscriptionProgressPercent(chunk.index, chunk.chunkCount);
-        emitProgress(
-          onProgress,
-          file.id,
-          'transcribing',
-          transcriptionPercent,
-          i18n.t('processing.transcribingChunk', { index: chunk.index + 1, count: chunk.chunkCount }),
-          chunk.index + 1,
-          chunk.chunkCount
+        const chunkResult = await runWithSmoothProgress(
+          () => transcribeChunk(projectId, file.id, attemptId, chunk),
+          chunkStart,
+          chunkTarget,
+          (pct) => {
+            emitProgress(
+              onProgress,
+              file.id,
+              'transcribing',
+              pct,
+              i18n.t('processing.transcribingChunk', { index: chunk.index + 1, count: totalChunks }),
+              chunk.index + 1,
+              totalChunks
+            );
+          }
         );
-        chunkResults.push(await transcribeChunk(projectId, file.id, attemptId, chunk));
+        chunkResults.push(chunkResult);
       }
     } finally {
       if (nextChunkPromise) {
@@ -421,7 +451,7 @@ export async function processMediaFile(
       await chunkIterator.return().catch(() => undefined);
     }
 
-    emitProgress(onProgress, file.id, 'finalizing', 86, i18n.t('processing.saving'));
+    emitProgress(onProgress, file.id, 'finalizing', 81, i18n.t('processing.saving'));
     const merged = mergeTranscriptionChunks(chunkResults);
 
     await supabase.from('subtitles').upsert(
@@ -450,6 +480,8 @@ export async function processMediaFile(
       targetLanguage,
       onProgress
     );
+
+    emitProgress(onProgress, file.id, 'finalizing', 98, i18n.t('processing.saving'));
 
     await supabase.from('subtitles').upsert(
       {

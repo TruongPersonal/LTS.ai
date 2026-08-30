@@ -77,6 +77,7 @@
     "description": "Theo dõi người dùng, dự án, tệp và doanh thu hệ thống.",
     "refresh": "Làm mới",
     "loadError": "Không thể tải dữ liệu",
+    "actionFailed": "Thao tác không thành công",
     "tabs": {
       "navLabel": "Điều hướng Quản trị",
       "overview": "Tổng quan",
@@ -151,7 +152,8 @@
       "loading": "Đang tải",
       "noSubtitles": "Chưa có bản ghi phụ đề nào.",
       "emptyTrack": "Bản ghi phụ đề này đang trống.",
-      "deleteSubtitles": "Xóa phụ đề"
+      "deleteSubtitles": "Xóa phụ đề",
+      "subtitlesDeleted": "Đã xóa phụ đề"
     },
     "system": {
       "title": "Cấu hình Hệ thống",
@@ -170,7 +172,8 @@
       "apiMissing": "Chưa cấu hình",
       "saveConfig": "Lưu Cấu hình",
       "saving": "Đang lưu...",
-      "configSaved": "Đã lưu cấu hình hệ thống"
+      "configSaved": "Đã lưu cấu hình hệ thống",
+      "saveFailed": "Không thể lưu cấu hình"
     },
     "logs": {
       "title": "Nhật ký Hoạt động",
@@ -208,7 +211,8 @@
     "badge": "Tham gia hệ thống",
     "secure": "Tiện lợi",
     "fastAi": "Bảo mật",
-    "driveSync": "Nhanh chóng"
+    "driveSync": "Nhanh chóng",
+    "sessionExpiredToast": "Phiên làm việc Google Drive đã hết hạn. Vui lòng đăng nhập lại."
   },
   "landing": {
     "eyebrow": "Subtitle AI Workspace",
@@ -272,8 +276,8 @@
     "title": "Dự án",
     "description": "Tiếp tục công việc hoặc bắt đầu một dự án phụ đề mới.",
     "searchPlaceholder": "Tìm kiếm dự án...",
-    "loadError": "Không thể tải danh sách dự án.",
-    "retryLoad": "Tải lại dự án",
+    "loadError": "Không thể tải danh sách dự án",
+    "retryLoad": "Tải lại",
     "empty": {
       "title": "Chưa có dự án nào",
       "description": "Tạo dự án phụ đề đầu tiên của bạn ngay",
@@ -301,7 +305,7 @@
     "updateAction": "Lưu thay đổi",
     "fileCount": "{{count}} tệp",
     "loadError": "Không thể tải tệp trong dự án.",
-    "retryLoad": "Tải lại tệp",
+    "retryLoad": "Tải lại",
     "exportZip": "Xuất",
     "deleteProjectTitle": "Xác nhận xóa dự án",
     "deleteProjectMessage": "Bạn có chắc chắn muốn xóa vĩnh viễn dự án \"{{name}}\" và toàn bộ tệp bên trong?",
@@ -322,6 +326,7 @@
     },
     "addDrive": "Thêm tệp",
     "startAll": "Xử lý ({{count}})",
+    "retryFailed": "Thử lại các tệp thất bại ({{count}})",
     "edit": "Chỉnh sửa",
     "renameFile": "Sửa tệp",
     "renameModalTitle": "Sửa tệp",
@@ -361,17 +366,17 @@
     }
   },
   "errorBoundary": {
-    "title": "Đã xảy ra lỗi không mong muốn.",
-    "description": "Ứng dụng gặp sự cố khi hiển thị trang này. Vui lòng tải lại trang để tiếp tục.",
-    "reload": "Tải lại trang"
+    "title": "Ứng dụng gặp lỗi",
+    "description": "Đã gặp sự cố khi hiển thị trang này. Vui lòng tải lại trang.",
+    "reload": "Tải lại"
   },
   "routes": {
-    "projectNotFound": "Không tìm thấy dự án.",
+    "projectNotFound": "Không tìm thấy dự án tương ứng",
     "projectLoadError": "Không thể tải thông tin dự án.",
     "editorDataNotFound": "Không tìm thấy tệp hoặc dự án.",
     "editorDataLoadError": "Không thể tải dữ liệu biên tập.",
-    "backToProjects": "Về danh sách dự án",
-    "backToProject": "Quay lại dự án"
+    "backToProjects": "Quay lại",
+    "backToProject": "Quay lại"
   },
   "processing": {
     "downloading": "Đang tải tệp...",
@@ -382,7 +387,6 @@
     "partialCompleted": "Xử lý {{total}} tệp ({{failed}} tệp lỗi)!",
     "allFailed": "Không hoàn thành {{count}} tệp!",
     "progressAria": "Tiến trình xử lý {{processed}}/{{total}}",
-    "doneTitle": "Đã hoàn thành",
     "preparingSimple": "Đang chuẩn bị...",
     "completedSimple": "Hoàn thành",
     "queued": "Đang xếp hàng...",
@@ -396,11 +400,7 @@
     "translatingBatch": "Đang dịch phụ đề với Gemini 2.0 Flash · lô {{batch}}/{{total}}"
   },
   "errors": {
-    "googleSessionExpired": "Không thể tải tệp. Phiên Google Drive đã hết hạn.",
-    "fileNotFailed": "Tệp này không còn ở trạng thái thất bại.",
-    "googleTokenMissing": "Google Drive access token is missing. Vui lòng đăng nhập lại bằng Google.",
-    "googleApiLoadFailed": "Không thể tải Google API Script.",
-    "googlePickerInitFailed": "Không thể khởi tạo Google Picker library."
+    "googlePickerError": "Không thể kết nối Google Drive. Vui lòng thử lại."
   },
   "editor": {
     "export": "Xuất",
@@ -412,11 +412,8 @@
       "preparing": "Đang chuẩn bị...",
       "exporting": "Đang xử lý...",
       "completed": "Đã xuất tệp thành công.",
-      "loadError": "Không thể xử lý.",
-      "unsupportedError": "Định dạng video này không hỗ trợ burn-in phụ đề.",
-      "av1UnsupportedError": "Định dạng của video hiện tại chưa được hỗ trợ, vui lòng chuyển định dạng AV1 sang H264/H265 để được hỗ trợ.",
-      "executionError": "Không thể xử lý.",
-      "outputError": "Không thể đọc file đã xuất.",
+      "unsupportedError": "Định dạng video này chưa được hỗ trợ xuất phụ đề.",
+      "exportError": "Không thể xuất video. Vui lòng thử lại.",
       "confirm": "Tiếp tục",
       "cancel": "Hủy",
       "close": "Đóng"
@@ -424,8 +421,8 @@
     "subtitleList": "Danh sách phụ đề",
     "noTargetSubtitle": "Chưa có phụ đề",
     "createFirstCue": "Tạo dòng mới",
-    "loadError": "Không thể tải phụ đề.",
-    "retryLoad": "Tải lại phụ đề",
+    "loadError": "Không thể tải danh sách phụ đề",
+    "retryLoad": "Tải lại",
     "saveError": "Không thể lưu phụ đề. Vui lòng thử lại.",
     "timing": {
       "start": "Bắt đầu",
@@ -437,19 +434,14 @@
       "confirm": "Xóa dòng"
     },
     "video": {
-      "cannotOpen": "Không thể mở tệp.",
-      "empty": "Chưa có tệp để phát.",
-      "codecError": "Định dạng tệp không được hỗ trợ.",
-      "sessionExpired": "Phiên làm việc đã hết hạn. Vui lòng đăng nhập lại bằng Google.",
-      "downloadFailed": "Phiên làm việc đã hết hạn. Vui lòng đăng nhập lại bằng Google."
+      "cannotPlay": "Không thể phát video này."
     },
     "backToProject": "Quay lại dự án",
     "visibility": {
       "title": "Cách hiển thị",
       "metadata": "Thông tin",
       "source": "Bản gốc",
-      "actions": "Các nút",
-      "actionsHint": "Chỉnh sửa, thêm và xóa cue"
+      "actions": "Các nút"
     }
   },
   "export": {

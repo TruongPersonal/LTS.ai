@@ -34,13 +34,13 @@ function loadGapiScript(): Promise<void> {
       if (window.gapi) {
         window.gapi.load('picker', {
           callback: () => resolve(),
-          onerror: () => reject(new Error(i18n.t('errors.googlePickerInitFailed', 'Không thể khởi tạo Google Picker library.'))),
+          onerror: () => reject(new Error(i18n.t('errors.googlePickerError', 'Không thể kết nối Google Drive. Vui lòng thử lại.'))),
         });
       } else {
-        reject(new Error(i18n.t('errors.googleApiLoadFailed', 'Google API Script chưa tải thành công.')));
+        reject(new Error(i18n.t('errors.googlePickerError', 'Không thể kết nối Google Drive. Vui lòng thử lại.')));
       }
     };
-    script.onerror = () => reject(new Error(i18n.t('errors.googleApiLoadFailed', 'Không thể tải Google API Script.')));
+    script.onerror = () => reject(new Error(i18n.t('errors.googlePickerError', 'Không thể kết nối Google Drive. Vui lòng thử lại.')));
     document.body.appendChild(script);
   });
 
@@ -51,10 +51,6 @@ export async function openGoogleDrivePicker(): Promise<SelectedPickerFile | null
   await loadGapiScript();
 
   const accessToken = await getGoogleAccessToken();
-  if (!accessToken) {
-    throw new Error(i18n.t('errors.googleSessionExpired', 'Phiên làm việc Google đã hết hạn. Vui lòng đăng nhập lại.'));
-  }
-
   const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
   const appId = clientId.split('-')[0] || '';
 

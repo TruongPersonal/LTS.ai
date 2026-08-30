@@ -44,7 +44,7 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({ project, onSelect, onE
       </button>
 
       <div className="project-card-menu" ref={menuRef}>
-        <button type="button" onClick={() => setMenuOpen((value) => !value)} className="ui-icon-button ui-icon-button-sm" aria-haspopup="menu" aria-expanded={menuOpen} aria-label={t('common.more')} title={t('common.more')}><MoreHorizontal className="size-4" /></button>
+        <button type="button" onClick={() => setMenuOpen((value) => !value)} className="ui-icon-button ui-icon-button-sm" aria-haspopup="menu" aria-expanded={menuOpen} aria-label={t('common.more')}><MoreHorizontal className="size-4" /></button>
         {menuOpen && (
           <div className="overflow-menu" role="menu">
             <button type="button" role="menuitem" onClick={() => { setMenuOpen(false); onEdit(project); }}><Edit3 className="size-4" />{t('project.editAria')}</button>

@@ -34,9 +34,12 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ onSelectProject, i
   const [editingProject, setEditingProject] = useState<Project | null>(null);
   const [deletingProject, setDeletingProject] = useState<Project | null>(null);
   const searchRef = useRef<HTMLInputElement>(null);
+  const handledIntentIdRef = useRef<number | null>(null);
 
   useEffect(() => {
-    if (!intent) return;
+    if (!intent || handledIntentIdRef.current === intent.id) return;
+    handledIntentIdRef.current = intent.id;
+
     if (intent.type === 'create') setIsCreateOpen(true);
     if (intent.type === 'search') {
       window.setTimeout(() => searchRef.current?.focus(), 0);
