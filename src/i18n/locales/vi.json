@@ -434,7 +434,9 @@
       "confirm": "Xóa dòng"
     },
     "video": {
-      "cannotPlay": "Không thể phát video này."
+      "cannotPlay": "Không thể phát video này.",
+      "pipPlaying": "Đang phát ở chế độ hình trong hình",
+      "pipExit": "Kéo trở lại"
     },
     "backToProject": "Quay lại dự án",
     "visibility": {

@@ -434,7 +434,9 @@
       "confirm": "行を削除"
     },
     "video": {
-      "cannotPlay": "この動画を再生できません。"
+      "cannotPlay": "この動画を再生できません。",
+      "pipPlaying": "ピクチャーインピクチャーで再生中",
+      "pipExit": "元に戻す"
     },
     "backToProject": "プロジェクトに戻る",
     "visibility": {

@@ -799,6 +799,12 @@ a:focus-visible {
   font-family: system-ui, -apple-system, 'Noto Sans CJK JP', 'Plus Jakarta Sans', sans-serif;
 }
 
+.editor-video-pip::cue {
+  display: none !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+}
+
 .editor-video-center-play {
   position: absolute;
   top: 50%;
@@ -2802,7 +2808,7 @@ div[aria-label*="Google Drive"],
     flex-shrink: 0;
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 8px;
   }
 
   .editor-toolbar-action-controls {

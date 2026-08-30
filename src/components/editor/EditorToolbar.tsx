@@ -114,13 +114,6 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
         <div className="editor-toolbar-action-controls">
           <div className="editor-toolbar-divider" />
 
-          {saveSuccess && (
-            <span className="text-xs font-semibold text-[var(--ui-success)] inline-flex items-center gap-1">
-              <Check className="size-3.5" />
-              {t('common.saved')}
-            </span>
-          )}
-
           {saveError && (
             <span className="text-xs font-semibold text-[var(--ui-danger)]">
               {saveError}
@@ -130,11 +123,24 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
           <button
             type="button"
             onClick={onSave}
-            disabled={!isDirty || saving}
-            className="ui-button ui-button-secondary"
+            disabled={(!isDirty && !saveSuccess) || saving}
+            className={`ui-button ui-button-secondary transition-all ${
+              saveSuccess ? 'border-emerald-500/40 text-emerald-400 bg-emerald-500/10' : ''
+            }`}
           >
-            {saving && <Loader2 className="size-3.5 animate-spin" />}
-            <span>{saving ? t('common.saving') : t('common.save')}</span>
+            {saving ? (
+              <>
+                <Loader2 className="size-3.5 animate-spin" />
+                <span>{t('common.saving')}</span>
+              </>
+            ) : saveSuccess ? (
+              <>
+                <Check className="size-3.5 text-emerald-400" />
+                <span>{t('common.saved')}</span>
+              </>
+            ) : (
+              <span>{t('common.save')}</span>
+            )}
           </button>
 
           <button

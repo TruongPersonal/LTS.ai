@@ -433,7 +433,9 @@
       "confirm": "Delete line"
     },
     "video": {
-      "cannotPlay": "Cannot play this video."
+      "cannotPlay": "Cannot play this video.",
+      "pipPlaying": "Playing in Picture-in-Picture",
+      "pipExit": "Bring back"
     },
     "backToProject": "Back to project",
     "visibility": {

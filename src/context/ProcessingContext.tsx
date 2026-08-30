@@ -61,7 +61,13 @@ export const ProcessingProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             current.projectId,
             current.file,
             (progress) => {
-              setProgressByFile((prev) => ({ ...prev, [progress.fileId]: progress }));
+              setProgressByFile((prev) => {
+                const prevProg = prev[progress.fileId];
+                const safePercent = (prevProg && progress.stage !== 'completed' && progress.stage !== 'failed')
+                  ? Math.max(prevProg.percent, progress.percent)
+                  : progress.percent;
+                return { ...prev, [progress.fileId]: { ...progress, percent: safePercent } };
+              });
               setActiveItem(current);
               setActivePercent(Math.min(100, Math.max(0, Math.round(progress.percent))));
               if (progress.message) setActiveMessage(progress.message);

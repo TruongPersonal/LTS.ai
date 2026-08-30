@@ -1,5 +1,5 @@
 import React, { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react';
-import { AlertCircle, Play } from 'lucide-react';
+import { AlertCircle, ArrowDownLeft, PictureInPicture2, Play } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { VideoSettingsMenu } from './VideoSettingsMenu';
 import { VideoControlsBar } from './VideoControlsBar';
@@ -582,7 +582,7 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(
               src={videoUrl}
               preload="metadata"
               playsInline
-              className="editor-video"
+              className={`editor-video ${isPictureInPicture ? 'editor-video-pip' : ''}`}
               onClick={togglePlay}
               onError={() => setPlaybackError(t('editor.video.codecError'))}
             >
@@ -609,7 +609,26 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(
               )}
             </video>
 
-            {!isPlaying && (
+            {isPictureInPicture && (
+              <div className="absolute inset-0 bg-[var(--ui-bg)]/95 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center z-20 animate-in fade-in zoom-in-95 duration-200">
+                <div className="size-14 rounded-2xl bg-[var(--ui-accent-soft)] border border-[var(--ui-accent)]/30 text-[var(--ui-accent)] flex items-center justify-center shadow-lg mb-3">
+                  <PictureInPicture2 className="size-7" />
+                </div>
+                <h4 className="text-sm font-bold text-[var(--ui-text)]">
+                  {t('editor.video.pipPlaying')}
+                </h4>
+                <button
+                  type="button"
+                  onClick={() => void togglePictureInPicture()}
+                  className="ui-button ui-button-primary mt-4 flex items-center gap-2"
+                >
+                  <ArrowDownLeft className="size-4" />
+                  <span>{t('editor.video.pipExit')}</span>
+                </button>
+              </div>
+            )}
+
+            {!isPlaying && !isPictureInPicture && (
               <button
                 type="button"
                 className="editor-video-center-play"

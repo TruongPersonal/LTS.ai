@@ -92,7 +92,7 @@ export async function downloadDriveMedia(
     if (value) {
       chunks.push(value);
       receivedBytes += value.length;
-      const pct = Math.min(25, Math.max(1, Math.round((receivedBytes / totalBytes) * 25)));
+      const pct = Math.min(25, Math.max(0, Math.round((receivedBytes / totalBytes) * 25)));
       if (pct > lastReported) {
         lastReported = pct;
         onDownloadProgress?.(pct);
@@ -321,8 +321,8 @@ export async function translateSubtitlesClientSide(
     const batchIndex = Math.floor(i / BATCH_SIZE) + 1;
     const batch = sourceSubtitles.slice(i, i + BATCH_SIZE);
 
-    const batchStart = 82 + Math.round(((batchIndex - 1) / totalBatches) * 15);
-    const batchTarget = 82 + Math.round((batchIndex / totalBatches) * 15);
+    const batchStart = 80 + Math.round(((batchIndex - 1) / totalBatches) * 18);
+    const batchTarget = 80 + Math.round((batchIndex / totalBatches) * 18);
 
     const res = await runWithSmoothProgress(
       () =>
@@ -383,7 +383,7 @@ export async function processMediaFile(
     attemptId = String(started.attempt_id || '');
     if (!attemptId) throw new Error('Processing attempt was not created.');
 
-    emitProgress(onProgress, file.id, 'downloading', 2, i18n.t('processing.downloading'));
+    emitProgress(onProgress, file.id, 'downloading', 0, i18n.t('processing.downloading'));
     const mediaBlob = await downloadDriveMedia(file, accessToken, (pct) => {
       emitProgress(onProgress, file.id, 'downloading', pct, i18n.t('processing.downloading'));
     });
@@ -423,8 +423,8 @@ export async function processMediaFile(
         nextChunkPromise = requestNextChunk();
 
         const totalChunks = Math.max(1, chunk.chunkCount);
-        const chunkStart = 45 + Math.round((35 * chunk.index) / totalChunks);
-        const chunkTarget = 45 + Math.round((35 * (chunk.index + 1)) / totalChunks);
+        const chunkStart = 35 + Math.round((45 * chunk.index) / totalChunks);
+        const chunkTarget = 35 + Math.round((45 * (chunk.index + 1)) / totalChunks);
 
         const chunkResult = await runWithSmoothProgress(
           () => transcribeChunk(projectId, file.id, attemptId, chunk),
@@ -583,7 +583,7 @@ export async function processSingleFile(
   accessToken: string,
   onProgress?: ProcessingProgressCallback
 ): Promise<void> {
-  emitProgress(onProgress, file.id, 'preparing', 5, i18n.t('processing.processingPreparing', 'Đang chuẩn bị xử lý...'));
+  emitProgress(onProgress, file.id, 'preparing', 0, i18n.t('processing.processingPreparing', 'Đang chuẩn bị xử lý...'));
   if (file.input_source === 'existing_subtitle') {
     await processExistingSubtitleFile(projectId, file, onProgress);
     return;
